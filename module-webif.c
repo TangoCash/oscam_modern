@@ -3340,7 +3340,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					else
 						tpl_printf(vars, TPLADD, "CLIENTSRVID", "none");
 
-					char *lastchannel;
+					char *lastchannel;char channame[32];
 					int32_t actual_caid=cl->last_caid;
 					int32_t actual_srvid=cl->last_srvid;
 					lastchannel = xml_encode(vars, get_servicename(cl, actual_srvid, actual_caid, channame));
