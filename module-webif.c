@@ -3341,12 +3341,11 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 						tpl_printf(vars, TPLADD, "CLIENTSRVID", "none");
 
 					char *lastchannel;
+					int32_t actual_caid=cl->last_caid;
+					int32_t actual_srvid=cl->last_srvid;
 					lastchannel = xml_encode(vars, get_servicename(cl, actual_srvid, actual_caid, channame));
 					if (cl->last_caid != NO_CAID_VALUE && cl->last_srvid != NO_SRVID_VALUE){
 						if (cfg.http_showpicons) {
-							char channame[32];
-							int32_t actual_caid=cl->last_caid;
-							int32_t actual_srvid=cl->last_srvid;
 							snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", actual_caid, actual_srvid);
 							if (picon_exists(picon_name)) {
 								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON",
