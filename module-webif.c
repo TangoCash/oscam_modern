@@ -3353,7 +3353,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 								actual_caid, actual_srvid);
 							} else {
 								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
-								tpl_printf(vars, TPLADD, "CAIDSRVID", "%s", lastchannel);
+								tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", actual_caid, actual_srvid);
 							}
 						} else {
 							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
