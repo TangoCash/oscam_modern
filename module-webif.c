@@ -3340,13 +3340,14 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					else
 						tpl_printf(vars, TPLADD, "CLIENTSRVID", "none");
 
-					char *lastchannel;char channame[32];
 					if (cl->last_caid != NO_CAID_VALUE && cl->last_srvid != NO_SRVID_VALUE){
 						if (cfg.http_showpicons) {
+							char *lastchannel;char channame[32];
 							int32_t actual_caid=cl->last_caid;
 							int32_t actual_srvid=cl->last_srvid;
 							snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", actual_caid, actual_srvid);
 							lastchannel = xml_encode(vars, get_servicename(cl, actual_srvid, actual_caid, channame));
+							
 							if (picon_exists(picon_name)) {
 								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON",
 								"<img class=\"clientcurrentpicon\" src=\"image?i=IC_%04X_%04X\">",
@@ -3355,13 +3356,16 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
 								tpl_printf(vars, TPLADD, "CAIDSRVID", "%s", lastchannel);
 							}
-						} else {
+						} 
+					}
+/*
+						else {
 							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%04X:%04X", cl->last_caid, cl->last_srvid);
 							tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
 						}
 						tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%04X:%04X", cl->last_caid, cl->last_srvid);
 						tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
-					}
+					}*/
 
 					tpl_printf(vars, TPLADD, "CLIENTLASTRESPONSETIME", "%d", cl->cwlastresptime?cl->cwlastresptime:1);
 					tpl_printf(vars, TPLADD, "CLIENTSRVPROVIDER","%s%s", cl->last_srvidptr && cl->last_srvidptr->prov ? xml_encode(vars, cl->last_srvidptr->prov) : "", cl->last_srvidptr && cl->last_srvidptr->prov ? ": " : "");
