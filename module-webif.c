@@ -2252,23 +2252,26 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 		return tpl_getTpl(vars, "USEREDIT");
 	else
 		return tpl_getTpl(vars, "APIUSEREDIT");
-
 }
 
 static void webif_add_client_proto(struct templatevars *vars, struct s_client *cl, const char *proto) {
 	if(!cl) return;
 #ifdef MODULE_NEWCAMD
 	if (streq(proto, "newcamd") && cl->typ == 'c') {
-		tpl_printf(vars, TPLADDONCE, "CLIENTPROTO","%s (%s)", proto, newcamd_get_client_name(cl->ncd_client_id));
-		char picon_name[32];
-		snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s", (char *)proto, newcamd_get_client_name(cl->ncd_client_id));
-		if (cfg.http_showpicons && picon_exists(picon_name)) {
-			tpl_printf(vars, TPLADD, "PROTOICON",
-			"<img class=\"protoicon\" src=\"image?i=IC_%s_%s\" alt=\"IC_%s_%s\" title=\"Protocol %s %s\">",
-			proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id));
+		if (cfg.http_showpicons) {
+			char picon_name[32];
+			snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s", (char *)proto, newcamd_get_client_name(cl->ncd_client_id));
+			if (picon_exists(picon_name)) {
+				tpl_printf(vars, TPLADD, "PROTOICON",
+				"<img class=\"protoicon\" src=\"image?i=IC_%s_%s\" alt=\"IC_%s_%s\" title=\"Protocol %s %s\">",
+				proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id));
+			} else {
+				tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s_%s\">%s (%s)</SPAN>",
+				proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id));
+			}
 		} else {
-			tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s_%s\">%s (%s)</SPAN>",
-			proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id));
+			tpl_printf(vars, TPLADDONCE, "PROTOICON","%s (%s)", proto, newcamd_get_client_name(cl->ncd_client_id));
+			tpl_printf(vars, TPLADDONCE, "CLIENTPROTO","%s (%s)", proto, newcamd_get_client_name(cl->ncd_client_id));
 		}
 		return;
 	}
@@ -2277,30 +2280,38 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 	if (strncmp(proto, "cccam", 5) == 0) {
 		struct cc_data *cc = cl->cc;
 		if (cc && cc->remote_version && cc->remote_build) {
-			tpl_printf(vars, TPLADDONCE, "CLIENTPROTO", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
-			tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", cc->extended_mode ? cc->remote_oscam : "");
-			char picon_name[32];
-			snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s_%s", proto, cc->remote_version, cc->remote_build);
-			if (cfg.http_showpicons && picon_exists(picon_name)) {
-				tpl_printf(vars, TPLADD, "PROTOICON",
-				"<img class=\"protoicon\" src=\"image?i=IC_%s_%s_%s\" alt=\"IC_%s (%s-%s)\" title=\"Protocol %s (%s-%s)\">",
-				proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
+			if (cfg.http_showpicons) {
+				char picon_name[32];
+				snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s_%s", proto, cc->remote_version, cc->remote_build);
+				if (picon_exists(picon_name)) {
+					tpl_printf(vars, TPLADD, "PROTOICON",
+					"<img class=\"protoicon\" src=\"image?i=IC_%s_%s_%s\" alt=\"IC_%s (%s-%s)\" title=\"Protocol %s (%s-%s)\">",
+					proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
+				} else {
+					tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s_%s_%s\">%s (%s-%s)</SPAN>",
+					proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
+				}
 			} else {
-				tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s_%s_%s\">%s (%s-%s)</SPAN>",
-				proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
+				tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
+				tpl_printf(vars, TPLADDONCE, "CLIENTPROTO", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
+				tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", cc->extended_mode ? cc->remote_oscam : "");
 			}
-			return;
 		}
+		return;
 	}
 #endif
-	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", (char *)proto);
-	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
-	char picon_name[32];
-	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s", proto);
-	if (cfg.http_showpicons && picon_exists(picon_name)) {
-		tpl_printf(vars, TPLADD, "PROTOICON", "<img class=\"protoicon\" src=\"image?i=IC_%s\" alt=\"IC_%s\" title=\"Protocol %s\">", proto, proto, proto);
+	if (cfg.http_showpicons) {
+		char picon_name[32];
+		snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s", proto);
+		if (picon_exists(picon_name)) {
+			tpl_printf(vars, TPLADD, "PROTOICON", "<img class=\"protoicon\" src=\"image?i=IC_%s\" alt=\"IC_%s\" title=\"Protocol %s\">", proto, proto, proto);
+		} else {
+			tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s\">%s</SPAN>", proto, proto);
+		}
 	} else {
-		tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s\">%s</SPAN>", proto, proto);
+		tpl_addVar(vars, TPLADDONCE, "PROTOICON", (char *)proto);
+		tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", (char *)proto);
+		tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
 	}
 }
 
