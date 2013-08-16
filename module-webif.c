@@ -223,7 +223,7 @@ static void setActiveMenu(struct templatevars *vars, int8_t active)
 		else
 			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu");
 	}
-	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8840");
+	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8841");
 }
 
 /*
@@ -3345,6 +3345,8 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					int32_t actual_srvid=cl->last_srvid;
 					lastchannel = xml_encode(vars, get_servicename(cl, actual_srvid, actual_caid, channame));
 					if (cl->last_caid != NO_CAID_VALUE && cl->last_srvid != NO_SRVID_VALUE){
+						tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
+						tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", actual_caid, actual_srvid);
 						if (cfg.http_showpicons) {
 							snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", actual_caid, actual_srvid);
 							if (picon_exists(picon_name)) {
@@ -3359,8 +3361,6 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
 							tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", actual_caid, actual_srvid);
 						}
-						tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
-						tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", actual_caid, actual_srvid);
 					}
 
 					tpl_printf(vars, TPLADD, "CLIENTLASTRESPONSETIME", "%d", cl->cwlastresptime?cl->cwlastresptime:1);
