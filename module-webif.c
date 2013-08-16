@@ -2542,7 +2542,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 				lastchan = "";
 			tpl_printf(vars, TPLADD, "CLIENTCAID", "%04X", latestclient->last_caid);
 			tpl_printf(vars, TPLADD, "CLIENTSRVID", "%04X", latestclient->last_srvid);
-			if (cfg.http_showpicons) {
+			if (cfg.http_showpicons && !apicall) {
 				char picon_name[32];
 				snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", latestclient->last_caid, latestclient->last_srvid);
 				if (picon_exists(picon_name)) {
@@ -2627,7 +2627,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 
 		tpl_addVar(vars, TPLADD, "CLASSNAME", classname);
 
-		if (cfg.http_showpicons) {
+		if (cfg.http_showpicons && !apicall) {
 			if (picon_exists(xml_encode(vars, account->usr))) {
 				tpl_printf(vars, TPLADD, "USER",
 				"<img class=\"usericon\" src=\"image?i=IC_%s\" TITLE=\"%s\">",
@@ -2686,7 +2686,6 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 	tpl_printf(vars, TPLADD, "REL_CWIGN", "%.2f", first_client->cwignored * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWTOUT", "%.2f", first_client->cwtout * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWCACHE", "%.2f", first_client->cwcache * 100 / ecmsum);
-	tpl_printf(vars, TPLADD, "REL_CWTUN", "%.2f", first_client->cwtun * 100 / ecmsum);
 
 
 	if (!apicall)
