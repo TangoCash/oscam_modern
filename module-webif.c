@@ -2542,15 +2542,19 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 				lastchan = "";
 			tpl_printf(vars, TPLADD, "CLIENTCAID", "%04X", latestclient->last_caid);
 			tpl_printf(vars, TPLADD, "CLIENTSRVID", "%04X", latestclient->last_srvid);
-			char picon_name[32];
-			snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", latestclient->last_caid, latestclient->last_srvid);
-			if (cfg.http_showpicons && picon_exists(picon_name)) {
-				tpl_printf(vars, TPLADD, "LASTCHANNEL",
+			if (cfg.http_showpicons) {
+				char picon_name[32];
+				snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", latestclient->last_caid, latestclient->last_srvid);
+				if (picon_exists(picon_name)) {
+					tpl_printf(vars, TPLADD, "LASTCHANNEL",
 					"<img class=\"userpicon\" src=\"image?i=IC_%s\" alt=\"%s\" title=\"%s\">",
 					picon_name, lastchan, lastchan);
+				} else {
+					tpl_addVar(vars, TPLADDONCE, "LASTCHANNEL", lastchan);
+				}
 			} else {
 				tpl_addVar(vars, TPLADDONCE, "LASTCHANNEL", lastchan);
-			}
+			} 
 			lastresponsetm = latestclient->cwlastresptime;
 			tpl_addVar(vars, TPLADDONCE, "CLIENTIP", cs_inet_ntoa(latestclient->ip));
 			connected_users++;
@@ -3252,7 +3256,6 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				tpl_printf(vars, TPLADD, "CLIENTTYPE", "%c", cl->typ);
 				tpl_printf(vars, TPLADD, "CLIENTCNR", "%d", get_threadnum(cl));
 				tpl_addVar(vars, TPLADD, "CLIENTUSER", xml_encode(vars, usr));
-				tpl_addVar(vars, TPLADD, "STATUSUSERICON", xml_encode(vars, usr));
 	
 				if(cl->typ == 'c') {
 					tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", xml_encode(vars, (cl->account && cl->account->description)?cl->account->description:""));
@@ -3261,27 +3264,31 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", xml_encode(vars, cl->reader->description?cl->reader->description:""));
 				}
 
-				if (cfg.http_showpicons && picon_exists(xml_encode(vars, usr))) {
-					if (cl->typ == 'c') {
-						tpl_printf(vars, TPLADD, "STATUSUSERICON",
-						"<A HREF=\"user_edit.html?user=%s\" TITLE=\"Edit this User\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
-						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
-					}
-					if (cl->typ == 'p' || cl->typ == 'r') {
-						tpl_printf(vars, TPLADD, "STATUSUSERICON",
-						"<A HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit this Reader\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
-						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+				if (cfg.http_showpicons) {
+					if (picon_exists(xml_encode(vars, usr))) {
+						if (cl->typ == 'c') {
+							tpl_printf(vars, TPLADD, "STATUSUSERICON",
+							"<A HREF=\"user_edit.html?user=%s\" TITLE=\"Edit this User\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
+							xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+						}
+						if (cl->typ == 'p' || cl->typ == 'r') {
+							tpl_printf(vars, TPLADD, "STATUSUSERICON",
+							"<A HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit this Reader\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
+							xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+						}
+					} else {
+						if (cl->typ == 'c') {
+							tpl_printf(vars, TPLADD, "STATUSUSERICON",
+							"<A class=\"statususericon\" HREF=\"user_edit.html?user=%s\" TITLE=\"Edit this User\">%s</A>",
+							xml_encode(vars, usr), xml_encode(vars, usr));
+						} else {
+							tpl_printf(vars, TPLADD, "STATUSUSERICON",
+							"<A class=\"statususericon\" HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit this Reader\">%s</A>",
+							xml_encode(vars, usr), xml_encode(vars, usr));
+						}
 					}
 				} else {
-					if (cl->typ == 'c') {
-						tpl_printf(vars, TPLADD, "STATUSUSERICON",
-						"<A class=\"statususericon\" HREF=\"user_edit.html?user=%s\" TITLE=\"Edit this User\">%s</A>",
-						xml_encode(vars, usr), xml_encode(vars, usr));
-					} else {
-						tpl_printf(vars, TPLADD, "STATUSUSERICON",
-						"<A class=\"statususericon\" HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit this Reader\">%s</A>",
-						xml_encode(vars, usr), xml_encode(vars, usr));
-					}
+					tpl_addVar(vars, TPLADD, "STATUSUSERICON", xml_encode(vars, usr));
 				}
 
 				tpl_printf(vars, TPLADD, "CLIENTCAU", "%d", cau);
@@ -3335,21 +3342,25 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 					char *lastchannel;char channame[32];
 					if (cl->last_caid != NO_CAID_VALUE && cl->last_srvid != NO_SRVID_VALUE){
-						int32_t actual_caid=cl->last_caid;
-						int32_t actual_srvid=cl->last_srvid;
-						snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", actual_caid, actual_srvid);
-						lastchannel = xml_encode(vars, get_servicename(cl, actual_srvid, actual_caid, channame));
-						tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", actual_caid, actual_srvid);
-						if (cfg.http_showpicons && picon_exists(picon_name)) {
-							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON",
-							"<img class=\"clientcurrentpicon\" src=\"image?i=IC_%04X_%04X\">",
-							actual_caid, actual_srvid);
+						if (cfg.http_showpicons) {
+							int32_t actual_caid=cl->last_caid;
+							int32_t actual_srvid=cl->last_srvid;
+							snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%04X_%04X", actual_caid, actual_srvid);
+							lastchannel = xml_encode(vars, get_servicename(cl, actual_srvid, actual_caid, channame));
+							if (picon_exists(picon_name)) {
+								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON",
+								"<img class=\"clientcurrentpicon\" src=\"image?i=IC_%04X_%04X\">",
+								actual_caid, actual_srvid);
+							} else {
+								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
+								tpl_printf(vars, TPLADD, "CAIDSRVID", "%s", lastchannel);
+							}
 						} else {
-							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
+							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%04X:%04X", cl->last_caid, cl->last_srvid);
+							tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
 						}
-					} else {
-						tpl_addVar(vars, TPLADD, "CLIENTCURRENTPICON", "");
-						tpl_printf(vars, TPLADD, "CAIDSRVID", "none:none");
+						tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%04X:%04X", cl->last_caid, cl->last_srvid);
+						tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
 					}
 
 					tpl_printf(vars, TPLADD, "CLIENTLASTRESPONSETIME", "%d", cl->cwlastresptime?cl->cwlastresptime:1);
