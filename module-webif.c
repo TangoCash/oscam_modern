@@ -3004,8 +3004,6 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 					tpl_addVar(vars, TPLAPPEND, "READERPROVIDS", i==0 ? "(sysid)<br>\n" : "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>\n");
 				}
 
-
-
 				if (rdr->card_valid_to) {
 					struct tm vto_t;
 					char vtobuffer[30];
