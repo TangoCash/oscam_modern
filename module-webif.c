@@ -3372,6 +3372,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 				} else {
 					tpl_addVar(vars, TPLADD, "CLIENTCAID", "0000");
 					tpl_addVar(vars, TPLADD, "CLIENTSRVID", "0000");
+					tpl_addVar(vars, TPLADD, "CAIDSRVID", "0000:0000");
 					tpl_addVar(vars, TPLADD, "CLIENTCURRENTPICON", "");
 					tpl_addVar(vars, TPLADD, "CLIENTSRVPROVIDER","");
 					tpl_addVar(vars, TPLADD, "CLIENTSRVNAME","");
