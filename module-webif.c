@@ -2626,7 +2626,19 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		}
 
 		tpl_addVar(vars, TPLADD, "CLASSNAME", classname);
-		tpl_addVar(vars, TPLADD, "USER", xml_encode(vars, account->usr));
+
+		if (cfg.http_showpicons) {
+			if (picon_exists(xml_encode(vars, account->usr))) {
+				tpl_printf(vars, TPLADD, "USER",
+				"<img class=\"usericon\" src=\"image?i=IC_%s\" TITLE=\"%s\">",
+				xml_encode(vars, account->usr), xml_encode(vars, account->usr));
+			} else {
+				tpl_addVar(vars, TPLADD, "USER", xml_encode(vars, account->usr));
+			}
+		} else {
+			tpl_addVar(vars, TPLADD, "USER", xml_encode(vars, account->usr));
+		}		
+
 		tpl_addVar(vars, TPLADD, "USERENC", urlencode(vars, account->usr));
 		tpl_addVar(vars, TPLADD, "DESCRIPTION", xml_encode(vars, account->description?account->description:""));
 		tpl_addVar(vars, TPLADD, "STATUS", status);
