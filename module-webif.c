@@ -3354,18 +3354,13 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 								actual_caid, actual_srvid);
 							} else {
 								tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%s", lastchannel);
-								tpl_printf(vars, TPLADD, "CAIDSRVID", "%s", lastchannel);
+								tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
 							}
-						} 
-					}
-/*
-						else {
+						} else {
 							tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%04X:%04X", cl->last_caid, cl->last_srvid);
 							tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
 						}
-						tpl_printf(vars, TPLADD, "CLIENTCURRENTPICON", "%04X:%04X", cl->last_caid, cl->last_srvid);
-						tpl_printf(vars, TPLADD, "CAIDSRVID", "%04X:%04X", cl->last_caid, cl->last_srvid);
-					}*/
+					}
 
 					tpl_printf(vars, TPLADD, "CLIENTLASTRESPONSETIME", "%d", cl->cwlastresptime?cl->cwlastresptime:1);
 					tpl_printf(vars, TPLADD, "CLIENTSRVPROVIDER","%s%s", cl->last_srvidptr && cl->last_srvidptr->prov ? xml_encode(vars, cl->last_srvidptr->prov) : "", cl->last_srvidptr && cl->last_srvidptr->prov ? ": " : "");
