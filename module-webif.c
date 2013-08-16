@@ -49,7 +49,6 @@ CS_MUTEX_LOCK *lock_cs;
 
 static pthread_t httpthread;
 static int32_t sock;
-static bool picon_exists(char *picon_name);
 
 enum refreshtypes { REFR_ACCOUNTS, REFR_CLIENTS, REFR_SERVER, REFR_ANTICASC, REFR_SERVICES };
 
@@ -96,6 +95,14 @@ enum refreshtypes { REFR_ACCOUNTS, REFR_CLIENTS, REFR_SERVER, REFR_ANTICASC, REF
 #define MNU_CFG_CACHE 24
 #define MNU_CFG_WHITELIST 25
 #define MNU_CFG_TOTAL_ITEMS 26 // sum of items above. Use it for "All inactive" in function calls too.
+
+static bool picon_exists(char *name) {
+	char picon_name[64], path[255];
+	if (!cfg.http_tpl)
+		return false;
+	snprintf(picon_name, sizeof(picon_name) - 1, "IC_%s", name);
+	return strlen(tpl_getTplPath(picon_name, cfg.http_tpl, path, sizeof(path) - 1)) && file_exists(path);
+}
 
 static void refresh_oscam(enum refreshtypes refreshtype) {
 
@@ -2229,7 +2236,6 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 }
 
 static void webif_add_client_proto(struct templatevars *vars, struct s_client *cl, const char *proto) {
-	tpl_addVar(vars, TPLADDONCE, "PROTOICON", "");
 	if(!cl) return;
 #ifdef MODULE_NEWCAMD
 	if (streq(proto, "newcamd") && cl->typ == 'c') {
@@ -2314,14 +2320,6 @@ static void clear_system_stats(void) {
 	first_client->emmok = 0;
 	first_client->emmnok = 0;
 	cacheex_clear_client_stats(first_client);
-}
-
-static bool picon_exists(char *name) {
-	char picon_name[64], path[255];
-	if (!cfg.http_tpl)
-		return false;
-	snprintf(picon_name, sizeof(picon_name) - 1, "IC_%s", name);
-	return strlen(tpl_getTplPath(picon_name, cfg.http_tpl, path, sizeof(path) - 1)) && file_exists(path);
 }
 
 static void kill_account_thread(struct s_auth *account) {
@@ -2569,10 +2567,8 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		tpl_printf(vars, TPLADD, "CASCUSERSCOMB", "%d/%d", casc_users, casc_users2);
 
 		if ( isactive > 0 || !cfg.http_hide_idle_clients) {
-
 			tpl_printf(vars, TPLADDONCE, "CWLASTRESPONSET", "%d", lastresponsetm);
 			tpl_addVar(vars, TPLADDONCE, "IDLESECS", sec2timeformat(vars, isec));
-
 			if (isactive > 0) {
 				tpl_printf(vars, TPLADDONCE, "CLIENTTIMEONCHANNELAPI", "%d", chsec);
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMEONCHANNEL", sec2timeformat(vars, chsec));
@@ -2589,8 +2585,9 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEP", "");
 				tpl_addVar(vars, TPLADDONCE, "CLIENTTIMETOSLEEPAPI", "");
 			}
-
 			webif_add_client_proto(vars, latestclient, proto);
+		} else {
+		    tpl_addVar(vars, TPLADDONCE, "PROTOICON", "");
 		}
 
 		tpl_addVar(vars, TPLADD, "CLASSNAME", classname);
