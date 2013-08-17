@@ -223,7 +223,7 @@ static void setActiveMenu(struct templatevars *vars, int8_t active)
 		else
 			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu");
 	}
-	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8841");
+	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8842");
 }
 
 /*
@@ -2256,7 +2256,7 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 
 static void webif_add_client_proto(struct templatevars *vars, struct s_client *cl, const char *proto) {
 	tpl_addVar(vars, TPLADDONCE, "PROTOICON", "");
-	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", "";
+	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", "");
 	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
 	if(!cl) return;
 #ifdef MODULE_NEWCAMD
