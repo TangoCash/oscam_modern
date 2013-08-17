@@ -2255,6 +2255,9 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 }
 
 static void webif_add_client_proto(struct templatevars *vars, struct s_client *cl, const char *proto) {
+	tpl_addVar(vars, TPLADDONCE, "PROTOICON", "");
+	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", "";
+	tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
 	if(!cl) return;
 #ifdef MODULE_NEWCAMD
 	if (streq(proto, "newcamd") && cl->typ == 'c') {
