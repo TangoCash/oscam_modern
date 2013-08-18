@@ -150,7 +150,7 @@ a.statususericon{text-decoration:none}
 img{border:0px solid}
 img.icon{height:22px;background-color:#0066CC;border-radius:3px;-webkit-border-radius:3px}
 img.readericon, img.readertypeicon, img.protoicon, img.statususericon, img.clientcurrentpicon{height:22px}
-img.userpicon, img.clientcurrentpicon{height:28px;background-color:#c0c0c0;border-radius:2px;border-style:solid;box-shadow: 1px 1px 2px #000}
+img.userpicon, img.clientcurrentpicon{height:28px;background: rgb(50, 50, 50);background: -moz-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);background: -webkit-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);background: -o-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);background: -ms-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);background: linear-gradient(45deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);border-radius:2px;border-style:solid;box-shadow: 1px 1px 2px #000;}
 img.oscamlogo{height:46px;top:1px;left:1px;position:fixed}
 rect.graph_bg{fill:white}
 text.graph_error{text-anchor:middle;fill:red}
