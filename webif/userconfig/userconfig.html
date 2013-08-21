@@ -21,40 +21,6 @@
 	    </TR>
 	</TABLE>
     </DIV>
-    <DIV id="searchTable">
-	<TABLE CLASS="filter">
-	    <TR>
-		<TD>Search: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()"/></TD>
-	    </TR>
-	</TABLE>
-    </DIV>
-	<TABLE CLASS="users" id="dataTable">
-		<TR>
-			<TH></TH>
-			<TH>Label</TH>
-			<TH>Status</TH>
-			<TH>Address</TH>
-			<TH>Protocol</TH>
-			<TH>Last Channel</TH>
-			<TH>On Channel</TH>
-			<TH>Idle</TH>
-			<TH TITLE="Delivered ECM with status OK">OK</TH>
-			<TH TITLE="Delivered ECM with status not OK">NOK</TH>
-			<TH TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
-			<TH TITLE="Timeout ECM, part of NOK">TOUT</TH>
-			##TPLCWCYCLETHV##
-			<TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
-			<TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
-			<TH TITLE="Last ECM Time">LTIME</TH>
-			<TH TITLE="Valid EMM delivered">EOK</TH>
-			<TH TITLE="Invalid EMM delivered">ENOK</TH>
-			<TH TITLE="CW rate since Server start (CW rate current Session)">CW Rate</TH>
-			<TH TITLE="Different services during last 60s">CASC USERS</TH>
-			<TH TITLE="Expiration date of account">Exp. Date</TH>
-			<TH colspan="3"></TH>
-		</TR>
-	##USERCONFIGS##
-	</TABLE><BR>
 	<SPAN CLASS = "user_totals_headline">Totals for the server:</SPAN>
 	<TABLE CLASS="user_totals">
 		<TR>
@@ -87,5 +53,40 @@
 			<TD class="centered">##TOTAL_CWTUN## (##REL_CWTUN##%)</TD>
 			<TD class="centered"><A HREF="userconfig.html?action=resetserverstats" TITLE="reset statistics for server"><IMG CLASS="icon" SRC="image?i=ICRES" ALT="Reset Server Stats"></A></TD>
 		</TR>
+	</TABLE><BR>
+    <DIV id="searchTable">
+	<TABLE CLASS="filter">
+	    <TR>
+		<TD>Search: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()"/></TD>
+	    </TR>
+	</TABLE>
+    </DIV>
+	<TABLE CLASS="users" id="dataTable">
+		<TR>
+			<TH></TH>
+			<TH>Label</TH>
+			<TH>Groups</TH>
+			<TH>Status</TH>
+			<TH>Address</TH>
+			<TH>Protocol</TH>
+			<TH>Last Channel</TH>
+			<TH>On Channel</TH>
+			<TH>Idle</TH>
+			<TH TITLE="Delivered ECM with status OK">OK</TH>
+			<TH TITLE="Delivered ECM with status not OK">NOK</TH>
+			<TH TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
+			<TH TITLE="Timeout ECM, part of NOK">TOUT</TH>
+			##TPLCWCYCLETHV##
+			<TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
+			<TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
+			<TH TITLE="Last ECM Time">LTIME</TH>
+			<TH TITLE="Valid EMM delivered">EOK</TH>
+			<TH TITLE="Invalid EMM delivered">ENOK</TH>
+			<TH TITLE="CW rate since Server start (CW rate current Session)">CW Rate</TH>
+			<TH TITLE="Different services during last 60s">CASC USERS</TH>
+			<TH TITLE="Expiration date of account">Exp. Date</TH>
+			<TH colspan="3"></TH>
+		</TR>
+	##USERCONFIGS##
 	</TABLE><BR>
 ##TPLFOOTER##
