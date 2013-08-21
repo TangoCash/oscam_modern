@@ -1075,7 +1075,8 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 					tpl_addVar(vars, TPLADD, "READERICON", xml_encode(vars, rdr->label));
 					tpl_addVar(vars, TPLADD, "READERTYPEICON", reader_get_type_desc(rdr, 0));
 				}
-
+				char *value = mk_t_group(rdr->grp);
+				tpl_addVar(vars, TPLADD, "GROUPS", value);
 				tpl_printf(vars, TPLADD, "EMMERRORUK", "%d", rdr->emmerror[UNKNOWN]);
 				tpl_printf(vars, TPLADD, "EMMERRORG", "%d", rdr->emmerror[GLOBAL]);
 				tpl_printf(vars, TPLADD, "EMMERRORS", "%d", rdr->emmerror[SHARED]);
@@ -2641,7 +2642,8 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		} else {
 			tpl_addVar(vars, TPLADD, "USER", xml_encode(vars, account->usr));
 		}		
-
+		char *value = mk_t_group(account->grp);
+		tpl_addVar(vars, TPLADD, "GROUPS", value);
 		tpl_addVar(vars, TPLADD, "USERENC", urlencode(vars, account->usr));
 		tpl_addVar(vars, TPLADD, "DESCRIPTION", xml_encode(vars, account->description?account->description:""));
 		tpl_addVar(vars, TPLADD, "STATUS", status);
