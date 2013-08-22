@@ -3251,19 +3251,25 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				localtime_r(&cl->login, &lt);
 
-				tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
-
 				if(!apicall) {
 					if(cl->typ == 'c' && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this client\"><IMG CLASS=\"icon\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
+						tpl_printf(vars, TPLADD, "HIDEIDX", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this User\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this User\"><IMG CLASS=\"icon\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
 					}
-					else if(((cl->typ == 'p' || cl->typ == 'r')) && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this reader/ proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICRES\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
+					else if(cl->typ == 'p' && !cfg.http_readonly) {
+						tpl_printf(vars, TPLADD, "HIDEIDX", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this Proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this Proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICRES\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
+					}
+					else if(cl->typ == 'r' && !cfg.http_readonly) {
+						tpl_printf(vars, TPLADD, "HIDEIDX", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this Reader\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
+						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this Reader\"><IMG CLASS=\"icon\" SRC=\"image?i=ICRES\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
 					}
 					else {
+						tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
 						tpl_printf(vars, TPLADD, "CSIDX", "%p&nbsp;", cl);
 					}
 				} else {
+					tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
 					tpl_printf(vars, TPLADD, "CSIDX", "%p", cl);
 				}
 
