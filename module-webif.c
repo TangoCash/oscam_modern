@@ -3278,33 +3278,45 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", xml_encode(vars, cl->reader->description?cl->reader->description:""));
 				}
 
-				if (cfg.http_showpicons) {
+				if (!apicall) {
+				    if (cfg.http_showpicons) {
 					if (picon_exists(xml_encode(vars, usr))) {
-						if (cl->typ == 'c') {
-							tpl_printf(vars, TPLADD, "STATUSUSERICON",
-							"<A HREF=\"user_edit.html?user=%s\" TITLE=\"Edit this User\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
-							xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
-						}
-						if (cl->typ == 'p' || cl->typ == 'r') {
-							tpl_printf(vars, TPLADD, "STATUSUSERICON",
-							"<A HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit this Reader\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
-							xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
-						}
+					    if (cl->typ == 'c') {
+						tpl_printf(vars, TPLADD, "STATUSUSERICON",
+						"<A HREF=\"user_edit.html?user=%s\" TITLE=\"Edit User %s\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
+						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+					    }
+					    if (cl->typ == 'p' || cl->typ == 'r') {
+						tpl_printf(vars, TPLADD, "STATUSUSERICON",
+						"<A HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit Reader %s\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
+						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+					    }
 					} else {
-						if (cl->typ == 'c') {
-							tpl_printf(vars, TPLADD, "STATUSUSERICON",
-							"<A class=\"statususericon\" HREF=\"user_edit.html?user=%s\" TITLE=\"Edit this User\">%s</A>",
-							xml_encode(vars, usr), xml_encode(vars, usr));
-						} else {
-							tpl_printf(vars, TPLADD, "STATUSUSERICON",
-							"<A class=\"statususericon\" HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit this Reader\">%s</A>",
-							xml_encode(vars, usr), xml_encode(vars, usr));
-						}
+					    if (cl->typ == 'c') {
+						tpl_printf(vars, TPLADD, "STATUSUSERICON",
+						"<A class=\"statususericon\" HREF=\"user_edit.html?user=%s\" TITLE=\"Edit User %s\">%s</A>",
+						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+					    } else {
+						tpl_printf(vars, TPLADD, "STATUSUSERICON",
+						"<A class=\"statususericon\" HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit Reader %s\">%s</A>",
+						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+					    }
 					}
+				    } else {
+					if (cl->typ == 'c') {
+					    tpl_printf(vars, TPLADD, "STATUSUSERICON",
+					    "<A class=\"statususericon\" HREF=\"user_edit.html?user=%s\" TITLE=\"Edit User %s\">%s</A>",
+					    xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+					} else {
+					    tpl_printf(vars, TPLADD, "STATUSUSERICON",
+					    "<A class=\"statususericon\" HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit Reader %s\">%s</A>",
+					    xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+					}
+				    }
 				} else {
-					tpl_addVar(vars, TPLADD, "STATUSUSERICON", xml_encode(vars, usr));
+				    tpl_addVar(vars, TPLADD, "STATUSUSERICON", xml_encode(vars, usr));
 				}
-
+				
 				tpl_printf(vars, TPLADD, "CLIENTCAU", "%d", cau);
 				if(!apicall){
 					if(cl->typ == 'c' || cl->typ == 'p' || cl->typ == 'r'){
