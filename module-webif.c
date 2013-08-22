@@ -3283,13 +3283,13 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 					if (picon_exists(xml_encode(vars, usr))) {
 					    if (cl->typ == 'c') {
 						tpl_printf(vars, TPLADD, "STATUSUSERICON",
-						"<A HREF=\"user_edit.html?user=%s\" TITLE=\"Edit User %s\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
-						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+						"<A HREF=\"user_edit.html?user=%s\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"Edit User %s\"></A>",
+						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
 					    }
 					    if (cl->typ == 'p' || cl->typ == 'r') {
 						tpl_printf(vars, TPLADD, "STATUSUSERICON",
-						"<A HREF=\"readerconfig.html?label=%s\" TITLE=\"Edit Reader %s\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\"%s\"></A>",
-						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
+						"<A HREF=\"readerconfig.html?label=%s\"><img class=\"statususericon\" src=\"image?i=IC_%s\" TITLE=\" Edit Reader %s\"></A>",
+						xml_encode(vars, usr), xml_encode(vars, usr), xml_encode(vars, usr));
 					    }
 					} else {
 					    if (cl->typ == 'c') {
