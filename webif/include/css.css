@@ -61,8 +61,8 @@ table.statsbalance td:last-child{line-height:20px;width:125px}
 table.statsbalance td:last-child img.icon{float:right;margin-left:10px}
 table.invisible tr td:first-child, table.invisible td{text-align:left;font-size:12px}
 table.configmenu{line-height:16px}
-table.filter{width:1000px;margin:auto}
-table.filter td{text-align:center;background-color:transparent;color:#fff}
+table.filter{color:#000;position:fixed;top:45px;left:10;margin:auto;z-index:1030;font-weight:600;}
+table.filter td{text-align:center;background-color:transparent}
 table.users{width:99%;border-bottom:3px solid #0f1517}
 table.users th{border-bottom:3px solid #0f1517}
 table.users th:first-child{background-color:#525252}
