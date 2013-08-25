@@ -67,7 +67,7 @@ table.users{width:99%;border-bottom:3px solid #0f1517}
 table.users th{border-bottom:3px solid #0f1517}
 table.users th:first-child{background-color:#525252}
 table.users th:last-child{background-color:#525252}
-table.readers{border:3px solid #0f1517;background-color:#95a4ab}
+table.readers{width:99%;border:3px solid #0f1517;background-color:#95a4ab}
 select{padding:.25em .3em;width:200px;margin:0;border:1px}
 select:hover{border:1px solid #000}
 td.select{margin:0;border:1px;text-align:center;vertical-align:middle;background-color:#525252}
