@@ -3632,6 +3632,20 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 		tpl_addVar(vars, TPLADD, "LOGHISTORY", "loghistorysize is set to 0 in your configuration<BR>\n");
 	}
 
+#ifdef CS_CACHEEX
+	float cachesum = first_client ? first_client->cwcacheexgot : 1;
+	if (cachesum < 1) {
+		cachesum = 1;
+	}
+	tpl_printf(vars, TPLADD, "TOTAL_CACHEXPUSH", "%d", first_client ? first_client->cwcacheexpush : 0);
+	tpl_addVar(vars, TPLADD, "TOTAL_CACHEXPUSH_IMG", pushing);
+	tpl_printf(vars, TPLADD, "TOTAL_CACHEXGOT", "%d", first_client ? first_client->cwcacheexgot : 0);
+	tpl_addVar(vars, TPLADD, "TOTAL_CACHEXGOT_IMG", getting);
+	tpl_printf(vars, TPLADD, "TOTAL_CACHEXHIT", "%d", first_client ? first_client->cwcacheexhit : 0);
+	tpl_printf(vars, TPLADD, "TOTAL_CACHESIZE", "%d", ecmcwcache_size);
+	tpl_printf(vars, TPLADD, "REL_CACHEXHIT", "%.2f", (first_client ? first_client->cwcacheexhit : 0) * 100 / cachesum);
+#endif
+
 	tpl_printf(vars, TPLADD, "TOTAL_CWOK", "%d", first_client->cwfound);
 	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", "%d", first_client->cwnot);
 	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", "%d", first_client->cwignored);
