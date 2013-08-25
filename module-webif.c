@@ -3073,6 +3073,10 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	//} else {
 	//tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8837");
 	//}
+	if (strcmp(getParam(params, "action"), "resetserverstats") == 0) {
+		clear_system_stats();
+	}
+
 	if (strcmp(getParam(params, "action"), "kill") == 0) {
 		char *cptr = getParam(params, "threadid");
 		struct s_client *cl = NULL;
@@ -3627,6 +3631,24 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	} else {
 		tpl_addVar(vars, TPLADD, "LOGHISTORY", "loghistorysize is set to 0 in your configuration<BR>\n");
 	}
+
+	tpl_printf(vars, TPLADD, "TOTAL_CWOK", "%d", first_client->cwfound);
+	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", "%d", first_client->cwnot);
+	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", "%d", first_client->cwignored);
+	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", "%d", first_client->cwtout);
+	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", "%d", first_client->cwcache);
+	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", "%d", first_client->cwtun);
+
+	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache + first_client->cwtun;
+	if (ecmsum < 1) {
+		ecmsum = 1;
+	}
+	tpl_printf(vars, TPLADD, "REL_CWOK", "%.2f", first_client->cwfound * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWNOK", "%.2f", first_client->cwnot * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWIGN", "%.2f", first_client->cwignored * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWTOUT", "%.2f", first_client->cwtout * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWCACHE", "%.2f", first_client->cwcache * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWTUN", "%.2f", first_client->cwtun * 100 / ecmsum);
 
 #ifdef WITH_DEBUG
 	// Debuglevel Selector
