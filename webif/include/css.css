@@ -95,7 +95,7 @@ td.menu{color:black;background-color:white;font-size:14px;font-weight:bold}
 td.menu_selected{color:black;background-color:#e6febf;font-size:14px;font-weight:bold;font-style:italic}
 td.configmenu{color:black;background-color:white;font-weight:bold}
 td.configmenu_selected{color:black;background-color:#e6febf;font-weight:bold;font-style:italic}
-td.subheadline{height:10px;font-family:Arial;font-size:11px;padding:5px;background-color:#006699;color:#fff;font-weight:bold,border:1px}
+td.subheadline{height:10px;font-family:Arial;font-size:11px;padding:5px;background-color:#006699;color:#fff;text-align:left;font-weight:600,border:1px}
 tr.online td{background-color:#bbffaa}
 tr.expired td{background-color:#ffbbaa}
 tr.connected td{background-color:#ffffaa}
@@ -167,7 +167,7 @@ span.global_conf{color:blue;font-size:12px;cursor:default;padding:4px}
 .countDownText{color:#ff4500}
 .setrefresh span{font-weight:400;color:#000;font-weight:bold;padding:11px 50px 7px;float:left}
 .setrefresh{width:300px;position:fixed;top:45px;right:5%;z-index:1040}
-.debugt{color:#fff;font-weight:bold;padding:5px;font-size:11px;word-wrap:break-word;text-align:left;margin-top:-30px;margin:0 auto;width:97%;line-height:1.2;-webkit-border-radius:2px;-moz-border-radius:2px;border-radius:2px}
+.debugt{color:#000;font-weight:bold;padding:5px;font-size:11px;word-wrap:break-word;text-align:left;margin-top:-30px;margin:0 auto;width:97%;line-height:1.2;-webkit-border-radius:2px;-moz-border-radius:2px;border-radius:2px}
 a.debugl:link,a.debugl:visited{text-decoration:none;padding:1px 9px 2px;border-radius:10px;color:#fff;white-space:nowrap;background:#4096ee}
 a.debugl:hover{text-decoration:none;border-radius:10px;font-weight:bold;color:#fff;white-space:nowrap;background:#ff6400}
 a.debugls:link,a.debugls:visited{text-decoration:none;padding:1px 9px 2px;border-radius:10px;color:#fff;white-space:nowrap;background:#c50000}
