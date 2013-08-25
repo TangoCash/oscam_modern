@@ -3633,6 +3633,8 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	}
 
 #ifdef CS_CACHEEX
+	tpl_addVar(vars, TPLADD, "CACHEEXSTATS", tpl_getTpl(vars, "STATUSCACHEX"));
+
 	char *level[]= {"NONE","CACHE PULL","CACHE PUSH","REVERSE CACHE PUSH"};
 	char *getting = "<IMG SRC=\"image?i=ICARRL\" ALT=\"Getting\">";
 	char *pushing = "<IMG SRC=\"image?i=ICARRR\" ALT=\"Pushing\">";

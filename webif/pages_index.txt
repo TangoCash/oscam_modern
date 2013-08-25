@@ -139,6 +139,7 @@ CONFIGSERIAL                  config/serial.html                                
 CONFIGMENUSERIAL              config/menu_serial.html                                     MODULE_SERIAL
 HTTPFORCESSLV3                config/webif_httpforcesslv3.html                            WITH_SSL
 USEREDITMONLEVEL              user_edit/user_edit_monlevel.html                           MODULE_MONITOR
+STATUSCACHEX                  status/cacheex_stats.html                                   CS_CACHEEX
 USEREDITCACHEEXBIT            user_edit/user_edit_cacheexbit.html                         CS_CACHEEX
 READEREDITCACHEEXBIT          readerconfig/readerconfig_cacheexbit.html                   CS_CACHEEX
 CONFIGCACHEEXCSP              config/cache_cacheexcsp.html                                CS_CACHEEX
