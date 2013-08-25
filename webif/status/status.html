@@ -57,15 +57,6 @@
 <div>
 <br>
 	<SPAN CLASS = "user_totals_headline">Totals for the server:</SPAN>
-<table>
-<tr><td>
-	<TABLE>
-		<TR><TH>Total push</TH><TH>Total got</TH><TH>Total hit</TH><TH>Cache size</TH></TR>
-		<TR><TD class="centered">##TOTAL_CACHEXPUSH_IMG##</TD><TD class="centered">##TOTAL_CACHEXGOT_IMG##</TD><TD class="centered">&nbsp;</TD><TD class="centered">&nbsp;</TD></TR>
-		<TR><TD class="centered">##TOTAL_CACHEXPUSH##</TD><TD class="centered">##TOTAL_CACHEXGOT##</TD><TD class="centered">##TOTAL_CACHEXHIT## (##REL_CACHEXHIT##%)</TD><TD class="centered">##TOTAL_CACHESIZE##</TD></TR>
-	</TABLE>
-	</td>
-	<td>
 	<TABLE CLASS="user_totals">
 		<TR>
 			<TH TITLE="Delivered ECM with status OK">ECM Ok</TH>
@@ -86,8 +77,11 @@
 			<TD class="centered"><A HREF="status.html?action=resetserverstats" TITLE="reset statistics for server"><IMG CLASS="icon" SRC="image?i=ICRES" ALT="Reset Server Stats"></A></TD>
 		</TR>
 	</TABLE>
-</td></tr>
-</table>
 <BR>
+	<TABLE>
+		<TR><TH>Total push</TH><TH>Total got</TH><TH>Total hit</TH><TH>Cache size</TH></TR>
+		<TR><TD class="centered">##TOTAL_CACHEXPUSH_IMG##</TD><TD class="centered">##TOTAL_CACHEXGOT_IMG##</TD><TD class="centered">&nbsp;</TD><TD class="centered">&nbsp;</TD></TR>
+		<TR><TD class="centered">##TOTAL_CACHEXPUSH##</TD><TD class="centered">##TOTAL_CACHEXGOT##</TD><TD class="centered">##TOTAL_CACHEXHIT## (##REL_CACHEXHIT##%)</TD><TD class="centered">##TOTAL_CACHESIZE##</TD></TR>
+	</TABLE>
 </div>
 ##TPLFOOTER##
