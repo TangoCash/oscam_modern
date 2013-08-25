@@ -3633,6 +3633,10 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	}
 
 #ifdef CS_CACHEEX
+	char *level[]= {"NONE","CACHE PULL","CACHE PUSH","REVERSE CACHE PUSH"};
+	char *getting = "<IMG SRC=\"image?i=ICARRL\" ALT=\"Getting\">";
+	char *pushing = "<IMG SRC=\"image?i=ICARRR\" ALT=\"Pushing\">";
+
 	float cachesum = first_client ? first_client->cwcacheexgot : 1;
 	if (cachesum < 1) {
 		cachesum = 1;
