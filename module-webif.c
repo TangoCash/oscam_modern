@@ -223,7 +223,7 @@ static void setActiveMenu(struct templatevars *vars, int8_t active)
 		else
 			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu");
 	}
-	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8882");
+	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8886");
 }
 
 /*
