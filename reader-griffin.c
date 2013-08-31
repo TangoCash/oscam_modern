@@ -311,13 +311,13 @@ static int32_t griffin_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr) {
 	case 0x83:
 		if (memcmp(ep->hexserial, rdr->sa[0], 4) == 0) {
 			if (DEBUG)
-				rdr_log_sensitive(rdr, "SHARED EMM TYPE:%02X SA:%02X %02X %02X %02X",
+				rdr_log_sensitive(rdr, "SHARED EMM TYPE:%02X SA:{%02X %02X %02X %02X}",
 					ep->emm[0], ep->emm[3], ep->emm[4],ep->emm[5], ep->emm[6]);
 			ep->type = SHARED;
 		}
 		if (memcmp(ep->hexserial, rdr->sa[1], 4) == 0) {
 			if (DEBUG)
-				rdr_log_sensitive(rdr, "UNIQUE EMM TYPE:%02X SA:%02X %02X %02X %02X",
+				rdr_log_sensitive(rdr, "UNIQUE EMM TYPE:%02X SA:{%02X %02X %02X %02X}",
 					ep->emm[0], ep->emm[3], ep->emm[4],ep->emm[5], ep->emm[6]);
 			ep->type = UNIQUE;
 		}
@@ -340,6 +340,10 @@ static int32_t griffin_do_emm(struct s_reader *rdr, EMM_PACKET *ep)
 
 static struct s_csystem_emm_filter* griffin_get_emm_filter(struct s_reader *rdr)
 {
+  // It's not effecient to re-create filters every time but it reduces the complexity
+  // of trying to figure out when they need to be re-populated
+  NULLFREE(rdr->csystem.emm_filters);
+
   struct s_csystem_emm_filter *filters = rdr->csystem.emm_filters;
 
   if (filters == NULL) {
@@ -349,7 +353,6 @@ static struct s_csystem_emm_filter* griffin_get_emm_filter(struct s_reader *rdr)
 
     filters = rdr->csystem.emm_filters;
     rdr->csystem.emm_filter_count = 0;
-    memset(filters, 0x00, max_filter_count * sizeof(struct s_csystem_emm_filter));
 
     int32_t idx = 0;
 
