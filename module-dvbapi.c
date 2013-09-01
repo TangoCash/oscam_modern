@@ -380,12 +380,13 @@ int32_t dvbapi_set_filter(int32_t demux_id, int32_t api, uint16_t pid, uint16_t 
 		default:
 			break;
 	}
-	if (ret < 0)
+	if (ret !=-1){ // filter set succesfull
+		if (type==TYPE_EMM && add_to_emm_list)
+			add_emmfilter_to_list(demux_id, filt, caid, provid, pid, count, n, time((time_t *) 0));
+	}
+	else{
 		cs_log("ERROR: Could not start demux filter (api: %d errno=%d %s)", selected_api, errno, strerror(errno));
-
-	if (type==TYPE_EMM && add_to_emm_list)
-		add_emmfilter_to_list(demux_id, filt, caid, provid, pid, count, n, time((time_t *) 0));
-
+	}
 	return ret;
 }
 
@@ -740,6 +741,7 @@ int32_t dvbapi_start_emm_filter(int32_t demux_index) {
 				}
 
 				uint32_t typtext_idx = 0;
+				int32_t ret = -1;
 				while (((emmtype >> typtext_idx) & 0x01) == 0 && typtext_idx < sizeof(typtext) / sizeof(const char *)){
 					++typtext_idx;
 				}
@@ -748,11 +750,16 @@ int32_t dvbapi_start_emm_filter(int32_t demux_index) {
 				if (fcount>=demux[demux_index].max_emm_filter) {
 					add_emmfilter_to_list(demux_index, filter, demux[demux_index].EMMpids[l].CAID, demux[demux_index].EMMpids[l].PROVID, demux[demux_index].EMMpids[l].PID, fcount+1, 0, 0);
 				} else {
-					dvbapi_set_filter(demux_index, selected_api, demux[demux_index].EMMpids[l].PID, demux[demux_index].EMMpids[l].CAID,
-						              demux[demux_index].EMMpids[l].PROVID, filter, filter+16, 0, demux[demux_index].pidindex, fcount+1, TYPE_EMM, 1);
+					ret = dvbapi_set_filter(demux_index, selected_api, demux[demux_index].EMMpids[l].PID, demux[demux_index].EMMpids[l].CAID,
+						demux[demux_index].EMMpids[l].PROVID, filter, filter+16, 0, demux[demux_index].pidindex, fcount+1, TYPE_EMM, 1);
 				}
-				fcount++;
-				demux[demux_index].emm_filter=1;
+				if (ret !=-1){
+					fcount++;
+					demux[demux_index].emm_filter=1;
+				}
+				else { // not set succesfull so at it to the list for try again later on!
+					add_emmfilter_to_list(demux_index, filter, demux[demux_index].EMMpids[l].CAID, demux[demux_index].EMMpids[l].PROVID, demux[demux_index].EMMpids[l].PID, fcount+1, 0, 0);
+				}
 			}
 		}
 	}
@@ -1092,6 +1099,7 @@ void dvbapi_stop_descrambling(int32_t demux_id) {
 
 int32_t dvbapi_start_descrambling(int32_t demux_id, int32_t pid, int8_t checked) {
 	int32_t started = 0; // in case ecmfilter started = 1
+	int32_t fake_ecm = 0;
 	ECM_REQUEST *er;
 	struct s_reader *rdr;
 	if (!(er=get_ecmtask())) return started;
@@ -1184,6 +1192,7 @@ int32_t dvbapi_start_descrambling(int32_t demux_id, int32_t pid, int8_t checked)
 			started = 1;
 			
 			request_cw(dvbapi_client, er, demux_id, 0); // do not register ecm since this try!
+			fake_ecm = 1;
 			break; // we started an ecmfilter so stop looking for next matching reader!
 		}
 		if (match){ // if matching reader found check for irdeto cas if local irdeto card check if it received emms in last 60 minutes
@@ -1217,6 +1226,7 @@ int32_t dvbapi_start_descrambling(int32_t demux_id, int32_t pid, int8_t checked)
 				demux[demux_id].ECMpids[pid].status = -1; // flag this pid as unusable
 				edit_channel_cache(demux_id, pid, 0); // remove this pid from channelcache
 	}
+	if (!fake_ecm) free(er);
 	return started;
 }
 
@@ -2778,7 +2788,8 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 					stopped++;
 				}
 			}
-
+			
+			int32_t ret;
 			if (stopped>started) {
 				struct s_emm_filter *filter_item2;
 				LL_ITER itr2 = ll_iter_create(ll_emm_inactive_filter);
@@ -2786,12 +2797,14 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 				while ((filter_item2=ll_iter_next(&itr2))) {
 					cs_ddump_mask(D_DVBAPI, filter_item2->filter, 32, "[EMM Filter] starting emm filter %i, pid: 0x%04X on demux index %i",
 						filter_item2->count, filter_item2->pid, filter_item2->demux_id);
-					dvbapi_set_filter(filter_item2->demux_id, selected_api, filter_item2->pid, filter_item2->caid,
+					ret = dvbapi_set_filter(filter_item2->demux_id, selected_api, filter_item2->pid, filter_item2->caid,
 						filter_item2->provid, filter_item2->filter, filter_item2->filter+16, 0,
 						demux[filter_item2->demux_id].pidindex, filter_item2->count, TYPE_EMM, 1);
-					ll_iter_remove_data(&itr2);
-					started++;
-					break;
+					if (ret !=-1) {
+						ll_iter_remove_data(&itr2);
+						started++;
+						break;
+					}
 				}
 			}
 		}
