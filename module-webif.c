@@ -223,7 +223,7 @@ static void setActiveMenu(struct templatevars *vars, int8_t active)
 		else
 			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu");
 	}
-	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8894");
+	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8898");
 }
 
 /*
@@ -508,8 +508,6 @@ static char *send_oscam_config_cache(struct templatevars *vars, struct uriparams
 	tpl_printf(vars, TPLADD, "CACHEDELAY", "%u", cfg.delay);
 
 	tpl_printf(vars, TPLADD, "MAXCACHETIME", "%d", cfg.max_cache_time);
-
-	tpl_printf(vars, TPLADD, "MAXCACHECOUNT", "%d", cfg.max_cache_count);
 
 #ifdef CS_CACHEEX
 	char *value = NULL;
