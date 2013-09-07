@@ -3,7 +3,7 @@
 
 #define WEBIF 1
 #define TOUCH 1
-//#define WITH_SSL 1
+#define WITH_SSL 1
 #if defined(__linux__)
 #define HAVE_DVBAPI 1
 #endif
@@ -13,12 +13,12 @@
 #define WITH_LB 1
 #define CS_CACHEEX 1
 #define CW_CYCLE_CHECK 1
-//#define LCDSUPPORT 1
-//#define LEDSUPPORT 1
-//#define IPV6SUPPORT 1
+#define LCDSUPPORT 1
+#define LEDSUPPORT 1
+#define IPV6SUPPORT 1
 
 #define MODULE_MONITOR 1
-//#define MODULE_CAMD33 1
+#define MODULE_CAMD33 1
 #define MODULE_CAMD35 1
 #define MODULE_CAMD35_TCP 1
 #define MODULE_NEWCAMD 1
