@@ -9,28 +9,58 @@
 	    </UL>
 	</DIV>
     <DIV CLASS="statusrefresh">
-	<SPAN id="timer">Refreshing has been stopped!</SPAN><script language="JavaScript">var countDownInterval=##REFRESHTIME##;var countDownTime=countDownInterval+1;function adduser(){document.getElementById("newuser").style.display="block";document.getElementById("searchTable").style.display="none";cdpause();document.getElementById("timer").innerHTML='Refreshing has been stopped!'};function countDown(){ countDownTime--; if (countDownTime <=0){ countDownTime=countDownInterval; clearTimeout(counter); window.location.href="userconfig.html"; return }; if (document.all) document.all.countDownText.innerText = countDownTime+" "; else if (document.getElementById) document.getElementById("countDownText").innerHTML=countDownTime+" ";counter=setTimeout("countDown()", 1000); };function startit() { if (document.all||document.getElementById)document.getElementById("timer").innerHTML='Next refresh<br>in <b id="countDownText" class="countDownText">'+countDownTime+' </b> seconds'; countDown(); } if (document.all||document.getElementById) startit(); else  window.document.onload=startit;function cdpause() {clearTimeout(counter);};
+	<SPAN id="timer">Refreshing has been stopped!</SPAN>
+	<script language="JavaScript">
+	var countDownInterval=##REFRESHTIME##; var countDownTime=countDownInterval+1;
+
+	function adduser(){
+	    document.getElementById("newuser").style.display="block";
+	    document.getElementById("searchTable").style.display="none";cdpause();
+	    document.getElementById("timer").innerHTML='Refreshing has been stopped!'
+	};
+	
+	function countDown(){
+	    countDownTime--;
+	    if (countDownTime <=0){
+		countDownTime=countDownInterval;
+		clearTimeout(counter);
+		window.location.href="userconfig.html";
+		return
+	    };
+	    if (document.all) document.all.countDownText.innerText = countDownTime+" ";
+	    else if (document.getElementById) document.getElementById("countDownText").innerHTML=countDownTime+" "; counter=setTimeout("countDown()", 1000);
+	};
+	function startit() {
+	    if (document.all||document.getElementById)document.getElementById("timer").innerHTML='Next refresh<br>in <b id="countDownText" class="countDownText">'+countDownTime+' </b> seconds';
+	countDown();
+	}
+	if (document.all||document.getElementById) startit();
+	else window.document.onload=startit;
+	function cdpause() {
+	    clearTimeout(counter);
+	};
     </script>
     </DIV>
     <DIV CLASS="newuser" ID="newuser">
-	<TABLE>
+	<TABLE CLASS="users" style="width:99%;">
 	    <TR>
 		<FORM action="user_edit.html" method="get">
-		<TD CLASS="newuser">New User:&nbsp;&nbsp;<input name="user" type="text"><input type="submit" value=" Add User " ##BTNDISABLED##></TD>
+		    <th>New User:&nbsp;&nbsp;&nbsp;<input name="user" type="text">&nbsp;&nbsp;&nbsp;<input type="submit" value="Add User"></th>
 		</FORM>
 	    </TR>
 	</TABLE>
     </DIV>
     <DIV id="searchTable">
-	<TABLE CLASS="filter">
-	    <TR>
-		<TD>Search: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()"/></TD>
-	    </TR>
+	<TABLE CLASS="users" style="width:99%;">
+		<TR>
+			<th>Search: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()"/></th>
+		</TR>
 	</TABLE>
     </DIV>
 	<TABLE CLASS="users" id="dataTable">
+		</tr>
 		<TR>
-			<TH></TH>
+			<TH>&nbsp;</TH>
 			<TH>Label</TH>
 			<TH>Groups</TH>
 			<TH>Status</TH>
@@ -47,12 +77,11 @@
 			<TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
 			<TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
 			<TH TITLE="Last ECM Time">LTIME</TH>
-			<TH TITLE="Valid EMM delivered">EOK</TH>
-			<TH TITLE="Invalid EMM delivered">ENOK</TH>
+			<TH TITLE="EMM delivered">EMM<br>OK<br>NOK</TH>
 			<TH TITLE="CW rate since Server start (CW rate current Session)">CW Rate</TH>
 			<TH TITLE="Different services during last 60s">CASC USERS</TH>
 			<TH TITLE="Expiration date of account">Exp. Date</TH>
-			<TH colspan="3"></TH>
+			<TH colspan="3">&nbsp;</TH>
 		</TR>
 	##USERCONFIGS##
 	</TABLE><BR>

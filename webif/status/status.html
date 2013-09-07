@@ -1,13 +1,11 @@
 ##TPLHEADER##
 ##TPLMENU##
-<DIV class="statusrefresh">
-    <script language="JavaScript">var countDownInterval=##REFRESHTIME##,c_reloadwidth=200;$("#timersub").click(function(){countDownTime=$("#timertxt").val()});</script>
-    <script language="JavaScript">var countDownTime=countDownInterval+1;function countDown(){countDownTime--; 0>=countDownTime?(countDownTime=countDownInterval,clearTimeout(counter),history.pushState(null, null, './status.html'),window.location.reload()):(document.all?document.all.countDownText.innerText=countDownTime+" ":document.getElementById?document.getElementById("countDownText").innerHTML=countDownTime+" ":document.layers&&(document.c_reload.document.c_reload2.document.write('Next <a href="status.html">refresh</a> in <b id="countDownText">'+countDownTime+" </b> seconds"),document.c_reload.document.c_reload2.document.close()), counter=setTimeout("countDown()",1E3))}function startit(){(document.all||document.getElementById)&&document.write('Next refresh<br>in <b class="countDownText" id="countDownText">'+countDownTime+" </b> seconds");countDown()}document.all||document.getElementById?startit():window.onload=startit;</script>
-</DIV>
-<DIV class="statusinfo">
-	<B>Date :</B> ##CURDATE## - ##CURTIME## | <B>Start :</B> ##STARTDATE## - ##STARTTIME## | <B>UpTime :</B> ##UPTIME##<BR><B><FONT COLOR="yellow">Access from : ##CURIP##</B></FONT>
-</DIV>
-<DIV>
+##OSCAMLOGO##
+<div class="statusrefresh">
+    <script language="javascript">var countDownInterval=##REFRESHTIME##,c_reloadwidth=200;$("#timersub").click(function(){countDownTime=$("#timertxt").val()});</script>
+    <script language="javascript">var countDownTime=countDownInterval+1;function countDown(){countDownTime--; 0>=countDownTime?(countDownTime=countDownInterval,clearTimeout(counter),history.pushState(null, null, './status.html'),window.location.reload()):(document.all?document.all.countDownText.innerText=countDownTime+" ":document.getElementById?document.getElementById("countDownText").innerHTML=countDownTime+" ":document.layers&&(document.c_reload.document.c_reload2.document.write('Next refresh</a> in <b id="countDownText">'+countDownTime+" </b> seconds"),document.c_reload.document.c_reload2.document.close()), counter=setTimeout("countDown()",1E3))}function startit(){(document.all||document.getElementById)&&document.write('Next refresh<br>in <b class="countDownText" id="countDownText">'+countDownTime+" </b> seconds");countDown()}document.all||document.getElementById?startit():window.onload=startit;</script>
+</div>
+<div>
 	<TABLE WIDTH="100%" class="status">
 		<TR>
 			<TH class="statuscol0">hide</TH>
@@ -30,53 +28,77 @@
 ##PROXYHEADLINE##
 		##PROXYSTATUS##
 		<TR>
-    		<TD colspan="14" class="select">
+		<TD colspan="14" class="select">
 				<form action="status.html" method="get">
-	    			<select name="hideidle">
+				<select name="hideidle">
 					<option value="0" ##HIDEIDLECLIENTSSELECTED0##>Show idle clients</option>
 					<option value="1" ##HIDEIDLECLIENTSSELECTED1##>Hide idle clients</option>
 					<option value="2">Show hidden clients</option>
-	    			</select><input type="submit" value="Update">
+				</select>&nbsp;&nbsp;&nbsp;<input type="submit" value="Update">
 				</form>
-    		</TD>
+		</TD>
 		</TR>
 ##CLIENTHEADLINE##
 		##CLIENTSTATUS##
-		</TABLE><br>
-		<TABLE WIDTH="100%" class="status">
-		<tr><td CLASS="subheadline">Logwindow</td></tr>
-		<tr><td CLASS="debugline">##SDEBUG##</td></tr>
-		<TR>
-			<TD class="log">
-			<DIV class="log">
+	</TABLE><br>
+	<TABLE WIDTH="100%" class="status">
+		<tr>
+			<td CLASS="subheadline">Logwindow</td>
+		</tr>
+		<tr>
+			<td CLASS="debugline">##SDEBUG##</td>
+		</tr>
+		<tr>
+		<td class="log">
+		<div class="log">
 ##LOGHISTORY##
-			</TD>
-		</TR>
-	</TABLE>
-</DIV><BR>
+		</div>
+		</td>
+		</tr>
+	</table>
+</DIV>
+<BR>
 <div>
-<br>
-	<SPAN CLASS = "user_totals_headline">Totals for the Server:</SPAN>
-	<TABLE CLASS="user_totals">
-		<TR>
-			<TH TITLE="Delivered ECM with status OK">ECM Ok</TH>
-			<TH TITLE="Delivered ECM with status not OK">ECM not Ok</TH>
-			<TH TITLE="Ignored ECM by filters, part of NOK">ECM Ignored</TH>
-			<TH TITLE="Timeout ECM, part of NOK">ECM Timeout</TH>
-			<TH TITLE="Delivered ECM from cache, part of OK">ECM from Cache</TH>
-			<TH TITLE="Delivered ECM from tunneled, part of OK">ECM from Tunneled (Ok)</TH>
-			<TH>Action</TH>
-		</TR>
-		<TR>
-			<TD class="centered">##TOTAL_CWOK## (##REL_CWOK##%)</TD>
-			<TD class="centered">##TOTAL_CWNOK## (##REL_CWNOK##%)</TD>
-			<TD class="centered">##TOTAL_CWIGN## (##REL_CWIGN##%)</TD>
-			<TD class="centered">##TOTAL_CWTOUT## (##REL_CWTOUT##%)</TD>
-			<TD class="centered">##TOTAL_CWCACHE## (##REL_CWCACHE##%)</TD>
-			<TD class="centered">##TOTAL_CWTUN## (##REL_CWTUN##%)</TD>
-			<TD class="centered"><A HREF="status.html?action=resetserverstats" TITLE="reset statistics for server"><IMG CLASS="icon" SRC="image?i=ICRES" ALT="Reset Server Stats"></A></TD>
-		</TR>
-	</TABLE>
-##CACHEEXSTATS##
+	<table CLASS="user_totals" style="width:910px;">
+		<tr>
+			<th colspan="6"><a name="oscamstats">Oscam Stats</a></th>
+		</tr>
+		<tr>
+			<th class="centered">Date</th>
+			<td class="centered"><b>&nbsp;Current:</b>&nbsp;(&nbsp;##CURDATE##&nbsp;-&nbsp;##CURTIME##&nbsp;)&nbsp;</td>
+			<td class="centered"><b>&nbsp;Start:</b>&nbsp;(&nbsp;##STARTDATE##&nbsp;-&nbsp;##STARTTIME##&nbsp;)&nbsp;</td>
+			<td class="centered"><b>&nbsp;Uptime:</b>&nbsp;(&nbsp;##UPTIME##&nbsp;)&nbsp;</td>
+			<td colspan="2" class="centered"><b>Access from IP:</b>&nbsp;(&nbsp;##CURIP##&nbsp;)&nbsp;</td>
+		</tr>##CACHEEXSTATS##
+		<tr>
+			<td colspan="6" style="background-color:transparent;">
+		</tr>
+		<tr>
+			<th></th>
+			<th>ECM&nbsp;Good</th>
+			<th>ECM&nbsp;from Tunneled</th>
+			<th>ECM&nbsp;from&nbsp;Cache</th>
+			<th>ECM&nbsp;Ignored</th>
+			<th>Clear&nbsp;Stats</th>
+		</tr>
+		<tr>
+			<th class="centered">OK</th>
+			<td class="centered">##TOTAL_CWOK## (##REL_CWOK##%)</td>
+			<td class="centered">##TOTAL_CWTUN## (##REL_CWTUN##%)</td>
+			<td class="centered">##TOTAL_CWCACHE## (##REL_CWCACHE##%)</td>
+			<td class="centered">##TOTAL_CWIGN## (##REL_CWIGN##%)</td>
+			<td rowspan="3" class="centered"><A HREF="status.html?action=resetserverstats" TITLE="reset statistics for server"><IMG CLASS="icon" SRC="image?i=ICRES" ALT="Reset Server Stats"></A></td>
+		</tr>
+		<tr>
+			<th></th>
+			<th colspan="2">ECM&nbsp;Fail</th>
+			<th colspan="2">ECM&nbsp;Timeout</th>
+		</tr>
+		<tr>
+			<th class="centered">NOT OK</th>
+			<td colspan="2" class="centered">##TOTAL_CWNOK## (##REL_CWNOK##%)</td>
+			<td colspan="2" class="centered">##TOTAL_CWTOUT## (##REL_CWTOUT##%)</td>
+		<tr>
+	</table>
 </div>
 ##TPLFOOTER##

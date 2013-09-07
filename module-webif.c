@@ -223,7 +223,6 @@ static void setActiveMenu(struct templatevars *vars, int8_t active)
 		else
 			tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "menu");
 	}
-	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8899");
 }
 
 /*
@@ -1095,8 +1094,8 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 				tpl_printf(vars, TPLADD, "EMMBLOCKEDS", "%d", rdr->emmblocked[SHARED]);
 				tpl_printf(vars, TPLADD, "EMMBLOCKEDUQ", "%d", rdr->emmblocked[UNIQUE]);
 
-				tpl_printf(vars, TPLADD, "ECMSOK", "%u (%.2f%%)", rdr->ecmsok, rdr->ecmshealthok);
-				tpl_printf(vars, TPLADD, "ECMSNOK", "%u (%.2f%%)", rdr->ecmsnok, rdr->ecmshealthnok);
+				tpl_printf(vars, TPLADD, "ECMSOK", "%u<br>(%.2f%%)", rdr->ecmsok, rdr->ecmshealthok);
+				tpl_printf(vars, TPLADD, "ECMSNOK", "%u<br>(%.2f%%)", rdr->ecmsnok, rdr->ecmshealthnok);
 				tpl_printf(vars, TPLADD, "ECMSFILTEREDHEAD", "%d", rdr->ecmsfilteredhead);
 				tpl_printf(vars, TPLADD, "ECMSFILTEREDLEN", "%d", rdr->ecmsfilteredlen);
 #ifdef WITH_LB
@@ -3065,12 +3064,14 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
-	//snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "oscamlogo");
-	//if (picon_exists(picon_name)) {
-	//	tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_oscamlogo\">Oscam r%s</A>", CS_SVN_VERSION);
-	//} else {
-	//tpl_printf(vars, TPLADD, "OSCAMLOGO", "<A HREF=\"http://www.streamboard.tv/oscam/timeline\">Oscam r%s</A>", "8837");
-	//}
+	tpl_printf(vars, TPLADD, "SVNREV", "8891");
+	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "OSCAMLOGO");
+	if (picon_exists(picon_name)) {
+		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;r%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
+	} else {
+		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\">Oscam&nbsp;r%s</a></div>", "8891");
+	}
+
 	if (strcmp(getParam(params, "action"), "resetserverstats") == 0) {
 		clear_system_stats();
 	}
@@ -3359,8 +3360,8 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				if ((isec < cfg.hideclient_to || cfg.hideclient_to == 0) && (cl->typ == 'c' || cl->typ == 'p' || cl->typ == 'r')) {
 					if (((cl->typ!='r') || (cl->typ!='p')) && (cl->lastreader[0])) {
-						tpl_printf(vars, TPLADD, "CLIENTLBVALUE", "by %s", cl->lastreader);
-						tpl_printf(vars, TPLAPPEND, "CLIENTLBVALUE", "&nbsp;(%dms)", cl->cwlastresptime);
+						tpl_printf(vars, TPLADD, "CLIENTLBVALUE", "(%dms)<br>", cl->cwlastresptime);
+						tpl_printf(vars, TPLAPPEND, "CLIENTLBVALUE", "by %s", cl->lastreader);
 						if (apicall)
 							tpl_addVar(vars, TPLADD, "LASTREADER", cl->lastreader);
 					}
