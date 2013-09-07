@@ -8,21 +8,39 @@ h4{color:#aaaaaa;font-size:18px;line-height:9px}
 hr{height:1px;border-width:0;color:white;background-color:#aaaaaa}
 #nav{width:100%;height:42px;position:fixed;top:0px;z-index:1050;background-color:#262626}
 #menu{list-style-type:none;width:900px;margin-left:auto;margin-right:auto}
-#menu li.menu_selected a, #menu li.menu_selected:hover a, #menu li.menu_selected a:hover{font-weight:bold;color: #007AE6;text-decoration:none}
-#menu li{padding-left:8px;padding-right:8px;float:left;display:block;position:relative;border:none}
-#menu li:hover{padding-top:1px;background: #3d3d3d}
-#menu li a{color:#ededed;font-family:arial,helvetica,sans-serif;font-size:18px;outline:0;text-decoration:none}
-#menu li:hover a{margin:0 auto;text-align:center;color:#006dcc;text-decoration:none}
-#menu li:hover a:hover{margin:0 auto;text-align:center;color:#007ae6}
+#menu li{padding-left:6px;padding-right:6px;float:left;display:block;position:relative;border:none}
+#menu li:hover,
+#menu li:hover a,
+#menu li:hover a:hover,
+#menu li.menu_selected a,
+#menu li.menu_selected:hover a,
+#menu li.menu_selected a:hover{
+font-family:arial,helvetica,sans-serif;
+line-height: 1em;
+color: #fffb00;
+font-weight:bold;
+font-size: 16px;
+text-shadow:0px 0px 0 rgb(223,219,-32),1px 1px 0 rgb(191,187,-64),2px 2px 0 rgb(159,155,-96),3px 3px 0 rgb(128,124,-127),4px 4px 0 rgb(96,92,-159),5px 5px 0 rgb(64,60,-191),6px 6px 0 rgb(32,28,-223),7px 7px 0 rgb(0,-4,-255), 8px 8px 0 rgb(-32,-36,-287),9px 9px 8px rgba(0,0,0,0),9px 9px 1px rgba(0,0,0,0.5),0px 0px 8px rgba(0,0,0,.2);
+}
+#menu li a{
+color:#ffffff;
+font-family:arial,helvetica,sans-serif;
+line-height: 1em;
+color: undefined;
+font-weight:bold;
+font-size: 16px;
+text-shadow:0px 0px 0 rgb(223,223,223),1px 1px 0 rgb(191,191,191),2px 2px 0 rgb(159,159,159),3px 3px 0 rgb(128,128,128),4px 4px 0 rgb(96,96,96),5px 5px 0 rgb(64,64,64),6px 6px 0 rgb(32,32,32),7px 7px 0 rgb(0,0,0), 8px 8px 0 rgb(-32,-32,-32),9px 9px 8px rgba(0,0,0,0),9px 9px 1px rgba(0,0,0,0.5),0px 0px 8px rgba(0,0,0,.2);
+text-decoration:none
+}
 div.mlogo, div.mlogo:hover {margin:0;position:fixed;top: 0px;text-decoration:none;z-index:1060;}
-div img.mlogo, div img.mlogo:hover, div a img.mlogo, div a img.mlogo:hover {height:42px;z-index:1060;}
+div img.mlogo, div img.mlogo:hover, div a img.mlogo, div a img.mlogo:hover {top:38px;height:42px;z-index:1060;}
 div img.oscamlogo,div img.oscamlogo:hover {}
 div a img.oscamlogo,div a img.oscamlogo:hover{position:absolute;top:0px;padding:2px;}
 div.oscamlogo,div.oscamlogo:hover{}
 div a.oscamlogo, div a.oscamlogo:hover{
-position:absolute;top:42px;
+position:absolute;top:48px;
 padding-bottom:10px;color: #ffffff;
-font-size: 48px;font-weight:bold;line-height: 1em;text-decoration:none;font-family: Arial, sans-serif;
+font-size: 36px;font-weight:bold;line-height: 1em;text-decoration:none;font-family: Arial, sans-serif;
 text-shadow:0px 0px 0 rgb(200,200,200),1px 1px 0 rgb(180,180,180),2px 2px 0 rgb(170,170,170),3px 3px 0 rgb(160,160,160),4px 4px 0 rgb(150,150,150),5px 5px 0 rgb(140,140,140), 6px 6px 0 rgb(130,139,130),7px 7px 6px rgba(0,0,0,0),7px 7px 1px rgba(0,0,0,0.5),0px 0px 6px rgba(0,0,0,.2);}
 
 #sub a{color:#2e2e2e;border-left:1px solid #e0e0e0;border-right:1px solid #fff}
@@ -250,7 +268,7 @@ span.span_notifier{padding:1px 3px;border-radius:10px;color:#fff;margin-left:2px
 span.idlesec_normal{font-size:9px;color:black}
 span.idlesec_alert{font-size:9px;color:red}
 span.global_conf{color:blue;font-size:12px;cursor:default;padding:4px}
-.statusrefresh{background-color:#262626;width:130px;font-size:12px;float:right;position:fixed;text-align:center;top:10px;right:0;z-index:1050}
+.statusrefresh{background-color:#262626;width:115px;font-size:12px;float:right;position:fixed;text-align:center;top:10px;right:0;z-index:1050}
 .statusinfo{position:absolute;left:0;right:0;margin-left:auto;margin-right:auto;top:46px}
 .countDownText{color:#ff4500}
 .setrefresh span{font-weight:400;color:#000;font-weight:bold;padding:11px 50px 7px;float:left}
