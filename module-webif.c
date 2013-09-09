@@ -302,6 +302,9 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "CLIENTTIMEOUT", "%u", cfg.ctimeout);
 	tpl_printf(vars, TPLADD, "FALLBACKTIMEOUT", "%u", cfg.ftimeout);
 	tpl_printf(vars, TPLADD, "CLIENTMAXIDLE", "%u", cfg.cmaxidle);
+	value = mk_t_caidvaluetab(&cfg.ftimeouttab);
+	tpl_addVar(vars, TPLADD, "FALLBACKTIMEOUT_PERCAID", value);
+	free_mk_t(value);
 
 	tpl_printf(vars, TPLADD, "SLEEP", "%d", cfg.tosleep);
 	if (cfg.ulparent) tpl_addVar(vars, TPLADD, "UNLOCKPARENTALCHECKED", "selected");
@@ -513,6 +516,8 @@ static char *send_oscam_config_cache(struct templatevars *vars, struct uriparams
 	value = mk_t_cacheex_valuetab(&cfg.cacheex_wait_timetab);
 	tpl_addVar(vars, TPLADD, "WAIT_TIME", value);
 	free_mk_t(value);
+
+	tpl_printf(vars, TPLADD, "MAX_HIT_TIME", "%d", cfg.max_hitcache_time);
 
 	if (cfg.cacheex_enable_stats == 1)
 		tpl_addVar(vars, TPLADD, "CACHEEXSTATSSELECTED", "selected");
@@ -1324,6 +1329,11 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	} else {
 		tpl_addVar(vars, TPLADD, "FALLBACKVALUE", (rdr->fallback == 1) ? "1" : "0");
 	}
+
+	// Fallback per caid
+	value = mk_t_ftab(&rdr->fallback_percaid);
+	tpl_addVar(vars, TPLADD, "FALLBACK_PERCAID", value);
+	free_mk_t(value);
 
 #ifdef CS_CACHEEX
 	// Cacheex
@@ -3064,12 +3074,12 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
-	tpl_printf(vars, TPLADD, "SVNREV", "8905");
+	tpl_printf(vars, TPLADD, "SVNREV", "8909");
 	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "OSCAMLOGO");
 	if (picon_exists(picon_name)) {
 		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;Revision #%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
 	} else {
-		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\">Oscam&nbsp;r%s</a></div>", "8905");
+		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\">Oscam&nbsp;r%s</a></div>", "8909");
 	}
 
 	if (strcmp(getParam(params, "action"), "resetserverstats") == 0) {
