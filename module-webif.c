@@ -3074,12 +3074,12 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
-	tpl_printf(vars, TPLADD, "SVNREV", "8909");
+	tpl_printf(vars, TPLADD, "SVNREV", "8915");
 	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "OSCAMLOGO");
 	if (picon_exists(picon_name)) {
 		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;Revision #%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
 	} else {
-		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\">Oscam&nbsp;r%s</a></div>", "8909");
+		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\">Oscam&nbsp;r%s</a></div>", "8915");
 	}
 
 	if (strcmp(getParam(params, "action"), "resetserverstats") == 0) {
