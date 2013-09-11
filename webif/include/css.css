@@ -240,7 +240,7 @@ div.div_notifier{height:14px;width:14px;border-radius:7px;-webkit-border-radius:
 div.debugmenu, div.logmenu{line-height:20px}
 div.filterform{margin:10px}
 textarea.bt{font-size: 10px}
-textarea.editor{width:95%;font-size:10px;height:502px;background-color: #fafafa;padding:8px 10px;font-family:"courier", monospace;color:black;word-wrap:break-word;text-align:left}
+textarea.editor{width:95%;font-size:11px;height:500px;background-color: #fafafa;padding:8px 10px;font-family:"courier", monospace;color:black;word-wrap:break-word;text-align:left}
 .tooltip{position:absolute;z-index:1010;display:block;visibility:visible;padding:5px;font-size:12px}
 a.tooltip1{color:#ec373a}
 a.tooltip span, table.status a.tooltip1 span{display:none;z-index:99}
