@@ -10,10 +10,10 @@
 		<input name="httpshowpicons" type="hidden" value="0">
 		<TABLE class="config">
 			<TR><TH COLSPAN="2">Edit WebIf Config</TH></TR>
-			<TR><TD>##TPLHELPPREFIX##conf#httpport##TPLHELPSUFFIX##Http port:</A></TD><TD><input name="httpport" type="text" size="6" maxlength="6" value="##HTTPPORT##"></TD></TR>
+			<TR><TD class="mandatory">##TPLHELPPREFIX##conf#httpport##TPLHELPSUFFIX##Http port:</A></TD><TD class="mandatory"><input name="httpport" type="text" size="6" maxlength="6" value="##HTTPPORT##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#serverip_9##TPLHELPSUFFIX##Serverip:</A></TD><TD><input name="serverip" type="text" size="15" maxlength="15" value="##SERVERIP##"></TD></TR>
-			<TR><TD>##TPLHELPPREFIX##conf#httpuser##TPLHELPSUFFIX##Http user:</A></TD><TD><input name="httpuser" type="text" size="63" maxlength="64" value="##HTTPUSER##"></TD></TR>
-			<TR><TD>##TPLHELPPREFIX##conf#httppwd##TPLHELPSUFFIX##Http pwd:</A></TD><TD><input name="httppwd" type="text" size="63" maxlength="64" value="##HTTPPASSWORD##"></TD></TR>
+			<TR><TD class="mandatory">##TPLHELPPREFIX##conf#httpuser##TPLHELPSUFFIX##Http user:</A></TD><TD class="mandatory"><input name="httpuser" type="text" size="63" maxlength="64" value="##HTTPUSER##"></TD></TR>
+			<TR><TD class="mandatory">##TPLHELPPREFIX##conf#httppwd##TPLHELPSUFFIX##Http pwd:</A></TD><TD class="mandatory"><input name="httppwd" type="text" size="63" maxlength="64" value="##HTTPPASSWORD##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#http_prepend_embedded_css##TPLHELPSUFFIX##Http prepend embedded css:</A></TD><TD><input name="http_prepend_embedded_css" type="checkbox" value="1" ##HTTPPREPENDEMBEDDEDCSS##></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#httpcss##TPLHELPSUFFIX##Http css:</A></TD>
  				<TD>
@@ -30,7 +30,7 @@
 			<TR><TD>##TPLHELPPREFIX##conf#httphideidleclients##TPLHELPSUFFIX##Http Hide Idle Clients:</A></TD><TD><input name="httphideidleclients" type="checkbox" value="1" ##CHECKED##>
 			<TR><TD>##TPLHELPPREFIX##conf#httphidetype##TPLHELPSUFFIX##Http Hide Type:</A></TD><TD><input name="httphidetype" type="text" size="10" maxlength="10" value="##HTTPHIDETYPE##">
 			<TR><TD>##TPLHELPPREFIX##conf#httpshowpicons##TPLHELPSUFFIX##Http Show Picons:</A></TD><TD><input name="httpshowpicons" type="checkbox" value="1" ##SHOWPICONSCHECKED##>
-			<TR><TD>##TPLHELPPREFIX##conf#httpallowed##TPLHELPSUFFIX##Http allowed:</A></TD><TD><input name="httpallowed" type="text" size="63" maxlength="200" value="##HTTPALLOW##"></TD></TR>
+			<TR><TD class="mandatory">##TPLHELPPREFIX##conf#httpallowed##TPLHELPSUFFIX##Http allowed:</A></TD><TD class="mandatory"><input name="httpallowed" type="text" size="63" maxlength="200" value="##HTTPALLOW##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#httpdyndns##TPLHELPSUFFIX##Http dyndns:</A></TD><TD><input name="httpdyndns" type="text" size="63" maxlength="200" value="##HTTPDYNDNS##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#aulow##TPLHELPSUFFIX##Au low:</A></TD><TD><input name="aulow" type="text" size="5" maxlength="5" value="##AULOW##"> min</TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#hideclient_to##TPLHELPSUFFIX##Hide client to:</A></TD><TD><input name="hideclient_to" type="text" size="5" maxlength="5" value="##HIDECLIENTTO##"> s</TD></TR>

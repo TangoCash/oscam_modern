@@ -1,5 +1,12 @@
 ##TPLHEADER##
 ##TPLMENU##
+<DIV class="subnav subnav-fixed">
+	<ul id="sub">
+		<li class="configmenu"><a href="http://www.streamboard.tv/oscam/timeline"><b>OSCAM r##SVNREV##</b></a></li>
+		<li class="configmenu"><a href="status.html">Refresh</a></li>
+		<li class="configmenu"><a href="status.html#oscamstats">Summary</a></li>
+	</ul>
+</DIV>
 ##OSCAMLOGO##
 <div class="statusrefresh">
     <script language="javascript">var countDownInterval=##REFRESHTIME##,c_reloadwidth=200;$("#timersub").click(function(){countDownTime=$("#timertxt").val()});</script>
@@ -23,6 +30,7 @@
 			<TH class="statuscol15">Idle</TH>
 			<TH class="statuscol16">Status</TH>
 		</TR>
+
 ##READERHEADLINE##
 		##READERSTATUS##
 ##PROXYHEADLINE##
@@ -69,7 +77,7 @@
 			<td class="centered"><b>&nbsp;Start:</b>&nbsp;(&nbsp;##STARTDATE##&nbsp;-&nbsp;##STARTTIME##&nbsp;)&nbsp;</td>
 			<td class="centered"><b>&nbsp;Uptime:</b>&nbsp;(&nbsp;##UPTIME##&nbsp;)&nbsp;</td>
 			<td colspan="2" class="centered"><b>Access from IP:</b>&nbsp;(&nbsp;##CURIP##&nbsp;)&nbsp;</td>
-		</tr>##CACHEEXSTATS##
+		</tr>##MEM_INFO####CACHEEXSTATS##
 		<tr>
 			<td colspan="6" style="background-color:transparent;">
 		</tr>
