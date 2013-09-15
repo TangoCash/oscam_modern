@@ -112,14 +112,14 @@ div img.mlogo, div img.mlogo:hover, div a img.mlogo, div a img.mlogo:hover {
 }
 div a img.oscamlogo, div a img.oscamlogo:hover {
     position:absolute;
-    top:0px;
+    top:80px;
     padding:2px;
 }
-div a.oscamlogo, div a.oscamlogo:hover {
-    position:absolute;
-    top:48px;
-    padding-bottom:10px;
+html body div.oscamlogo {
+    margin-bottom: 40px;
+    padding-bottom: 2px;
 }
+
 #sub a {
     color:#2e2e2e;
     border-left:1px solid #e0e0e0;
