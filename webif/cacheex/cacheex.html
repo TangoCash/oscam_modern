@@ -1,10 +1,27 @@
 ##TPLHEADER##
 ##TPLMENU##
 ##TPLMESSAGE##
-	<DIV CLASS="statusrefresh">
+<DIV CLASS="statusrefresh">
 	<SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
-	<script language="JavaScript">var countDownInterval=##REFRESHTIME##;var countDownTime=countDownInterval+1;function countDown(){countDownTime--;if(countDownTime<=0){countDownTime=countDownInterval;clearTimeout(counter);window.location.href="cacheex.html";return};if(document.all)document.all.countDownText.innerText=countDownTime+" ";else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";counter=setTimeout("countDown()",1000)};if(document.all||document.getElementById)startit();else window.document.onload=startit;</script>
-    </DIV>
+	<script language="JavaScript">
+	var countDownInterval=##REFRESHTIME##;
+	var countDownTime=countDownInterval+1;
+	function countDown(){
+	    countDownTime--;
+	    if(countDownTime<=0){
+		countDownTime=countDownInterval;
+		clearTimeout(counter);
+		history.pushState(null, null, './cacheex.html');
+		window.location.reload();
+		return};
+	    if(document.all)document.all.countDownText.innerText=countDownTime+" ";
+	    else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";
+	    counter=setTimeout("countDown()",1000)
+	};
+	if(document.all||document.getElementById)startit();
+	else window.document.onload=startit;
+</script>
+</DIV>
 	<TABLE CLASS="users">
 			<thead>
 			<TR><TH COLSPAN="11">CacheEX Stats for ##OWN_CACHEEX_NODEID##</TH></TR>

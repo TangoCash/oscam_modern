@@ -9,9 +9,27 @@
 		</UL>
 	</DIV>
 	<DIV CLASS="statusrefresh">
+<DIV CLASS="statusrefresh">
 	<SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
-	<script language="JavaScript">var countDownInterval=##REFRESHTIME##;var countDownTime=countDownInterval+1;function countDown(){countDownTime--;if(countDownTime<=0){countDownTime=countDownInterval;clearTimeout(counter);window.location.href="readers.html";return};if(document.all)document.all.countDownText.innerText=countDownTime+" ";else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";counter=setTimeout("countDown()",1000)};if(document.all||document.getElementById)startit();else window.document.onload=startit;</script>
-    </DIV>
+	<script language="JavaScript">
+	var countDownInterval=##REFRESHTIME##;
+	var countDownTime=countDownInterval+1;
+	function countDown(){
+	    countDownTime--;
+	    if(countDownTime<=0){
+		countDownTime=countDownInterval;
+		clearTimeout(counter);
+		history.pushState(null, null, './readers.html');
+		window.location.reload();
+		return};
+	    if(document.all)document.all.countDownText.innerText=countDownTime+" ";
+	    else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";
+	    counter=setTimeout("countDown()",1000)
+	};
+	if(document.all||document.getElementById)startit();
+	else window.document.onload=startit;
+</script>
+</DIV>
     <DIV CLASS="newuser" ID="newreader">
     <form action="readerconfig.html" method="get">
 	<TABLE CLASS="users" style="width:99%;">
