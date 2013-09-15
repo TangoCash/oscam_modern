@@ -6,40 +6,12 @@
 		<LI CLASS="configmenu"><A HREF="userconfig.html?action=reinit">Reinit User DB</A></LI>
 		<LI CLASS="configmenu"><A HREF="userconfig.html?action=resetalluserstats">Reset Userstats</A></LI>
 		<LI CLASS="configmenu"><A TARGET="_blank" HREF="graph.svg?type=users&hidelabels=1">Show Graphs</A></LI>
+		<LI CLASS="configmenu"><A HREF="userconfig.html">Refresh</A></LI>
 	    </UL>
 	</DIV>
-    <DIV CLASS="statusrefresh">
-	<SPAN id="timer">Refreshing has been stopped!</SPAN>
-	<script language="JavaScript">
-	var countDownInterval=##REFRESHTIME##; var countDownTime=countDownInterval+1;
-
-	function adduser(){
-	    document.getElementById("newuser").style.display="block";
-	    document.getElementById("searchTable").style.display="none";cdpause();
-	    document.getElementById("timer").innerHTML='Refreshing has been stopped!'
-	};
-	
-	function countDown(){
-	    countDownTime--;
-	    if (countDownTime <=0){
-		countDownTime=countDownInterval;
-		clearTimeout(counter);
-		window.location.href="userconfig.html";
-		return
-	    };
-	    if (document.all) document.all.countDownText.innerText = countDownTime+" ";
-	    else if (document.getElementById) document.getElementById("countDownText").innerHTML=countDownTime+" "; counter=setTimeout("countDown()", 1000);
-	};
-	function startit() {
-	    if (document.all||document.getElementById)document.getElementById("timer").innerHTML='Next refresh<br>in <b id="countDownText" class="countDownText">'+countDownTime+' </b> seconds';
-	countDown();
-	}
-	if (document.all||document.getElementById) startit();
-	else window.document.onload=startit;
-	function cdpause() {
-	    clearTimeout(counter);
-	};
-    </script>
+	<DIV CLASS="statusrefresh">
+	<SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
+	<script language="JavaScript">var countDownInterval=##REFRESHTIME##;var countDownTime=countDownInterval+1;function countDown(){countDownTime--;if(countDownTime<=0){countDownTime=countDownInterval;clearTimeout(counter);window.location.href="userconfig.html";return};if(document.all)document.all.countDownText.innerText=countDownTime+" ";else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";counter=setTimeout("countDown()",1000)};if(document.all||document.getElementById)startit();else window.document.onload=startit;</script>
     </DIV>
     <DIV CLASS="newuser" ID="newuser">
 	<TABLE CLASS="users" style="width:99%;">
@@ -58,6 +30,7 @@
 	</TABLE>
     </DIV>
 	<TABLE CLASS="users" id="dataTable">
+		<thead>
 		<TR>
 			<TH>&nbsp;</TH>
 			<TH>Label</TH>
@@ -82,6 +55,9 @@
 			<TH TITLE="Expiration date of account">Exp. Date</TH>
 			<TH colspan="3">&nbsp;</TH>
 		</TR>
-	##USERCONFIGS##
-	</TABLE><BR>
+		<thead>
+		<tbody>
+			##USERCONFIGS##
+		</tbody>
+	</TABLE>
 ##TPLFOOTER##

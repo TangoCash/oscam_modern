@@ -978,7 +978,11 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 	int32_t i;
 
 	if(!apicall) setActiveMenu(vars, MNU_READERS);
-
+	if(cfg.http_refresh > 0) {
+		tpl_printf(vars, TPLADD, "REFRESHTIME", "%d", cfg.http_refresh);
+		tpl_addVar(vars, TPLADD, "REFRESHURL", "userconfig.html");
+		tpl_addVar(vars, TPLADD, "REFRESH", tpl_getTpl(vars, "REFRESH"));
+	}
 	if ((strcmp(getParam(params, "action"), "disable") == 0) || (strcmp(getParam(params, "action"), "enable") == 0)) {
 		if(cfg.http_readonly) {
 			tpl_addMsg(vars, "WebIf is in readonly mode. Enabling or disabling readers is not possible!");
@@ -3348,7 +3352,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				if (!apicall) {
 					if((cl->typ != 'p' && cl->typ != 'r') || cl->reader->card_status == CARD_INSERTED){
-						tpl_printf(vars, TPLADD, "CLIENTLOGINDATE", "%02d.%02d.%02d  %02d:%02d:%02d", lt.tm_mday, lt.tm_mon+1, lt.tm_year%100, lt.tm_hour, lt.tm_min, lt.tm_sec);
+						tpl_printf(vars, TPLADD, "CLIENTLOGINDATE", "%02d.%02d.%02d - %02d:%02d:%02d", lt.tm_mday, lt.tm_mon+1, lt.tm_year%100, lt.tm_hour, lt.tm_min, lt.tm_sec);
 						tpl_addVar(vars, TPLADD, "CLIENTLOGINSECS", sec2timeformat(vars, lsec));
 					} else {
 						tpl_addVar(vars, TPLADD, "CLIENTLOGINDATE", "");
@@ -4752,7 +4756,11 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 	if (strcmp(getParam(params, "x"), "x") == 0) {
 		// avoid compilerwarning unused vars
 	}
-
+	if(cfg.http_refresh > 0) {
+		tpl_printf(vars, TPLADD, "REFRESHTIME", "%d", cfg.http_refresh);
+		tpl_addVar(vars, TPLADD, "REFRESHURL", "userconfig.html");
+		tpl_addVar(vars, TPLADD, "REFRESH", tpl_getTpl(vars, "REFRESH"));
+	}
 	char *level[]= {"NONE","CACHE PULL","CACHE PUSH","REVERSE CACHE PUSH"};
 	char *getting = "<IMG SRC=\"image?i=ICARRL\" ALT=\"Getting\">";
 	char *pushing = "<IMG SRC=\"image?i=ICARRR\" ALT=\"Pushing\">";

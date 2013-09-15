@@ -1,13 +1,13 @@
 ##TPLHEADER##
 ##TPLMENU##
+##OSCAMLOGO##
 <DIV class="subnav subnav-fixed">
 	<ul id="sub">
-		<li class="configmenu"><a href="http://www.streamboard.tv/oscam/timeline"><b>OSCAM r##SVNREV##</b></a></li>
+		<li class="configmenu"><a href="http://www.streamboard.tv/oscam/timeline"><b>OSCAM r8917</b></a></li>
 		<li class="configmenu"><a href="status.html">Refresh</a></li>
 		<li class="configmenu"><a href="status.html#oscamstats">Summary</a></li>
 	</ul>
 </DIV>
-##OSCAMLOGO##
 <div class="statusrefresh">
     <script language="javascript">var countDownInterval=##REFRESHTIME##,c_reloadwidth=200;$("#timersub").click(function(){countDownTime=$("#timertxt").val()});</script>
     <script language="javascript">var countDownTime=countDownInterval+1;function countDown(){countDownTime--; 0>=countDownTime?(countDownTime=countDownInterval,clearTimeout(counter),history.pushState(null, null, './status.html'),window.location.reload()):(document.all?document.all.countDownText.innerText=countDownTime+" ":document.getElementById?document.getElementById("countDownText").innerHTML=countDownTime+" ":document.layers&&(document.c_reload.document.c_reload2.document.write('Next refresh</a> in <b id="countDownText">'+countDownTime+" </b> seconds"),document.c_reload.document.c_reload2.document.close()), counter=setTimeout("countDown()",1E3))}function startit(){(document.all||document.getElementById)&&document.write('Next refresh<br>in <b class="countDownText" id="countDownText">'+countDownTime+" </b> seconds");countDown()}document.all||document.getElementById?startit():window.onload=startit;</script>
@@ -25,12 +25,9 @@
 			<TH class="statuscol12">CAID:SRVID</TH>
 			<TH class="statuscol13">Last Channel</TH>
 			<TH class="statuscol14">LB Value/ Reader</TH>
-			<TH class="statuscol10">Login</TH>
-			<TH class="statuscol11">Online</TH>
-			<TH class="statuscol15">Idle</TH>
+			<TH class="statuscol10">Login<br>Online / Idle</TH>
 			<TH class="statuscol16">Status</TH>
 		</TR>
-
 ##READERHEADLINE##
 		##READERSTATUS##
 ##PROXYHEADLINE##
