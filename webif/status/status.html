@@ -19,7 +19,7 @@
 	        countDownTime = countDownInterval;
 	        clearTimeout(counter);
 	        history.pushState(null, null, './status.html'),
-	        window.location.reload()
+	        window.location.reload();
 	        return
 	    };
 	    if (document.all) document.all.countDownText.innerText = countDownTime + " ";
