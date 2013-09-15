@@ -1,80 +1,99 @@
-##TPLHEADER##
-##TPLMENU##
-	<DIV class="subnav subnav-fixed">
-	    <UL id="sub">
-		<LI CLASS="configmenu"><A HREF="#" onclick="adduser();">Add User</A></LI>
-		<LI CLASS="configmenu"><A HREF="userconfig.html?action=reinit">Reinit User DB</A></LI>
-		<LI CLASS="configmenu"><A HREF="userconfig.html?action=resetalluserstats">Reset Userstats</A></LI>
-		<LI CLASS="configmenu"><A TARGET="_blank" HREF="graph.svg?type=users&hidelabels=1">Show Graphs</A></LI>
-		<LI CLASS="configmenu"><A HREF="userconfig.html">Refresh</A></LI>
-	    </UL>
-	</DIV>
-<DIV CLASS="statusrefresh">
-	<SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
-	<script language="JavaScript">
-	var countDownInterval=##REFRESHTIME##;
-	var countDownTime=countDownInterval+1;
-	function countDown(){
-	    countDownTime--;
-	    if(countDownTime<=0){
-		countDownTime=countDownInterval;
-		clearTimeout(counter);
-		history.pushState(null, null, './userconfig.html');
-		window.location.reload();
-		return};
-	    if(document.all)document.all.countDownText.innerText=countDownTime+" ";
-	    else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";
-	    counter=setTimeout("countDown()",1000)
-	};
-	if(document.all||document.getElementById)startit();
-	else window.document.onload=startit;
-</script>
+##TPLHEADER## ##TPLMENU##
+<DIV class="subnav subnav-fixed">
+    <UL id="sub">
+        <LI CLASS="configmenu">
+            <A HREF="#" onclick="adduser();">Add User</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A HREF="userconfig.html?action=reinit">Reinit User DB</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A HREF="userconfig.html?action=resetalluserstats">Reset Userstats</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A TARGET="_blank" HREF="graph.svg?type=users&hidelabels=1">Show Graphs</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A HREF="userconfig.html">Refresh</A>
+        </LI>
+    </UL>
 </DIV>
-    <DIV CLASS="newuser" ID="newuser">
-	<TABLE CLASS="users" style="width:99%;">
-	    <TR>
-		<FORM action="user_edit.html" method="get">
-		    <th>New User:&nbsp;&nbsp;&nbsp;<input name="user" type="text">&nbsp;&nbsp;&nbsp;<input type="submit" value="Add User"></th>
-		</FORM>
-	    </TR>
-	</TABLE>
-    </DIV>
-    <DIV id="searchTable">
-	<TABLE CLASS="users" style="width:99%;">
-		<TR>
-			<th>Search: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()"/></th>
-		</TR>
-	</TABLE>
-    </DIV>
-	<TABLE CLASS="users" id="dataTable">
-		<thead>
-		<TR>
-			<TH>&nbsp;</TH>
-			<TH>Label</TH>
-			<TH>Groups</TH>
-			<TH>Status</TH>
-			<TH>Address</TH>
-			<TH>Protocol</TH>
-			<TH>Last Channel</TH>
-			<TH>On Channel</TH>
-			<TH>Idle</TH>
-			<TH TITLE="Delivered ECM with status OK">OK</TH>
-			<TH TITLE="Delivered ECM with status not OK">NOK</TH>
-			<TH TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
-			<TH TITLE="Timeout ECM, part of NOK">TOUT</TH>
-			##TPLCWCYCLETHV##
-			<TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
-			<TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
-			<TH TITLE="Last ECM Time">LTIME</TH>
-			<TH TITLE="EMM delivered">EMM<br>OK<br>NOK</TH>
-			<TH TITLE="CW rate since Server start (CW rate current Session)">CW Rate</TH>
-			<TH TITLE="Different services during last 60s">CASC USERS</TH>
-			<TH TITLE="Expiration date of account">Exp. Date</TH>
-			<TH colspan="3">&nbsp;</TH>
-		</TR>
-		<thead>
-		<tbody>
-			##USERCONFIGS##
-		</tbody>
-	</TABLE>
+<DIV CLASS="statusrefresh">
+    <SPAN id="timer">Refreshing has
+        <br>been stopped!</SPAN>
+    <script language="JavaScript">
+    var countDownInterval = ##REFRESHTIME##;
+    var countDownTime = countDownInterval + 1;
+
+    function countDown() {
+        countDownTime--;
+        if (countDownTime <= 0) {
+            countDownTime = countDownInterval;
+            clearTimeout(counter);
+            history.pushState(null, null, './userconfig.html');
+            window.location.reload();
+            return
+        };
+        if (document.all) document.all.countDownText.innerText = countDownTime + " ";
+        else if (document.getElementById) document.getElementById("countDownText").innerHTML = countDownTime + " ";
+        counter = setTimeout("countDown()", 1000)
+    };
+    if (document.all || document.getElementById) startit();
+    else window.document.onload = startit;
+    </script>
+</DIV>
+<DIV CLASS="newuser" ID="newuser">
+    <TABLE CLASS="users" style="width:99%;">
+        <TR>
+            <FORM action="user_edit.html" method="get">
+                <th>New User:&nbsp;&nbsp;&nbsp;
+                    <input name="user" type="text">&nbsp;&nbsp;&nbsp;
+                    <input type="submit" value="Add User">
+                </th>
+            </FORM>
+        </TR>
+    </TABLE>
+</DIV>
+<DIV id="searchTable">
+    <TABLE CLASS="users" style="width:99%;">
+        <TR>
+            <th>Search:
+                <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()" />
+            </th>
+        </TR>
+    </TABLE>
+</DIV>
+<TABLE CLASS="users" id="dataTable">
+    <thead>
+        <TR>
+            <TH>&nbsp;</TH>
+            <TH>Label</TH>
+            <TH>Groups</TH>
+            <TH>Status</TH>
+            <TH>Address</TH>
+            <TH>Protocol</TH>
+            <TH>Last Channel</TH>
+            <TH>On Channel</TH>
+            <TH>Idle</TH>
+            <TH TITLE="Delivered ECM with status OK">OK</TH>
+            <TH TITLE="Delivered ECM with status not OK">NOK</TH>
+            <TH TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
+            <TH TITLE="Timeout ECM, part of NOK">TOUT</TH>
+            ##TPLCWCYCLETHV##
+            <TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
+            <TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
+            <TH TITLE="Last ECM Time">LTIME</TH>
+            <TH TITLE="EMM delivered">EMM
+                <br>OK
+                <br>NOK</TH>
+            <TH TITLE="CW rate since Server start (CW rate current Session)">CW Rate</TH>
+            <TH TITLE="Different services during last 60s">CASC USERS</TH>
+            <TH TITLE="Expiration date of account">Exp. Date</TH>
+            <TH colspan="3">&nbsp;</TH>
+        </TR>
+        <thead>
+            <tbody>
+                ##USERCONFIGS##
+            </tbody>
+</TABLE>
 ##TPLFOOTER##

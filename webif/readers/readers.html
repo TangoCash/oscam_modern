@@ -1,77 +1,96 @@
-##TPLHEADER##
-##TPLMENU##
-	<DIV class="subnav subnav-fixed">
-		<UL id="sub">
-			<LI CLASS="configmenu"><A HREF="#" onclick="addreader();">Add Reader</A></LI>
-			<LI CLASS="configmenu"><A HREF="scanusb.html">Scan USB</A></LI>
-			<LI CLASS="configmenu"><A TARGET="_blank" HREF="graph.svg?type=servers">Show Graphs</A></LI>
-			<LI CLASS="configmenu"><A HREF="readers.html">Refresh</A></LI>
-		</UL>
-	</DIV>
-	<DIV CLASS="statusrefresh">
-<DIV CLASS="statusrefresh">
-	<SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
-	<script language="JavaScript">
-	var countDownInterval=##REFRESHTIME##;
-	var countDownTime=countDownInterval+1;
-	function countDown(){
-	    countDownTime--;
-	    if(countDownTime<=0){
-		countDownTime=countDownInterval;
-		clearTimeout(counter);
-		history.pushState(null, null, './readers.html');
-		window.location.reload();
-		return};
-	    if(document.all)document.all.countDownText.innerText=countDownTime+" ";
-	    else if(document.getElementById)document.getElementById("countDownText").innerHTML=countDownTime+" ";
-	    counter=setTimeout("countDown()",1000)
-	};
-	if(document.all||document.getElementById)startit();
-	else window.document.onload=startit;
-</script>
+##TPLHEADER## ##TPLMENU##
+<DIV class="subnav subnav-fixed">
+    <UL id="sub">
+        <LI CLASS="configmenu">
+            <A HREF="#" onclick="addreader();">Add Reader</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A HREF="scanusb.html">Scan USB</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A TARGET="_blank" HREF="graph.svg?type=servers">Show Graphs</A>
+        </LI>
+        <LI CLASS="configmenu">
+            <A HREF="readers.html">Refresh</A>
+        </LI>
+    </UL>
 </DIV>
-    <DIV CLASS="newuser" ID="newreader">
+<DIV CLASS="statusrefresh">
+    <SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
+    <script language="JavaScript">
+    var countDownInterval = ##REFRESHTIME##;
+    var countDownTime = countDownInterval + 1;
+
+    function countDown() {
+        countDownTime--;
+        if (countDownTime <= 0) {
+            countDownTime = countDownInterval;
+            clearTimeout(counter);
+            history.pushState(null, null, './readers.html');
+            window.location.reload();
+            return
+        };
+        if (document.all) document.all.countDownText.innerText = countDownTime + " ";
+        else if (document.getElementById) document.getElementById("countDownText").innerHTML = countDownTime + " ";
+        counter = setTimeout("countDown()", 1000)
+    };
+    if (document.all || document.getElementById) startit();
+    else window.document.onload = startit;
+    </script>
+</DIV>
+<DIV CLASS="newuser" ID="newreader">
     <form action="readerconfig.html" method="get">
-	<TABLE CLASS="users" style="width:99%;">
-			<TR>
-				<th>
-					NEW&nbsp;Reader&nbsp;Label:<input type="text" name="label" value="##NEXTREADER##">
-					Protocol:&nbsp;<select name="protocol">##ADDPROTOCOL##</select>
-					<input type="submit" name="action" value="Add">
-				</th>
-			</TR>
-	</TABLE>
-	</form>
-    </DIV>
-    <DIV id="searchTable">
-	<TABLE CLASS="users" style="width:99%;">
-		<TR>
-			<th>Search: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()"/></th>
-		</TR>
-	</TABLE>
-    </DIV>
-	<form action="readerconfig.html" method="get">
-		<TABLE CLASS="users" id="dataTable">
-			<thead>
-			<TR>
-				<TH>On/Off</TH>
-				<TH>Reader</TH>
-				<TH>Protocol</TH>
-				<TH>Groups</TH>
-				<TH>EMM<br>error</TH>
-				<TH>EMM<br>written</TH>
-				<TH>EMM<br>skipped</TH>
-				<TH>EMM<br>blocked</TH>
-				<TH>ECMs<br>OK</TH>
-				<TH>ECMs<br>NOK</TH>
-				<TH>ECMs<br>Filtered</TH>
-				<TH>LB<br>Weight</TH>
-				<TH COLSPAN="6">Action</TH>
-			</TR>
-			</thead>
-			<tbody>
-##READERLIST##
-			</tbody>
-		</TABLE>
-	</form>
+        <TABLE CLASS="users" style="width:99%;">
+            <TR>
+                <th>
+                    NEW&nbsp;Reader&nbsp;Label:
+                    <input type="text" name="label" value="##NEXTREADER##">Protocol:&nbsp;
+                    <select name="protocol">##ADDPROTOCOL##</select>
+                    <input type="submit" name="action" value="Add">
+                </th>
+            </TR>
+        </TABLE>
+    </form>
+</DIV>
+<DIV id="searchTable">
+    <TABLE CLASS="users" style="width:99%;">
+        <TR>
+            <th>Search:
+                <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()" />
+            </th>
+        </TR>
+    </TABLE>
+</DIV>
+<form action="readerconfig.html" method="get">
+    <TABLE CLASS="users" id="dataTable">
+        <thead>
+            <TR>
+                <TH>On/Off</TH>
+                <TH>Reader</TH>
+                <TH>Protocol</TH>
+                <TH>Groups</TH>
+                <TH>EMM
+                    <br>error</TH>
+                <TH>EMM
+                    <br>written</TH>
+                <TH>EMM
+                    <br>skipped</TH>
+                <TH>EMM
+                    <br>blocked</TH>
+                <TH>ECMs
+                    <br>OK</TH>
+                <TH>ECMs
+                    <br>NOK</TH>
+                <TH>ECMs
+                    <br>Filtered</TH>
+                <TH>LB
+                    <br>Weight</TH>
+                <TH COLSPAN="6">Action</TH>
+            </TR>
+        </thead>
+        <tbody>
+            ##READERLIST##
+        </tbody>
+    </TABLE>
+</form>
 ##TPLFOOTER##
