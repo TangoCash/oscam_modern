@@ -761,11 +761,12 @@ img.icon {
     border-radius:2px;
     -webkit-border-radius:2px
 }
-img.readericon, img.readertypeicon, img.protoicon, img.statususericon, img.clientcurrentpicon {
+img.userpicon, img.readericon, img.readertypeicon, img.protoicon, img.statususericon{
     height:22px
 }
-img.userpicon, img.clientcurrentpicon {
-    height:22px;
+
+img.clientcurrentpicon {
+    height:30px
 }
 img.oscamlogo {
     height:46px;
