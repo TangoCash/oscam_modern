@@ -152,6 +152,7 @@ PREAUTOCONF                   ghttp/pre_autoconf.html                           
 AUTOCONF                      ghttp/autoconf.html                                         MODULE_GHTTP
 CONFIGCWCYCLE                 config/cache_cwcycle.html                                   CW_CYCLE_CHECK
 CWCYCLETHV                    userconfig/userconfig_cwcyclethv.html                       CW_CYCLE_CHECK
+CWCYCLETHS                    userconfig/userconfig_cwcycleths.html                       CW_CYCLE_CHECK
 CWCYCLETBV                    userconfig/userconfig_entry_cwcycletbv.html                 CW_CYCLE_CHECK
 CMCAPTIONCWC                  config/menu_cmcaptioncwc.html                               CW_CYCLE_CHECK
 LOCALCARDS                    config/global_localcards.html                               WITH_CARDREADER
