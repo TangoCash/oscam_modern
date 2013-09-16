@@ -950,10 +950,7 @@ html body form table#dataTable.readers thead tr th table.subtable tbody tr th
     padding: 1px 1px 1px 1px;
  }
 html body form table#dataTable.users thead tr th{
-    width: 100%;
-}
-html body form table#dataTable.users thead tr th td:first-child{
-    width: 24px%;
+    padding: 1px 1px 1px 1px;    
 }
 
 @media only screen and (max-width: 919px) {
