@@ -758,23 +758,14 @@ img {
 img.icon {
     height:22px;
     background-color:#0066CC;
-    border-radius:3px;
-    -webkit-border-radius:3px
+    border-radius:2px;
+    -webkit-border-radius:2px
 }
 img.readericon, img.readertypeicon, img.protoicon, img.statususericon, img.clientcurrentpicon {
-    height:28px
+    height:22px
 }
 img.userpicon, img.clientcurrentpicon {
-    height:28px;
-    background: rgb(50, 50, 50);
-    background: -moz-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);
-    background: -webkit-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);
-    background: -o-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);
-    background: -ms-linear-gradient(315deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);
-    background: linear-gradient(45deg, rgb(50, 50, 50) 45%, rgb(210, 210, 210) 95%);
-    border-radius:2px;
-    border-style:solid;
-    box-shadow: 1px 1px 2px #000;
+    height:22px;
 }
 img.oscamlogo {
     height:46px;
