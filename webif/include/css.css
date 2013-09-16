@@ -41,7 +41,6 @@ hr {
     height:1px;
     border-width:0;
     color:white;
-    background-color:#aaaaaa
 }
 #nav {
     width:100%;
@@ -49,7 +48,7 @@ hr {
     position:fixed;
     top:0px;
     z-index:1050;
-    background-color:#262626
+    background-color:#000
 }
 #menu {
     list-style-type:none;
@@ -80,20 +79,12 @@ hr {
 #menu li.menu:hover, #menu li.menu:hover a, #menu li.menu:hover a:hover, #menu li.menu_selected a, #menu li.menu_selected:hover a, #menu li.menu_selected a:hover {
     padding-top: 10px;
     padding-bottom: 11px;
-    background-color:#e4e4e4;
-    -webkit-border-radius:0;
-    -moz-border-radius:0;
-    border-radius:0;
-    color: #fffb00;
-    text-shadow:0 1px 5px #000;
+    background-color:#FFF;
+    color: #000;
 }
 #menu li.menu:hover, #menu li.menu:hover a, #menu li.menu:hover a:hover, #menu li.menu_selected:hover a, #menu li.menu_selected a:hover {
-    background-color:#aeaeae;
-    color:#fffb00;
-    -webkit-border-radius:0;
-    -moz-border-radius:0;
-    border-radius:0;
-    text-shadow:0 1px 5px #000;
+    background-color:#EEE;
+    color:#000;
 }
 html body div a.log {
     display: block;
@@ -164,7 +155,7 @@ html body div.oscamlogo {
     background-color:#e4e4e4
 }
 #sub li:first-child>a, #sub li:first-child>a:hover {
-    border-left:0
+    border-left:0;
 }
 #sub li:last-child>a {
     border-right:0
@@ -302,7 +293,8 @@ table.config tr td {
     text-align:left
 }
 table.config tr td:first-child {
-    text-align:center
+    text-align:center;
+    padding: 2px;
 }
 table.invisiblelb, table.configreader {
     text-align:left;
@@ -354,16 +346,14 @@ table.filter td {
     background-color:transparent
 }
 table.users {
-    width:99%;
-    border-bottom:3px solid #0f1517
+    width:100%;
+    padding-bottom: 2px;
 }
 table.users th {
     cursor: pointer;
-    border-bottom:3px solid #0f1517
 }
 table.readers {
-    width:99%;
-    border:3px solid #0f1517;
+    width:100%;
     background-color:#95a4ab
 }
 select {
@@ -454,7 +444,7 @@ input[type="text"]:hover, input[type="text"]:active {
 }
 th {
     height:10px;
-    padding:5px;
+    padding: 2px 2px 2px 2px;
     background-color:#cccccc;
     color:black
 }
@@ -475,7 +465,7 @@ td.statuscol0 {
 }
 td {
     height:10px;
-    padding:5px;
+    padding: 2px 2px 2px 2px;
     background-color:#eeeeee;
     color:black
 }
@@ -964,19 +954,18 @@ div.footer p.version {
     color:#fff
 }
 div.footer a {
-    color:#007ae6
+    color:#007ae6;
+    text-decoration: none;
 }
 div.footer a:hover {
     color:#fff1c3
 }
 .mandatory {
-    background-color: #FF6600;
+    background-color: #F2D8BD;
 }
 .mandatory > a:link, .mandatory > a:visited, .mandatory > a:active {
     color: #FFFFFF;
 }
-
-
 html body div#newreader.newuser table.users tbody tr th input,
 html body div#newreader.newuser table.users tbody tr th select{
     margin-left: 5px;
@@ -985,7 +974,9 @@ html body div#newreader.newuser table.users tbody tr th select{
     padding-left: 5px;
     padding-top: 0;
 }
-
-
-
-
+html body form table#dataTable.readers thead tr th table,
+html body form table#dataTable.readers thead tr th,
+html body form table#dataTable.readers thead tr th table.subtable tbody tr th
+{
+    padding: 1px 1px 1px 1px;
+ }

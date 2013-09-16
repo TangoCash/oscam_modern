@@ -43,7 +43,7 @@
     </script>
 </DIV>
 <DIV CLASS="newuser" ID="newuser">
-    <TABLE CLASS="users" style="width:99%;">
+    <TABLE CLASS="users">
         <TR>
             <FORM action="user_edit.html" method="get">
                 <th>New User:&nbsp;&nbsp;&nbsp;
@@ -55,7 +55,7 @@
     </TABLE>
 </DIV>
 <DIV id="searchTable">
-    <TABLE CLASS="users" style="width:99%;">
+    <TABLE CLASS="users">
         <TR>
             <th>Search:
                 <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()" />
@@ -65,6 +65,12 @@
 </DIV>
 <TABLE CLASS="users" id="dataTable">
     <thead>
+        <tr>
+            <th colspan="8">&nbsp;</th>
+            <th colspan="7">EMM</th>
+            <th colspan="2">ECM</th>
+            <th colspan="6">&nbsp;</th>
+        </tr>
         <TR>
             <TH>&nbsp;</TH>
             <TH>Label</TH>
@@ -73,8 +79,7 @@
             <TH>Address</TH>
             <TH>Protocol</TH>
             <TH>Last Channel</TH>
-            <TH>On Channel</TH>
-            <TH>Idle</TH>
+            <TH>On&nbsp;Channel<br>(Idle)</TH>
             <TH TITLE="Delivered ECM with status OK">OK</TH>
             <TH TITLE="Delivered ECM with status not OK">NOK</TH>
             <TH TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
@@ -83,12 +88,11 @@
             <TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
             <TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
             <TH TITLE="Last ECM Time">LTIME</TH>
-            <TH TITLE="EMM delivered">EMM
-                <br>OK
-                <br>NOK</TH>
-            <TH TITLE="CW rate since Server start (CW rate current Session)">CW Rate</TH>
-            <TH TITLE="Different services during last 60s">CASC USERS</TH>
-            <TH TITLE="Expiration date of account">Exp. Date</TH>
+            <TH TITLE="EMM delivered OK">OK</TH>
+            <TH TITLE="EMM delivered NOK">NOK</TH>
+            <TH TITLE="CW rate since Server start (CW rate current Session)">CW<br>Rate</TH>
+            <TH TITLE="Different services during last 60s">CASC<br>USERS</TH>
+            <TH TITLE="Expiration date of account">Exp.<br>Date</TH>
             <TH colspan="3">&nbsp;</TH>
         </TR>
         <thead>

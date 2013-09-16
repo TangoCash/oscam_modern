@@ -26,6 +26,7 @@
 #include "oscam-string.h"
 #include "oscam-time.h"
 #include "oscam-work.h"
+#include <sys/sysinfo.h>
 
 extern struct s_cardreader cardreaders[CS_MAX_MOD];
 extern char cs_confdir[];
@@ -3075,7 +3076,10 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	int32_t lsec, isec, chsec, con, cau = 0;
 	time_t now = time((time_t*)0);
 	struct tm lt;
-
+	struct sysinfo info;
+	if(!sysinfo(&info)){
+		tpl_printf(vars, TPLADD, "MEM_INFO","<tr><th class=\"centered\">Memory Info</th><td colspan=\"5\"><B>Total RAM:</B>&nbsp;&nbsp;%lluMB&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<B>Free RAM:</B>&nbsp;&nbsp;%lluMB&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<B>Used RAM:</B>&nbsp;&nbsp;%lluMB&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<B>Buffer RAM:</B>&nbsp;&nbsp;%lluMB</td></tr>",((unsigned long long)info.totalram  * info.mem_unit / (1024*1024)),((unsigned long long)info.freeram * info.mem_unit / (1024*1024)),(((unsigned long long)info.totalram * info.mem_unit / (1024*1024)) - ((unsigned long long)info.freeram * info.mem_unit / (1024*1024))),((unsigned long long)info.bufferram * info.mem_unit / (1024*1024)));
+	}
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
 	tpl_printf(vars, TPLADD, "SVNREV", "8917");

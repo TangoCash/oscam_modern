@@ -40,7 +40,7 @@
 </DIV>
 <DIV CLASS="newuser" ID="newreader">
     <form action="readerconfig.html" method="get">
-        <TABLE CLASS="users" style="width:99%;">
+        <TABLE CLASS="users">
             <TR>
                 <th>
                     NEW&nbsp;Reader&nbsp;Label:
@@ -53,7 +53,7 @@
     </form>
 </DIV>
 <DIV id="searchTable">
-    <TABLE CLASS="users" style="width:99%;">
+    <TABLE CLASS="users">
         <TR>
             <th>Search:
                 <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="countDown()" />
@@ -64,27 +64,75 @@
 <form action="readerconfig.html" method="get">
     <TABLE CLASS="users" id="dataTable">
         <thead>
+            <tr>
+                <th colspan="4"></th>
+                <th colspan="16">EMM</th>
+                <th colspan="4">ECM</th>
+                <th colspan="7"></th>
+            </tr>
             <TR>
                 <TH>On/Off</TH>
                 <TH>Reader</TH>
                 <TH>Protocol</TH>
                 <TH>Groups</TH>
-                <TH>EMM
-                    <br>error</TH>
-                <TH>EMM
-                    <br>written</TH>
-                <TH>EMM
-                    <br>skipped</TH>
-                <TH>EMM
-                    <br>blocked</TH>
-                <TH>ECMs
-                    <br>OK</TH>
-                <TH>ECMs
-                    <br>NOK</TH>
-                <TH>ECMs
-                    <br>Filtered</TH>
-                <TH>LB
-                    <br>Weight</TH>
+                <TH colspan="4">
+                    <table class="subtable">
+                        <tr>error</tr>
+                        <th>UK</th>
+                        <th>G</th>
+                        <th>S</th>
+                        <th>UQ</th>
+                    </table>
+                </TH>
+                <TH colspan="4">
+                    <table class="subtable">
+                    <thead>
+                        <tr><th colspan="4">written</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th>UK</th>
+                            <th>G</th>
+                            <th>S</th>
+                            <th>UQ</th>
+                        </tr>
+                    </tbody>
+                    </table>
+                </TH>
+                <TH colspan="4">
+                    <table class="subtable">
+                        <tr>skipped</tr>
+                        <tr>
+                            <th>UK</th>
+                            <th>G</th>
+                            <th>S</th>
+                            <th>UQ</th>
+                        </tr>
+                    </table>
+                </TH>
+                <TH colspan="4">
+                    <table class="subtable">
+                        <tr>blocked</tr>
+                        <tr>
+                            <th>UK</th>
+                            <th>G</th>
+                            <th>S</th>
+                            <th>UQ</th>
+                        </tr>
+                    </table>
+                </TH>
+                <TH>OK</TH>
+                <TH>NOK</TH>
+                <TH colspan="2">
+                    <table class="subtable">
+                        <tr>Filtered</tr>
+                        <tr>
+                            <th>Head</th>
+                            <th>Len</th>
+                        </tr>
+                    </table>
+                </TH>
+                <TH>LB<br>Weight</TH>
                 <TH COLSPAN="6">Action</TH>
             </TR>
         </thead>
