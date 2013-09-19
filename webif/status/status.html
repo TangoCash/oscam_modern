@@ -1,37 +1,34 @@
 ##TPLHEADER## ##TPLMENU## ##OSCAMLOGO##
-<DIV class="subnav subnav-fixed">
+<div class="subnav subnav-fixed">
     <ul id="sub">
-        <li class="configmenu"><a href="http://www.streamboard.tv/oscam/timeline"><b>OSCAM r8917</b></a>
-        </li>
-        <li class="configmenu"><a href="status.html">Refresh</a>
-        </li>
-        <li class="configmenu"><a href="status.html#oscamstats">Summary</a>
-        </li>
+        <li class="configmenu"><a href="http://www.streamboard.tv/oscam/timeline"><b>OSCAM r8917</b></a></li>
+        <li class="configmenu"><a href="status.html">Refresh</a></li>
+        <li class="configmenu"><a href="status.html#oscamstats">Summary</a></li>
     </ul>
-</DIV>
+</div>
 <div class="statusrefresh"><SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
     <script language="JavaScript">var countDownInterval=##REFRESHTIME##;var countDownTime=countDownInterval+1;SiteVar='./status.html';if(document.all || document.getElementById)startit();else window.document.onload=startit;</script>
 </div>
-<div>
-    <TABLE WIDTH="100%" class="status">
-        <TR>
-            <TH class="statuscol0">hide</TH>
-            <TH class="statuscol1">reset</TH>
-            <TH class="statuscol4">Label</TH>
-            <TH class="statuscol5">AU</TH>
-            <TH class="statuscol7">Address</TH>
-            <TH class="statuscol8">Port</TH>
-            <TH class="statuscol9">Protocol</TH>
-            <TH class="statuscol12">CAID:SRVID</TH>
-            <TH class="statuscol13">Last Channel</TH>
-            <TH class="statuscol14">LB Value/ Reader</TH>
-            <TH class="statuscol10">Login
-                <br>Online / Idle</TH>
-            <TH class="statuscol16">Status</TH>
-        </TR>
+<div id="statustable">
+    <table width="100%" class="users">
+        <tr>
+            <th class="statuscol0">hide</th>
+            <th class="statuscol1">reset</th>
+            <th class="statuscol4">Label</th>
+            <th class="statuscol5">AU</th>
+            <th class="statuscol7">Address</th>
+            <th class="statuscol8">Port</th>
+            <th class="statuscol9">Protocol</th>
+            <th class="statuscol12">CAID:SRVID</th>
+            <th class="statuscol13">Last Channel</th>
+            <th class="statuscol14">LB Value/ Reader</th>
+            <th id="hideeeee" class="statuscol10">Login
+                <br>Online / Idle</th>
+            <th class="statuscol16">Status</th>
+        </tr>
         ##READERHEADLINE## ##READERSTATUS## ##PROXYHEADLINE## ##PROXYSTATUS##
-        <TR>
-            <TD colspan="14" class="select">
+        <tr>
+            <td colspan="14" class="select">
                 <form action="status.html" method="get">
                     <select name="hideidle">
                         <option value="0" ##HIDEIDLECLIENTSSELECTED0##>Show idle clients</option>
@@ -40,17 +37,17 @@
                     </select>&nbsp;&nbsp;&nbsp;
                     <input type="submit" value="Update">
                 </form>
-            </TD>
-        </TR>
+            </td>
+        </tr>
         ##CLIENTHEADLINE## ##CLIENTSTATUS##
-    </TABLE>
+    </table>
     <br>
-    <TABLE WIDTH="100%" class="status">
+    <table WIDTH="100%" class="users" id="logwindow">
         <tr>
-            <td CLASS="subheadline">Logwindow</td>
+            <td class="subheadline">Logwindow</td>
         </tr>
         <tr>
-            <td CLASS="debugline">##SDEBUG##</td>
+            <td class="debugline">##SDEBUG##</td>
         </tr>
         <tr>
             <td class="log">
@@ -60,10 +57,10 @@
             </td>
         </tr>
     </table>
-</DIV>
+</div>
 <BR>
 <div>
-    <table CLASS="user_totals" style="width:910px;">
+    <table class="user_totals">
         <tr>
             <th colspan="6"><a name="oscamstats">Oscam Stats</a>
             </th>
@@ -94,7 +91,7 @@
             <td class="centered">##TOTAL_CWIGN## (##REL_CWIGN##%)</td>
             <td rowspan="3" class="centered">
                 <A HREF="status.html?action=resetserverstats" TITLE="reset statistics for server">
-                    <IMG CLASS="icon" SRC="image?i=ICRES" ALT="Reset Server Stats">
+                    <IMG class="icon" SRC="image?i=ICRES" ALT="Reset Server Stats">
                 </A>
             </td>
         </tr>

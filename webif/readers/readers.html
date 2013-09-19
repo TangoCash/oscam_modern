@@ -15,9 +15,11 @@
         </LI>
     </UL>
 </DIV>
+
 <DIV CLASS="statusrefresh"><SPAN id="timer">Refreshing has<br>been stopped!</SPAN>
     <script language="JavaScript">var countDownInterval=##REFRESHTIME##;var countDownTime=countDownInterval+1;var SiteVar='./readers.html';if(document.all || document.getElementById)startit();else window.document.onload=startit;</script>
 </DIV>
+
 <DIV CLASS="newuser" ID="newreader">
     <form action="readerconfig.html" method="get">
         <TABLE CLASS="users">
@@ -32,6 +34,7 @@
         </TABLE>
     </form>
 </DIV>
+
 <DIV id="searchTable">
     <TABLE CLASS="users">
         <TR>
@@ -41,13 +44,14 @@
         </TR>
     </TABLE>
 </DIV>
+
 <form action="readerconfig.html" method="get">
     <TABLE CLASS="users" id="dataTable">
         <thead>
             <tr>
                 <th colspan="4"></th>
-                <th colspan="16">EMM</th>
-                <th colspan="4">ECM</th>
+                <th id="hideee" colspan="16">EMM</th>
+                <th id="hideeeee" colspan="4">ECM</th>
                 <th colspan="7"></th>
             </tr>
             <TR>
@@ -55,8 +59,7 @@
                 <TH>Reader</TH>
                 <TH>Protocol</TH>
                 <TH>Groups</TH>
-
-                <TH colspan="4">
+                <TH id="hideee" colspan="4">
                     <table class="subtable">
                         <thead>
                             <tr>
@@ -71,7 +74,7 @@
                     </thead>
                     </table>
                 </TH>
-                <TH colspan="4">
+                <TH id="hideee" colspan="4">
                     <table class="subtable">
                         <thead>
                             <tr>
@@ -86,7 +89,7 @@
                         </thead>
                     </table>
                 </TH>
-                <TH colspan="4">
+                <TH id="hideee" colspan="4">
                     <table class="subtable">
                         <thead>
                             <tr>
@@ -101,7 +104,7 @@
                         </thead>
                     </table>
                 </TH>
-                <TH colspan="4">
+                <TH id="hideee" colspan="4">
                     <table class="subtable">
                         <thead>
                             <tr>
@@ -116,9 +119,9 @@
                         </thead>
                     </table>
                 </TH>
-                <TH>OK</TH>
-                <TH>NOK</TH>
-                <TH colspan="2">
+                <TH id="hideeeee" >OK</TH>
+                <TH id="hideeeee" >NOK</TH>
+                <TH id="hideeeee" colspan="2">
                     <table class="subtable">
                         <thead>
                         <tr>
@@ -131,7 +134,7 @@
                         </thead>
                     </table>
                 </TH>
-                <TH>LB<br>Weight</TH>
+                <TH id="hideeeee">LB<br>Weight</TH>
                 <TH COLSPAN="6">Action</TH>
             </TR>
         </thead>

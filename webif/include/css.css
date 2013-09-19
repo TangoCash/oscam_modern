@@ -5,6 +5,7 @@ html, div, table, tbody, tfoot, thead, tr, th, td {
 }
 body {
     background-color:#525252;
+    min-width: 420px;
     color:#fff;
     font-family:Arial;
     font-size:12px;
@@ -12,7 +13,7 @@ body {
     margin-left: 0;
     margin-right: 0;
     margin:0;
-    margin-top:90px
+    margin-top:80px
 }
 p {
     color:white
@@ -58,6 +59,7 @@ hr {
     margin-left: auto;
     margin-right: auto;
     margin-top: 0;
+    margin-bottom: 40px;
     width: 900px;
     z-index:1051;
     font-weight:bold;
@@ -79,7 +81,7 @@ hr {
     text-decoration:none;
 }
 #menu li.menu:hover, #menu li.menu:hover a, #menu li.menu:hover a:hover, #menu li.menu_selected a, #menu li.menu_selected:hover a, #menu li.menu_selected a:hover {
-    padding-top: 10px;
+    padding-top: 11px;
     padding-bottom: 11px;
     background-color:#FFF;
     color: #000;
@@ -95,11 +97,12 @@ div.mlogo, div.mlogo:hover {
     margin:0;
     position:fixed;
     top: 0px;
+    height:40px;
     text-decoration:none;
     z-index:1060;
 }
 div img.mlogo, div img.mlogo:hover, div a img.mlogo, div a img.mlogo:hover {
-    top:38px;
+    top:40px;
     height:40px;
     z-index:1060;
 }
@@ -150,7 +153,7 @@ html body div.oscamlogo {
     font-size:12px
 }
 #sub li.configmenu_selected>a:link, #sub li.configmenu_selected>a:visited, #sub li.configmenu_selected>a:active {
-    padding:11px 5px;
+    padding:10px 5px;
     font-weight:bold;
     background-color:#e4e4e4
 }
@@ -179,7 +182,7 @@ html body div.oscamlogo {
 }
 #sub a {
     text-decoration:none;
-    padding:11px 7px;
+    padding:10px 7px;
     display:block
 }
 #sub li:hover>a {
@@ -239,11 +242,11 @@ html body div.oscamlogo {
     margin-top:5px
 }
 #sub li:last-child>a {
-    margin-bottom:5px
+    margin-bottom:0px
 }
 .subnav {
     width:100%;
-    height:38px;
+    height:35px;
     z-index:1051
 }
 .subnav-fixed {
@@ -251,16 +254,10 @@ html body div.oscamlogo {
     top:40px;
     left:0;
     right:0;
-    border-width:0 0 1px;
-    -webkit-border-radius:0;
-    -moz-border-radius:0;
-    border-radius:0;
-    -webkit-box-shadow:inset 0 1px 0 #fff, 0 1px 5px rgba(0, 0, 0, .1);
-    -moz-box-shadow:inset 0 1px 0 #fff, 0 1px 5px rgba(0, 0, 0, .1);
-    box-shadow:inset 0 1px 0 #fff, 0 1px 5px rgba(0, 0, 0, .1)
+    height: 35px;
 }
 table {
-    top:90px;
+    top:80px;
     border-spacing:1px;
     margin-left:auto;
     margin-right:auto
@@ -273,21 +270,11 @@ table tr th {
     color:#fff;
     font-weight:bold, border:1px
 }
-table.status {
-    border-spacing:1px;
-    border:0;
-    padding:0;
-    background-color:#95a4ab;
-    border:3px solid #0f1517;
-    empty-cells:show;
-    width:99%
-}
 table.config tr:hover td, table.configreader tr:hover td {
     background-color:#21aadb;
     color:#000
 }
 table.config {
-    border:3px solid #0f1517;
     width:750px;
     background-color:#95a4ab;
     text-align:center
@@ -333,12 +320,12 @@ table.invisible tr td:first-child, table.invisible td {
     font-size:12px
 }
 table.configmenu {
-    line-height:16px
+    line-height:40px
 }
 table.filter {
     color:#000;
     position:fixed;
-    top:45px;
+    top:40px;
     left:10;
     margin:auto;
     z-index:1030;
@@ -350,7 +337,7 @@ table.filter td {
 }
 table.users {
     width:100%;
-    padding-bottom: 2px;
+    padding-bottom: 1px;
 }
 table.users th {
     cursor: pointer;
@@ -360,56 +347,55 @@ table.readers {
     background-color:#95a4ab
 }
 select {
-    width:200px;
-    border:1px
+    width:210px;
+    border: .5px solid #000;
 }
+#ed{
+    width:100px;
+}
+
 td.select {
-    border:1px;
+    border:.5px solid #000;
     text-align:center;
     vertical-align:middle;
     background-color:#525252
 }
 input[type="submit"] {
     text-decoration:none;
+    border:0;
+    padding: 2px;
+    border-radius: 5px;
     text-align:center;
-    padding:2px 10px;
-    border:solid 1px #000000;
-    -webkit-border-radius:4px;
-    -moz-border-radius:4px;
-    border-radius: 4px;
     font:11px Arial, Helvetica, sans-serif;
     font-weight:bold;
     color:#ffffff;
     background-color:#ff0000;
 }
 input[type="submit"]:hover {
-    padding:2px 10px;
-    border:solid 1px #000000;
-    -webkit-border-radius:4px;
-    -moz-border-radius:4px;
-    border-radius: 4px;
     font:11px Arial, Helvetica, sans-serif;
+    border:0;
+    padding: 2px;
+    border-radius: 5px;
     font-weight:bold;
     color:#ffffff;
     background-color:#ff0000;
 }
 input[type="submit"]:active {
-    padding:2px 10px;
-    border:solid 1px #000000;
-    -webkit-border-radius:4px;
-    -moz-border-radius:4px;
-    border-radius: 4px;
     font:11px Arial, Helvetica, sans-serif;
+    border:0;
+    border-radius: 5px;
+    padding: 2px;
     font-weight:bold;
     color:#ffffff;
     background-color:#ff0000;
 }
 input[type="text"] {
-    border:1px solid #ddd;
-    border: 1px solid;
+    border: .5px solid #000;
+    padding:2px;
 }
 input[type="text"]:hover, input[type="text"]:active {
-    border:1px solid #000;
+    border:.5px solid #000;
+    padding:2px;
     cursor:text
 }
 th {
@@ -495,7 +481,8 @@ td.subheadline {
 }
 td.logline {
     height:10px;
-    font-family:Arial;
+    line-height: 1.2;
+    font-family:arial, helvetica, sans-serif;
     font-size:11px;
     padding:5px;
     color:#fff;
@@ -603,22 +590,19 @@ tr.s:hover td, tr.s:hover td span, tr.s:hover td span a, tr.h:hover td, tr.h:hov
     color:#000
 }
 div.log {
-    background-color:#262626;
-    border-style:groove;
+    background-color:#151515;
     color:#FFF;
     padding:5px;
-    font-family:"courier", monospace;
     font-size:12px;
-    word-wrap:break-word;
     text-align:left;
-    margin-top:-30px;
     margin:0 auto;
-    width:99%;
-    line-height:1.1;
+    line-height:1.2;
     -webkit-border-radius:5px;
     -moz-border-radius:5px;
     border-radius:5px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 -1px 0 rgba(0, 0, 0, 0.1) inset
+}
+#logwindow {
+    margin-top: 0;
 }
 td.log {
     margin:0;
@@ -681,14 +665,21 @@ textarea.editor {
 a.tooltip1 {
     color:#ec373a
 }
-a.tooltip span, table.status a.tooltip1 span {
+a.tooltip span,
+table.users a.tooltip1 span {
     display:none;
     z-index:99
 }
-table.status td.statuscol16 a.tooltip:hover, table.status td.statuscol16 a.tooltip1:hover, table.status td.statuscol5 a.tooltip:hover, table.status td.statuscol5 a.tooltip1:hover {
+table.users td.statuscol16 a.tooltip:hover,
+table.users td.statuscol16 a.tooltip1:hover,
+table.users td.statuscol5  a.tooltip:hover,
+table.users td.statuscol5  a.tooltip1:hover{
     color:#ff6400
 }
-table.status td.statuscol5 a.tooltip:hover span, table.status td.statuscol5 a.tooltip1:hover span, table.status td.statuscol16 a.tooltip:hover span, table.status td.statuscol16 a.tooltip1:hover span {
+table.users td.statuscol5 a.tooltip:hover span,
+table.users td.statuscol5 a.tooltip1:hover span,
+table.users td.statuscol16 a.tooltip:hover span,
+table.users td.statuscol16 a.tooltip1:hover span {
     display:block;
     position:absolute;
     top:0;
@@ -704,7 +695,10 @@ table.status td.statuscol5 a.tooltip:hover span, table.status td.statuscol5 a.to
     text-shadow:0 -1px 0 rgba(0, 0, 0, .25);
     background:inherit
 }
-table.status td.statuscol16 a.tooltip, table.status td.statuscol16 a.tooltip1, table.status td.statuscol5 a.tooltip {
+table.users td.statuscol16 a.tooltip,
+table.users td.statuscol16 a.tooltip1,
+table.users td.statuscol5 a.tooltip,
+table.users td.statuscol5 a.tooltip1 {
     background-color:#464646;
     padding:1px 4px 2px;
     -webkit-border-radius:2px;
@@ -782,12 +776,12 @@ text.graph_error {
     fill:red
 }
 text.graph_grid_txt {
-    fill:gray;
+    fill:white;
     text-anchor:end;
     style:font-size:12px
 }
 path.graph_grid {
-    stroke:gray;
+    stroke:white;
     stroke-opacity:0.5
 }
 span.e_valid {
@@ -859,7 +853,7 @@ span.global_conf {
     font-weight:bold;
     padding:5px;
     font-size:11px;
-    word-wrap:break-word;
+    aword-wrap:break-word;
     text-align:left;
     margin-top:-30px;
     margin:0 auto;
@@ -872,14 +866,14 @@ span.global_conf {
 a.debugl:link, a.debugl:visited {
     text-decoration:none;
     padding:1px 9px 2px;
-    border-radius:10px;
+    border-radius:5px;
     color:#fff;
     white-space:nowrap;
     background:#4096ee
 }
 a.debugl:hover {
     text-decoration:none;
-    border-radius:10px;
+    border-radius:5px;
     font-weight:bold;
     color:#fff;
     white-space:nowrap;
@@ -895,9 +889,6 @@ a.debugls:link, a.debugls:visited {
 }
 div.newuser {
     display:none
-}
-td.newuser {
-    border:3px solid #0f1517
 }
 div.footer {
     clear:both;
@@ -922,10 +913,10 @@ div.footer a:hover {
     color:#fff1c3
 }
 .mandatory {
-    background-color: #F2D8BD;
+    background-color: #FD8;
 }
 .mandatory > a:link, .mandatory > a:visited, .mandatory > a:active {
-    color: #FFFFFF;
+    color: #000;
 }
 html body div#newreader.newuser table.users tbody tr th input,
 html body div#newreader.newuser table.users tbody tr th select{
@@ -942,15 +933,56 @@ html body form table#dataTable.readers thead tr th table.subtable tbody tr th
     padding: 1px 1px 1px 1px;
  }
 html body form table#dataTable.users thead tr th{
-    padding: 1px 1px 1px 1px;    
+    padding: 1px 1px 1px 1px;
 }
 
-@media only screen and (max-width: 919px) {
+.debugline{
+    line-height: 20px;
+}
+.user_totals{
+    width: 800px;
+}
+@media only screen and (max-width: 1039px) {
     tr th#hide,
-    tr.online td#hide,
-    tr.offline td#hide,
-    tr.disabled td#hide {
+    td#hide{
+        display: none;
+    }
+}
+@media only screen and (max-width: 927px) {
+    tr th#hideee,
+    td#hideee{
         display: none;
     }
  }
- 
+@media only screen and (max-width: 872px) {
+    tr th#hideeee,
+    td#hideeee,
+    span#hideeee.idlesec_normal,
+    td#hideeee.centered{
+        display: none;
+    }
+}
+
+@media only screen and (max-width: 800px) {
+    tr th#hidee,
+    td#hidee{
+        display: none;
+    }
+}
+@media only screen and (max-width: 758px) {
+    #timer,
+    li#hideeeee.menu,
+    td.statuscol10,
+    td#hideeeee.centered,
+    tr th#hideeeee,
+    td#hideeeee {
+        display: none;
+    }
+}
+@media only screen and (max-width: 420px) {
+    li#hideeeee.menu,
+    tr th#hideeeeee,
+    td#hideeeeee{
+        display: none;
+    }
+}
