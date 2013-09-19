@@ -2182,6 +2182,9 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 
 	//Sleepsend
 	tpl_printf(vars, TPLADD, "SLEEPSEND", "%u", account->c35_sleepsend);
+        
+        //User Max Idle
+        tpl_printf(vars, TPLADD, "UMAXIDLE", "%d", account->umaxidle);
 
 	//EMM Reassembly selector
 	if(!apicall) {
