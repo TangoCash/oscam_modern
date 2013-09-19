@@ -968,6 +968,9 @@ html body form table#dataTable.users thead tr th{
     td#hidee{
         display: none;
     }
+    .user_totals{
+        width: 100%;
+    }
 }
 @media only screen and (max-width: 758px) {
     #timer,
