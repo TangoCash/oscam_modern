@@ -931,7 +931,16 @@ html body form table#dataTable.readers thead tr th,
 html body form table#dataTable.readers thead tr th table.subtable tbody tr th
 {
     padding: 1px 1px 1px 1px;
- }
+}
+.subtable{
+        width: 100%;
+}
+.subtable th#eins, .subtable th#zwei{
+    text-align: left;
+}
+.subtable th#drei, .subtable th#vier{
+    text-align: right;
+}
 html body form table#dataTable.users thead tr th{
     padding: 1px 1px 1px 1px;
 }
