@@ -815,11 +815,11 @@ span.global_conf {
 }
 .statusrefresh {
     font-size:12px;
-    color: #000;
+    color: #fff;
     float:right;
     position:fixed;
     text-align:left;
-    top:45px;
+    top:5px;
     right: 10px;
     z-index:1051
 }
@@ -953,6 +953,10 @@ html body form table#dataTable.users thead tr th{
     td#hideee{
         display: none;
     }
+    .statusrefresh{
+    top:45px;
+    color: #000;
+    }
  }
 @media only screen and (max-width: 872px) {
     tr th#hideeee,
@@ -962,7 +966,6 @@ html body form table#dataTable.users thead tr th{
         display: none;
     }
 }
-
 @media only screen and (max-width: 800px) {
     tr th#hidee,
     td#hidee{
@@ -973,7 +976,6 @@ html body form table#dataTable.users thead tr th{
     }
 }
 @media only screen and (max-width: 758px) {
-    #timer,
     li#hideeeee.menu,
     td.statuscol10,
     td#hideeeee.centered,
@@ -983,6 +985,7 @@ html body form table#dataTable.users thead tr th{
     }
 }
 @media only screen and (max-width: 420px) {
+    #timer,
     li#hideeeee.menu,
     tr th#hideeeeee,
     td#hideeeeee{
