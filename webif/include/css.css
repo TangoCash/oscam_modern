@@ -31,17 +31,15 @@ hr {color:white;}
 #nav       {background-color:#000}
 #menu      {list-style-type:none;list-style-type: none;margin-left: auto;margin-right: auto;margin-top: 0;margin-bottom: 40px;width: 900px;z-index:1051;font-weight:bold;font-size: 16px;font-family:arial, helvetica, sans-serif;}
 #menu li   {padding-top: 10px;float:left;display:block;position:relative;border:none;}
-#menu li a {padding-left:6px;padding-right:6px;padding-top: 10px;text-decoration:none;}
+#menu li a {padding-left:6px;padding-right:6px;padding-top: 10px;padding-bottom: 12px;text-decoration:none;}
 
 ul#menu li.menu a         {color:#FFF;}
-li.menu:hover a:hover,
-li.menu_selected a        {padding-top: 8px;padding-bottom: 11px;}
 li.menu:hover a:hover,
 li.menu_selected a        {background-color:#EEE;color: #000;}
 li.menu_selected a,
 li.menu:hover a:hover,
 li.menu_selected:hover a,
-li.menu_selected a:hover  {padding-bottom: 11px;}
+li.menu_selected a:hover  {padding-bottom: 12px;}
 ul#menu li.menu a:hover,
 li.menu:hover a:hover,
 li.menu_selected:hover a,
@@ -50,11 +48,11 @@ li.menu_selected a:hover  { color: #FF0;background-color: #888;}
 li.configmenu,
 li.configmenu a:hover,
 li.configmenu_selected,
-li.configmenu_selected a       {padding-top: 6px;padding-bottom: 8px;}
+li.configmenu_selected a       {height: 10px;margin-top: 2px;padding-top: 6px;padding-bottom: 10px;}
+
 li.configmenu a,
 li.configmenu_selected a       {padding-left: 6px;padding-right: 6px;text-decoration: none;}
-ul#sub li.configmenu,
-ul#sub li.configmenu_selected  {margin-top: 2px;}
+
 li.configmenu a                {color: #000;}
 li.configmenu a:hover          {background-color: #888;color: #FF0;}
 li.configmenu_selected a       {background-color: #888;color: #fff;}
@@ -410,7 +408,7 @@ div.log {
     background-color:#151515;
     color:#FFF;
     padding:5px;
-    font-size:12px;
+    font-size:10px;
     text-align:left;
     margin:0 auto;
     line-height:1.1;
