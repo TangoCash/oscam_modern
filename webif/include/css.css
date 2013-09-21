@@ -1,99 +1,78 @@
-    margin-left: 0;
-html, div, table, tbody, tfoot, thead, tr, th, td {
-    margin:0;
-    padding:0;
-    border:0
-}
-body {
-    background-color:#525252;
-    min-width: 420px;
-    color:#fff;
-    font-family:Arial;
-    font-size:12px;
-    text-align:center;
-    margin-right: 0;
-    margin:0;
-    margin-top:80px
-}
-p {
-    color:white
-}
-.oscamlogo, img {
-    left:0px;
-    right:0px;
-    margin:auto
-}
-p.blinking {
-    font-weight:bold;
-    font-size:large;
-    color:red
-}
-h2 {
-    color:#aaaaaa;
-    font-size:32px;
-    line-height:32px;
-    margin-top:0px;
-    margin-bottom:0px
-}
-h4 {
-    color:#aaaaaa;
-    font-size:18px;
-    line-height:9px
-}
-hr {
-    height:1px;
-    border-width:0;
-    color:white;
-}
-#nav {
-    width:100%;
-    height:40px;
-    position:fixed;
-    top:0px;
-    z-index:1050;
-    background-color:#000
-}
-#menu {
-    list-style-type:none;
-    list-style-type: none;
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: 0;
-    margin-bottom: 40px;
-    width: 900px;
-    z-index:1051;
-    font-weight:bold;
-    font-size: 16px;
-    font-family:arial, helvetica, sans-serif;
-}
-#menu li {
-    padding-top: 10px;
-    float:left;
-    display:block;
-    position:relative;
-    border:none;
-}
-#menu li a {
-    color:#ffffff;
-    padding-left:6px;
-    padding-right:6px;
-    padding-top: 10px;
-    text-decoration:none;
-}
-#menu li.menu:hover, #menu li.menu:hover a, #menu li.menu:hover a:hover, #menu li.menu_selected a, #menu li.menu_selected:hover a, #menu li.menu_selected a:hover {
-    padding-top: 11px;
-    padding-bottom: 11px;
-    background-color:#FFF;
-    color: #000;
-}
-#menu li.menu:hover, #menu li.menu:hover a, #menu li.menu:hover a:hover, #menu li.menu_selected:hover a, #menu li.menu_selected a:hover {
-    background-color:#EEE;
-    color:#000;
-}
-html body div a.log {
-    display: block;
-}
-div.mlogo, div.mlogo:hover {
+html,
+div,
+table,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td {margin:0;padding:0;border:0}
+
+body {min-width:420px;color:#fff;font-family:Arial;font-size:12px;text-align:center;margin-left:0;margin-right:0;margin:0;margin-top:80px;}
+body {background-color:#888;}
+
+p    {color:white}
+p.blinking {font-weight:bold;font-size:large;}
+p.blinking {color:red}
+
+.oscamlogo,
+img {left:0px;right:0px;margin:auto;}
+
+h2 {font-size:32px;line-height:32px;margin-top:0px;margin-bottom:0px;}
+h2 {color:#aaaaaa;}
+
+h4 {font-size:18px;line-height:9px;}
+h4 {color:#aaaaaa;}
+
+hr {height:1px;border-width:0;}
+hr {color:white;}
+
+#nav       {width:100%;height:40px;position:fixed;top:0px;z-index:1050;}
+#nav       {background-color:#000}
+#menu      {list-style-type:none;list-style-type: none;margin-left: auto;margin-right: auto;margin-top: 0;margin-bottom: 40px;width: 900px;z-index:1051;font-weight:bold;font-size: 16px;font-family:arial, helvetica, sans-serif;}
+#menu li   {padding-top: 10px;float:left;display:block;position:relative;border:none;}
+#menu li a {padding-left:6px;padding-right:6px;padding-top: 10px;text-decoration:none;}
+
+ul#menu li.menu a         {color:#FFF;}
+li.menu:hover a:hover,
+li.menu_selected a        {padding-top: 8px;padding-bottom: 11px;}
+li.menu:hover a:hover,
+li.menu_selected a        {background-color:#EEE;color: #000;}
+li.menu_selected a,
+li.menu:hover a:hover,
+li.menu_selected:hover a,
+li.menu_selected a:hover  {padding-bottom: 11px;}
+ul#menu li.menu a:hover,
+li.menu:hover a:hover,
+li.menu_selected:hover a,
+li.menu_selected a:hover  { color: #FF0;background-color: #888;}
+
+li.configmenu,
+li.configmenu a:hover,
+li.configmenu_selected,
+li.configmenu_selected a       {padding-top: 6px;padding-bottom: 8px;}
+li.configmenu a,
+li.configmenu_selected a       {padding-left: 6px;padding-right: 6px;text-decoration: none;}
+ul#sub li.configmenu,
+ul#sub li.configmenu_selected  {margin-top: 2px;}
+li.configmenu a                {color: #000;}
+li.configmenu a:hover          {background-color: #888;color: #FF0;}
+li.configmenu_selected a       {background-color: #888;color: #fff;}
+li.configmenu_selected a:hover {color: #FF0;}
+
+.subnav       {width:100%;z-index:1055;}
+.subnav       {background-color: #EEE;}
+.subnav-fixed {position:fixed;top:40px;left:0;right:0;}
+
+#sub    {font-family:arial, helvetica, sans-serif;font-weight: bold;display: table;list-style-type: none;margin-bottom: 0;margin-left: auto;margin-right: auto;margin-top: 0;padding-bottom: 0;padding-left: 0;padding-right: 0;padding-top: 0;}
+#sub    {background-color: #EEE;}
+#sub li {float:left;position:relative;list-style:none;}
+#sub ul {display:none;margin:0;padding:0;position:absolute;top:40px;right:0;z-index:1050;}
+#sub ul {background-color:#fff;}
+
+div a.log {display: block;}
+div.mlogo,
+div.mlogo:hover {
     margin:0;
     position:fixed;
     top: 0px;
@@ -101,170 +80,18 @@ div.mlogo, div.mlogo:hover {
     text-decoration:none;
     z-index:1060;
 }
-div img.mlogo, div img.mlogo:hover, div a img.mlogo, div a img.mlogo:hover {
-    top:40px;
-    height:40px;
-    z-index:1060;
-}
-div a img.oscamlogo, div a img.oscamlogo:hover {
-    position:absolute;
-    top:80px;
-    padding:2px;
-}
-html body div.oscamlogo {
-    margin-bottom: 40px;
-    padding-bottom: 2px;
-}
 
-#sub a {
-    color:#2e2e2e;
-    border-left:1px solid #e0e0e0;
-    border-right:1px solid #fff
-}
-#sub li:hover>a {
-    color:#0098fc
-}
-#sub li.configmenu_selected>a:link, #sub li.configmenu_selected>a:visited, #sub li.configmenu_selected>a:active {
-    color:#0098fc
-}
-#sub ul li.configmenu_selected>a:link, #sub ul li.configmenu_selected>a:visited, #sub ul li.configmenu_selected>a:active {
-    color:#0098fc
-}
-#sub ul li>a:hover {
-    background-color:#0098fc
-}
-.subnav {
-    background-color:#eee;
-    background-repeat:repeat-x;
-    border-bottom:1px solid #aeaeae
-}
-#sub {
-    margin:0 auto 0 auto;
-    margin-left: auto;
-    margin-right: auto;
-    list-style-type:none;
-    display:table;
-    padding:0
-}
-#sub li {
-    float:left;
-    position:relative;
-    list-style:none;
-    font-size:12px
-}
-#sub li.configmenu_selected>a:link, #sub li.configmenu_selected>a:visited, #sub li.configmenu_selected>a:active {
-    padding:10px 5px;
-    font-weight:bold;
-    background-color:#e4e4e4
-}
-#sub li.configmenu_selected>a:hover {
-    background-color:#e4e4e4
-}
-#sub li:first-child>a, #sub li:first-child>a:hover {
-    border-left:0;
-}
-#sub li:last-child>a {
-    border-right:0
-}
-.subcaret {
-    display:inline-block;
-    width:0;
-    height:0;
-    vertical-align:top;
-    border-top:4px solid #606060;
-    border-right:4px solid transparent;
-    border-left:4px solid transparent;
-    content:""
-}
-.drop .subcaret {
-    margin-top:5px;
-    margin-left:7px
-}
-#sub a {
-    text-decoration:none;
-    padding:10px 7px;
-    display:block
-}
-#sub li:hover>a {
-    background-color:#ececec
-}
-#sub li:hover>ul {
-    display:block
-}
-#sub ul {
-    background-color:#fff;
-    display:none;
-    margin:0;
-    padding:0;
-    min-width:90px;
-    position:absolute;
-    top:33px;
-    right:0;
-    border:1px solid #ccc;
-    z-index:1050;
-    border-radius:.2em .2em 0 0;
-}
-#sub ul.right {
-    background-color:#fff;
-    display:none;
-    margin:0;
-    padding:0;
-    min-width:90px;
-    position:absolute;
-    top:33px;
-    left:0;
-    border:1px solid #ccc;
-    z-index:1050;
-    border-radius:.2em .2em .2em .2em
-}
-#sub ul li {
-    float:none;
-    line-height:70%;
-    margin:0;
-    padding:0
-}
-#sub ul li>a {
-    border:0
-}
-#sub ul li>a:hover {
-    color:#fff;
-    text-decoration:none
-}
-#sub ul li.configmenu_selected>a:link, #sub ul li.configmenu_selected>a:visited, #sub ul li.configmenu_selected>a:active {
-    padding:10.5px 5px;
-    font-weight:bold;
-    background-color:#e4e4e4
-}
-#sub ul li.configmenu_selected>a:hover {
-    background-color:#e4e4e4
-}
-#sub ul>li:first-child>a {
-    margin-top:5px
-}
-#sub li:last-child>a {
-    margin-bottom:0px
-}
-.subnav {
-    width:100%;
-    height:35px;
-    z-index:1051
-}
-.subnav-fixed {
-    position:fixed;
-    top:40px;
-    left:0;
-    right:0;
-    height: 35px;
-}
-table {
-    top:80px;
-    border-spacing:1px;
-    margin-left:auto;
-    margin-right:auto
-}
-table.menu {
-    border-spacing:0px
-}
+div img.mlogo,
+div img.mlogo:hover,
+div a img.mlogo,
+div a img.mlogo:hover     {top:40px;height:40px;z-index:1060;}
+div a img.oscamlogo,
+div a img.oscamlogo:hover {position:absolute;top:80px;padding:2px;}
+div.oscamlogo             {margin-bottom: 40px;padding-bottom: 2px;}
+
+table {top:80px;border-spacing:1px;margin-left:auto;margin-right:auto}
+table.menu {border-spacing:0px}
+
 table tr th {
     background-color:#006699;
     color:#fff;
