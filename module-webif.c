@@ -2306,9 +2306,10 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 					tpl_printf(vars, TPLADD, "PROTOICON",
 					"<img class=\"protoicon\" src=\"image?i=IC_%s_%s_%s\" alt=\"IC_%s (%s-%s)\" title=\"Protocol %s (%s-%s)\">",
 					proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
+					tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", cc->extended_mode ? cc->remote_oscam : "");
 				} else {
-					tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s_%s_%s\">%s (%s-%s)</SPAN>",
-					proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
+					tpl_printf(vars, TPLADD, "PROTOICON","%s (%s-%s)",proto, cc->remote_version, cc->remote_build);
+					tpl_printf(vars, TPLAD, "CLIENTPROTOTITLE","cccam extinfo: %s<br>missing icon: IC_%s_%s_%s", cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
 				}
 			} else {
 				tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
