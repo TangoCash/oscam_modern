@@ -690,11 +690,31 @@ span.e_expired {
     background-color:#fff3e7
 }
 span.span_notifier {
-    padding:1px 3px;
-    border-radius:10px;
-    color:#fff;
-    margin-left:2px;
-    background:#f00
+    background: radial-gradient( 1px -11px, circle, white 8%, red 26px );
+    background: -moz-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+    background: -ms-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+    background: -o-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+    background: -webkit-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+    background-color: red;
+    border: 2px solid white;
+    border-radius: 12px;
+    box-shadow: 1px 1px 1px black;
+    color: white;
+    font: bold 12px/9px Helvetica, Verdana, Tahoma;
+    height: 12px;
+    padding: 2px 3px 0 3px;
+    text-align: center;
+    min-width: 8px;
+    float: left;left: 0px;
+    right: 0px;
+    position: relative;
+    padding-right: 3px;
+    margin-right: 0px;
+    left: 75px;
+    top: -28px;
+    bottom: 0px;
+    z-index:1061;
+    
 }
 span.idlesec_normal {
     font-size:10px;
@@ -958,6 +978,7 @@ div#newreader.newuser form table.users tbody tr th select{
     }
 }
 @media only screen and (max-width: 420px) {
+    scale:0.5;
     #timer,
     li#hideeeee.menu,
     tr th#hideeeeee,
