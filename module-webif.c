@@ -2304,12 +2304,15 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 				snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s_%s", proto, cc->remote_version, cc->remote_build);
 				if (picon_exists(picon_name)) {
 					tpl_printf(vars, TPLADD, "PROTOICON",
-					"<img class=\"protoicon\" src=\"image?i=IC_%s_%s_%s\" alt=\"IC_%s (%s-%s)\" title=\"Protocol %s (%s-%s)\">",
-					proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build);
-					tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", cc->extended_mode ? cc->remote_oscam : "");
+					"<img class=\"protoicon\" src=\"image?i=IC_%s_%s_%s\" alt=\"IC_%s (%s-%s)\" title=\"Protocol %s (%s-%s) %s\">",
+					proto, cc->remote_version, cc->remote_build,
+					proto, cc->remote_version, cc->remote_build,
+					proto, cc->remote_version, cc->remote_build,
+					cc->extended_mode ? cc->remote_oscam : "");
 				} else {
 					tpl_printf(vars, TPLADD, "PROTOICON","%s (%s-%s)",proto, cc->remote_version, cc->remote_build);
-					tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE","cccam extinfo: %s missing icon: IC_%s_%s_%s", cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
+					tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE","cccam extinfo: %s missing icon: IC_%s_%s_%s",
+					cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
 				}
 			} else {
 				tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
