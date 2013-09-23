@@ -9,7 +9,18 @@ th,
 td {margin:0;padding:0;border:0}
 
 body {min-width:420px;color:#fff;font-family:Arial;font-size:12px;text-align:center;margin-left:0;margin-right:0;margin:0;margin-top:80px;}
-body {background-color:#888;}
+#body {background-color:#888;}
+body {background: #888888; /* Old browsers */
+/* IE9 SVG, needs conditional override of 'filter' to 'none' */
+background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSI2JSIgc3RvcC1jb2xvcj0iIzg4ODg4OCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjkwJSIgc3RvcC1jb2xvcj0iIzI5MjkyOSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgPC9saW5lYXJHcmFkaWVudD4KICA8cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSJ1cmwoI2dyYWQtdWNnZy1nZW5lcmF0ZWQpIiAvPgo8L3N2Zz4=);
+background: -moz-linear-gradient(top,  #888888 6%, #292929 90%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(6%,#888888), color-stop(90%,#292929)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top,  #888888 6%,#292929 90%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top,  #888888 6%,#292929 90%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top,  #888888 6%,#292929 90%); /* IE10+ */
+background: linear-gradient(to bottom,  #888888 6%,#292929 90%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#888888', endColorstr='#292929',GradientType=0 ); /* IE6-8 */
+;}
 
 p    {color:white}
 p.blinking {font-weight:bold;font-size:large;}
@@ -19,23 +30,48 @@ p.blinking {color:red}
 img {left:0px;right:0px;margin:auto;}
 
 h2 {font-size:32px;line-height:32px;margin-top:0px;margin-bottom:0px;}
-h2 {color:#aaaaaa;}
+h2 {color:#aaa;}
 
 h4 {font-size:18px;line-height:9px;}
-h4 {color:#aaaaaa;}
+h4 {color:#aaa;}
 
 hr {height:1px;border-width:0;}
 hr {color:white;}
 
-#nav       {width:100%;height:40px;position:fixed;top:0px;z-index:1050;}
-#nav       {background-color:#000}
-#menu      {list-style-type:none;list-style-type: none;margin-left: auto;margin-right: auto;margin-top: 0;margin-bottom: 40px;width: 900px;z-index:1051;font-weight:bold;font-size: 16px;font-family:arial, helvetica, sans-serif;}
-#menu li   {padding-top: 10px;float:left;display:block;position:relative;border:none;}
-#menu li a {padding-left:6px;padding-right:6px;padding-top: 10px;padding-bottom: 12px;text-decoration:none;}
+#nav       {width:100%;height:40px;position:fixed;top:0px;z-index:1060}
+#nav       {background-color:#135;
+            border-bottom-color: #eee;
+            border-bottom-width: 5px;
+            border-bottom-style: solid;}
+#menu{
+    list-style-type:none;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 0;
+    margin-bottom: 40px;
+    width: 900px;
+    z-index:1051;
+    font-weight:bold;
+    font-size: 16px;
+    font-family:arial, helvetica, sans-serif;
+}
+#menu li   {
+    padding-top: 12px;
+    float:left;
+    display:block;
+    position:relative;
+    border:none;
+}
+#menu li a {padding-left:6px;padding-right:6px;padding-top: 6px;padding-bottom: 14px;text-decoration:none;}
 
-ul#menu li.menu a         {color:#FFF;}
+ul#menu li.menu a         {color:#fff;}
 li.menu:hover a:hover,
-li.menu_selected a        {background-color:#EEE;color: #000;}
+li.menu_selected a{
+    background-color:#eee;
+    color: #000;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+}
 li.menu_selected a,
 li.menu:hover a:hover,
 li.menu_selected:hover a,
@@ -43,30 +79,60 @@ li.menu_selected a:hover  {padding-bottom: 12px;}
 ul#menu li.menu a:hover,
 li.menu:hover a:hover,
 li.menu_selected:hover a,
-li.menu_selected a:hover  { color: #FF0;background-color: #888;}
+li.menu_selected a:hover  { color: #000;background-color: #eee;}
 
-li.configmenu,
-li.configmenu a:hover,
-li.configmenu_selected,
-li.configmenu_selected a       {height: 10px;margin-top: 2px;padding-top: 6px;padding-bottom: 10px;}
+li.configmenu{
+    height: 10px;
+    margin: 0px;
+    margin-top:2px;
+    margin-bottom:2px;
+    padding-top: 10px;
+    padding-left: 1px;
+    padding-right: 1px;
+    padding-bottom: 10px;
+    text-decoration: none;
+}
 
 li.configmenu a,
-li.configmenu_selected a       {padding-left: 6px;padding-right: 6px;text-decoration: none;}
+li.configmenu_selected a{
+    margin:0px;
+    margin-top:2px;
+    margin-left: 0px;
+    margin-right: 0px;
+    padding-top: 10px;
+    padding-left: 2px;
+    padding-right: 2px;
+    padding-bottom: 8px;
+    text-decoration: none;
+}
+li.configmenu a:hover,
+li.configmenu_selected,
+li.configmenu_selected a{
+    top:12px;
+    margin-top: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    padding-bottom: 4px;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+}
 
-li.configmenu a                {color: #000;}
-li.configmenu a:hover          {background-color: #888;color: #FF0;}
-li.configmenu_selected a       {background-color: #888;color: #fff;}
-li.configmenu_selected a:hover {color: #FF0;}
+
+
+li.configmenu a                {color: #fff;}
+li.configmenu a:hover,
+li.configmenu_selected a,
+li.configmenu_selected a:hover {background-color: #eee;color: #000;}
 
 .subnav       {width:100%;z-index:1055;}
-.subnav       {background-color: #EEE;}
+.subnav       {background-color: #135;}
 .subnav-fixed {position:fixed;top:40px;left:0;right:0;}
 
 #sub    {font-family:arial, helvetica, sans-serif;font-weight: bold;display: table;list-style-type: none;margin-bottom: 0;margin-left: auto;margin-right: auto;margin-top: 0;padding-bottom: 0;padding-left: 0;padding-right: 0;padding-top: 0;}
-#sub    {background-color: #EEE;}
+#sub    {background-color: #135;}
 #sub li {float:left;position:relative;list-style:none;}
 #sub ul {display:none;margin:0;padding:0;position:absolute;top:40px;right:0;z-index:1050;}
-#sub ul {background-color:#fff;}
+#sub ul {background-color:#135;}
 
 div a.log {display: block;}
 div.mlogo,
@@ -91,17 +157,17 @@ table {top:80px;border-spacing:1px;margin-left:auto;margin-right:auto}
 table.menu {border-spacing:0px}
 
 table tr th {
-    background-color:#006699;
+    background-color:#135;
     color:#fff;
     font-weight:bold, border:1px
 }
 table.config tr:hover td, table.configreader tr:hover td {
-    background-color:#21aadb;
-    color:#000
+    background-color:#CCC;
+    color:#000;
 }
 table.config {
     width:750px;
-    background-color:#95a4ab;
+    background-color:#ccc;
     text-align:center
 }
 table.config tr td {
@@ -178,55 +244,10 @@ select {
 #ed{
     width:100px;
 }
-
-td.select {
-    border:.5px solid #000;
-    text-align:center;
-    vertical-align:middle;
-    background-color:#525252
-}
-input[type="submit"] {
-    text-decoration:none;
-    border:0;
-    padding: 2px;
-    border-radius: 5px;
-    text-align:center;
-    font:11px Arial, Helvetica, sans-serif;
-    font-weight:bold;
-    color:#ffffff;
-    background-color:#ff0000;
-}
-input[type="submit"]:hover {
-    font:11px Arial, Helvetica, sans-serif;
-    border:0;
-    padding: 2px;
-    border-radius: 5px;
-    font-weight:bold;
-    color:#ffffff;
-    background-color:#ff0000;
-}
-input[type="submit"]:active {
-    font:11px Arial, Helvetica, sans-serif;
-    border:0;
-    border-radius: 5px;
-    padding: 2px;
-    font-weight:bold;
-    color:#ffffff;
-    background-color:#ff0000;
-}
-input[type="text"] {
-    border: .5px solid #000;
-    padding:2px;
-}
-input[type="text"]:hover, input[type="text"]:active {
-    border:.5px solid #000;
-    padding:2px;
-    cursor:text
-}
 th {
     height:10px;
     padding: 2px 2px 2px 2px;
-    background-color:#cccccc;
+    background-color:#ccc;
     color:black
 }
 th.statuscol0 {
@@ -247,7 +268,7 @@ td.statuscol0 {
 td {
     height:10px;
     padding: 2px 2px 2px 2px;
-    background-color:#eeeeee;
+    background-color:#eee;
     color:black
 }
 td.centered, td.statuscol1, td.statuscol2, td.statuscol3, td.statuscol5, td.statuscol6, td.statuscol7, td.statuscol8, td.statuscol10, td.statuscol11, td.statuscol12, td.statuscol14, td.statuscol15, td.statuscol16 {
@@ -297,24 +318,39 @@ td.configmenu_selected {
 td.subheadline {
     height:10px;
     font-family:Arial;
-    font-size:11px;
+    font-size:12px;
+    font-weight: bold;
     padding:5px;
-    background-color:#006699;
+    background-color:#135;
     color:#fff;
     text-align:left;
     font-weight:800, border:1px
 }
 tr.online td {
-    background-color:#bbffaa
+    background-color:#bdb
 }
 tr.expired td {
-    background-color:#ffbbaa
+    background-color:#bdb
 }
 tr.connected td {
-    background-color:#ffffaa
+    background-color:#eeb
+}
+tr.online:hover td,
+tr.connected:hover td{
+ background-color:#ccc;   
+}
+tr.offline:hover td,
+tr.disabled:hover td,
+tr.expired:hover td{
+    background-color:#FCC;
+    color:#000
+}
+table.user_totals,
+table.users{
+ background-color:#888;   
 }
 tr.enabledreader:hover td {
-    background-color:#21aadb;
+    background-color:#CCC;
     color:#000
 }
 tr.disabledreader td:first-child img.icon {
@@ -330,15 +366,11 @@ tr.disabled td.usercol0 a:hover img.icon {
     background-color:#8A0808
 }
 tr.disabledreader:hover td {
-    background-color:#21aadb;
-    color:#000
-}
-tr.disabled:hover td {
-    background-color:#21aadb;
+    background-color:#FCC;
     color:#000
 }
 tr.scanusbsubhead td {
-    background-color:#fdfbe1
+    background-color:#CCC
 }
 tr.e_valid td {
     background-color:#e6febf;
@@ -355,22 +387,22 @@ tr.a td {
     background-color:#3f0
 }
 tr.p td {
-    background-color:#edeac2
+    background-color:#def
 }
 tr.r td {
-    background-color:#f2d8bd
+    background-color:#ffd
 }
 tr.c td {
-    background-color:#ccdada
+    background-color:#bdb
 }
 tr.r img.icon {
-    background-color:#ffb31a
+    background-color:#0066cc
 }
 tr.p img.icon {
-    background-color:#e00000
+    background-color:#0066cc
 }
 tr.c img.icon {
-    background-color:#007ae6
+    background-color:#0066cc
 }
 tr.l td, tr.n td {
     background-color:#e1e1ef
@@ -379,33 +411,59 @@ tr.s td, tr.h td {
     background-color:#c8c8e0
 }
 tr.c a:hover img.icon {
-    background-color:#005aa8
+    background-color:#cc0000
 }
 tr.r a:hover img.icon {
-    background-color:#B18904
+    background-color:#cc0000
 }
 tr.s a:hover img.icon {
-    background-color:#b37700
+    background-color:#cc0000
 }
 tr.s img.icon, tr.h img.icon {
     background-color:#0a0
 }
 tr.h a:hover img.icon, tr.p a:hover img.icon {
-    background-color:#8A0808
+    background-color:#cc0000
 }
 tr.h a:hover img.icon, tr.p a:hover img.icon, tr.c a:hover img.icon, tr.r a:hover img.icon, tr.s a:hover img.icon, tr.s img.icon, tr.h img.icon, tr.r img.icon, tr.p img.icon, tr.c img.icon {
     border:0 solid;
     width:22px;
     height:22px;
-    border-radius:3px;
-    -webkit-border-radius:3px
+    border-radius:2px;
+    -webkit-border-radius:2px
 }
-tr.s:hover td, tr.s:hover td span, tr.s:hover td span a, tr.h:hover td, tr.h:hover td span, tr.h:hover td span a, tr.r:hover td, tr.r:hover td span, tr.r:hover td span a, tr.p:hover td, tr.p:hover td span, tr.p:hover td span a, tr.c:hover td, tr.c:hover td span, tr.c:hover td span a {
-    background-color:#21aadb;
+tr.h:hover td, tr.h:hover td span, tr.h:hover td span a {
+    background-color:#c3cfd6;
+    color:#000
+}
+tr.c:hover td, tr.c:hover td span, tr.c:hover td span a {
+    background-color:#f2efd3;
+    color:#000
+}
+tr.p:hover td, tr.p:hover td span, tr.p:hover td span a {
+    background-color:#dfebf2;
+    color:#000
+}
+tr.r:hover td, tr.r:hover td span, tr.r:hover td span a {
+    background-color:#e1ebe3;
+    color:#000
+}
+tr.s:hover td, tr.s:hover td span, tr.s:hover td span a {
+    background-color:#aa00aa;
     color:#000
 }
 div.log {
-    background-color:#151515;
+background: #45484d; /* Old browsers */
+/* IE9 SVG, needs conditional override of 'filter' to 'none' */
+background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzQ1NDg0ZCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDAwMDAiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
+background: -moz-linear-gradient(top,  #45484d 0%, #000000 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#45484d), color-stop(100%,#000000)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top,  #45484d 0%,#000000 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top,  #45484d 0%,#000000 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top,  #45484d 0%,#000000 100%); /* IE10+ */
+background: linear-gradient(to bottom,  #45484d 0%,#000000 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#45484d', endColorstr='#000000',GradientType=0 ); /* IE6-8 */
+#    background-color:#151515;
     color:#FFF;
     padding:5px;
     font-size:10px;
@@ -463,10 +521,20 @@ textarea.editor {
     width:95%;
     font-size:11px;
     height:500px;
-    background-color: #fafafa;
+#    background-color: #CCC;
+background: #45484d; /* Old browsers */
+/* IE9 SVG, needs conditional override of 'filter' to 'none' */
+background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzQ1NDg0ZCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDAwMDAiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
+background: -moz-linear-gradient(top,  #45484d 0%, #000000 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#45484d), color-stop(100%,#000000)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top,  #45484d 0%,#000000 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top,  #45484d 0%,#000000 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top,  #45484d 0%,#000000 100%); /* IE10+ */
+background: linear-gradient(to bottom,  #45484d 0%,#000000 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#45484d', endColorstr='#000000',GradientType=0 ); /* IE6-8 */
     padding:8px 10px;
     font-family:"courier", monospace;
-    color:black;
+    color:white;
     word-wrap:break-word;
     text-align:left
 }
@@ -540,12 +608,17 @@ a:link, a:visited, a:active {
     color:#050840
 }
 a:hover {
-    color:#ff9e5f
+    color:#cc0000;
+    font-weight: bold;
 }
 a:hover img.icon {
-    border: 1px solid yellow;
-    width:20px;
-    height:20px
+#    border: 1px solid yellow;
+    background-color:#005aa8
+    border:0 solid;
+    width:22px;
+    height:22px
+    border-radius:2px;
+    -webkit-border-radius:2px
 }
 a:hover span {
     display:block;
@@ -570,6 +643,9 @@ img.icon {
     background-color:#0066CC;
     border-radius:2px;
     -webkit-border-radius:2px
+}
+a:hover img.icon {
+    background-color:#cc0000
 }
 img.userpicon, img.readericon, img.readertypeicon, img.protoicon, img.statususericon{
     height:22px
@@ -637,7 +713,7 @@ span.global_conf {
     text-align:left;
     top:5px;
     right: 10px;
-    z-index:1051
+    z-index:1090
 }
 .statusinfo {
     position:absolute;
@@ -685,7 +761,7 @@ a.debugl:link, a.debugl:visited {
     border-radius:5px;
     color:#fff;
     white-space:nowrap;
-    background:#4096ee
+    background:#0066cc
 }
 a.debugl:hover {
     text-decoration:none;
@@ -693,7 +769,7 @@ a.debugl:hover {
     font-weight:bold;
     color:#fff;
     white-space:nowrap;
-    background:#ff6400
+    background:#cc0000
 }
 a.debugls:link, a.debugls:visited {
     text-decoration:none;
@@ -713,7 +789,7 @@ div.footer {
     margin-top:35px;
     padding:20px 0 36px;
     background-color:#292929;
-    border-top:5px solid #005fb3
+    border-top:5px solid #ff6600
 }
 div.footer p {
     color:#a9a9a9
@@ -722,29 +798,30 @@ div.footer p.version {
     color:#fff
 }
 div.footer a {
-    color:#007ae6;
+    color:#ff6600;
     text-decoration: none;
 }
 div.footer a:hover {
     color:#fff1c3
 }
 .mandatory {
-    background-color: #FD8;
+    background-color: #fc6;
 }
 .mandatory > a:link, .mandatory > a:visited, .mandatory > a:active {
     color: #000;
 }
-html body div#newreader.newuser table.users tbody tr th input,
-html body div#newreader.newuser table.users tbody tr th select{
-    margin-left: 5px;
-    margin-right: 20px;
-    padding-bottom: 0;
-    padding-left: 5px;
-    padding-top: 0;
+table.users tbody tr th input,
+table.users tbody tr th select{
+    margin-left: 0px;
+    margin-right: 0px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
 }
-html body form table#dataTable.readers thead tr th table,
-html body form table#dataTable.readers thead tr th,
-html body form table#dataTable.readers thead tr th table.subtable tbody tr th
+table#dataTable.readers thead tr th table,
+table#dataTable.readers thead tr th,
+table#dataTable.readers thead tr th table.subtable tbody tr th
 {
     padding: 1px 1px 1px 1px;
 }
@@ -757,7 +834,7 @@ html body form table#dataTable.readers thead tr th table.subtable tbody tr th
 .subtable th#drei, .subtable th#vier{
     text-align: right;
 }
-html body form table#dataTable.users thead tr th{
+table#dataTable.users thead tr th{
     padding: 1px 1px 1px 1px;
 }
 
@@ -766,6 +843,70 @@ html body form table#dataTable.users thead tr th{
 }
 .user_totals{
     width: 800px;
+}
+
+td.select {
+    border:.5px solid #000;
+    text-align:center;
+    vertical-align:middle;
+    background-color:#525252;
+    cursor: pointer;
+}
+input[type="submit"] {
+    text-decoration:none;
+    border:0;
+    padding: 2px;
+    border-radius: 4px;
+    text-align:center;
+    font:11px Arial, Helvetica, sans-serif;
+    font-weight:bold;
+    color:#ffffff;
+    background-color:#0066cc;
+}
+input[type="submit"]:hover {
+    font:11px Arial, Helvetica, sans-serif;
+    border:0;
+    padding: 2px;
+    border-radius: 4px;
+    font-weight:bold;
+    color:#ffffff;
+    background-color:#cc0000;
+}
+input[type="submit"]:active {
+    font:11px Arial, Helvetica, sans-serif;
+    border:0;
+    padding: 2px;
+    border-radius: 4px;
+    font-weight:bold;
+    color:#ffffff;
+    background-color:#ff0000;
+}
+
+input[type="text"] {
+    border: .5px solid #000;
+    padding:2px;
+    cursor:text
+}
+
+input[type="text"]:hover{
+    border:.5px solid #000;
+    padding:2px;
+    cursor:text
+}
+input[type="text"]:active {
+    border:.5px solid #000;
+    padding:2px;
+    cursor:text
+}
+input#searchTerm.search_box,
+div#newuser.newuser table.users tbody tr th input,
+div#newreader.newuser form table.users tbody tr th input,
+div#newreader.newuser form table.users tbody tr th select{
+    margin-left: 5px;
+    margin-right: 5px;
+    border:.5px solid #000;
+    padding:2px;
+    cursor: pointer;   
 }
 @media only screen and (max-width: 1039px) {
     tr th#hide,
@@ -780,7 +921,7 @@ html body form table#dataTable.users thead tr th{
     }
     .statusrefresh{
     top:45px;
-    color: #000;
+    color: #fff;
     }
  }
 @media only screen and (max-width: 872px) {
