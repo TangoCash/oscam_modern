@@ -3203,12 +3203,11 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 			filtered = !(cfg.http_hide_idle_clients != 1 || cl->typ != 'c' || (now - cl->lastecm) <= cfg.hideclient_to);
 			if (!filtered && cfg.http_hide_type) {
 				char *p = cfg.http_hide_type;
-			        while (*p && !filtered) {
-			        	filtered = (*p++ == cl->typ);
+				while (*p && !filtered) {
+					filtered = (*p++ == cl->typ);
 				}
 			}
-			
-                        if (!filtered) {
+			if (!filtered) {
 				if (cl->typ=='c'){
 					user_count_shown++;
 					if (cfg.http_hide_idle_clients != 1 && cfg.hideclient_to > 0 && (now - cl->lastecm) <= cfg.hideclient_to) {
@@ -3360,8 +3359,8 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				if (!apicall) {
 					if((cl->typ != 'p' && cl->typ != 'r') || cl->reader->card_status == CARD_INSERTED){
-						tpl_printf(vars, TPLADD, "CLIENTLOGINDATE", "%02d.%02d.%02d - %02d:%02d:%02d", lt.tm_mday, lt.tm_mon+1, lt.tm_year%100, lt.tm_hour, lt.tm_min, lt.tm_sec);
-						tpl_addVar(vars, TPLADD, "CLIENTLOGINSECS", sec2timeformat(vars, lsec));
+						tpl_printf(vars, TPLADD, "CLIENTLOGINDATE", "%02d.%02d.%02d %02d:%02d:%02d", lt.tm_mday, lt.tm_mon+1, lt.tm_year%100, lt.tm_hour, lt.tm_min, lt.tm_sec);
+						tpl_printf(vars, TPLADD, "CLIENTLOGINSECS", "%s / ", sec2timeformat(vars, lsec));
 					} else {
 						tpl_addVar(vars, TPLADD, "CLIENTLOGINDATE", "");
 						tpl_addVar(vars, TPLADD, "CLIENTLOGINSECS", "");
@@ -3668,7 +3667,39 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	tpl_printf(vars, TPLADD, "REL_CACHEXHIT", "%.2f", (first_client ? first_client->cwcacheexhit : 0) * 100 / cachesum);
 	tpl_addVar(vars, TPLADD, "CACHEEXSTATS", tpl_getTpl(vars, "STATUSCACHEX"));
 #endif
+//userinfo////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	struct s_auth *account;
+	int8_t isactive;
+	int32_t total_users = 0;
+	int32_t disabled_users = 0;
+	int32_t expired_users = 0;
+	int32_t active_users = 0;
+	for (account=cfg.account; (account); account=account->next){
+	    total_users++; isactive=1;
+	    if(account->expirationdate && account->expirationdate < now){
+		expired_users++; isactive=0;
+	    }
+	    if(account->disabled != 0){
+		disabled_users++; isactive=0;
+	    }
+	    if (isactive){
+		active_users++;
+	    }
+	}
+	tpl_printf(vars, TPLADD, "TOTAL_USERS", "%d", total_users);
+	tpl_printf(vars, TPLADD, "TOTAL_ACTIVE", "%d", user_count_all);
+	tpl_printf(vars, TPLADD, "TOTAL_EXPIRED", "%d", expired_users);
+	tpl_printf(vars, TPLADD, "TOTAL_DISABLED", "%d", disabled_users);
 
+	if (cfg.http_hide_idle_clients == 1 || cfg.hideclient_to < 1) {
+		tpl_printf(vars, TPLADD, "TOTAL_ONLINE", "%d", user_count_shown);
+		tpl_printf(vars, TPLADD, "TOTAL_CONNECTED", "%d", (user_count_all-user_count_shown));
+	} else {
+		tpl_printf(vars, TPLADD, "TOTAL_ONLINE", "%d", user_count_active);
+		tpl_printf(vars, TPLADD, "TOTAL_CONNECTED", "%d", (user_count_all-user_count_active));
+	}
+
+//userinfo////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	tpl_printf(vars, TPLADD, "TOTAL_CWOK", "%d", first_client->cwfound);
 	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", "%d", first_client->cwnot);
 	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", "%d", first_client->cwignored);
