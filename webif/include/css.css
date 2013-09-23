@@ -62,7 +62,7 @@ hr {color:white;}
     position:relative;
     border:none;
 }
-#menu li a {padding-left:6px;padding-right:6px;padding-top: 6px;padding-bottom: 14px;text-decoration:none;}
+#menu li a {padding-left:6px;padding-right:6px;padding-top: 6px;padding-bottom: 12px;text-decoration:none;}
 
 ul#menu li.menu a         {color:#fff;}
 li.menu:hover a:hover,
