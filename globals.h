@@ -268,11 +268,11 @@ typedef unsigned char uchar;
 #define D_LB        0x0100  // Debug Loadbalancer/ECM handler
 #define D_CACHEEX   0x0200  // Debug CACHEEX
 #define D_CLIENTECM 0x0400  // Debug Client ECMs
-#define D_CSPCWC    0x0800  // Debug CSP/CWC
-#define D_CSPCWCFUL 0x1000  // Debug CSP/CWC FULL
+#define D_CSP       0x0800  // Debug CSP
+#define D_CWC       0x1000  // Debug CWC
 #define D_ALL_DUMP  0xFFFF  // dumps all
 
-#define MAX_DEBUG_LEVELS 11
+#define MAX_DEBUG_LEVELS 13
 
 #define R_DB2COM1   0x1 // Reader Dbox2 @ com1
 #define R_DB2COM2   0x2 // Reader Dbox2 @ com1
@@ -766,7 +766,7 @@ struct s_cardsystem {
 	int32_t		(*get_emm_type)(struct emm_packet_t *, struct s_reader *);
 	int32_t         (*get_emm_filter)(struct s_reader *, struct s_csystem_emm_filter**, unsigned int*);
 	int32_t         (*get_tunemm_filter)(struct s_reader *, struct s_csystem_emm_filter**, unsigned int*);
-	uint16_t		caids[7];
+	uint16_t		caids[8];
 };
 
 #define MAX_ECM_SIZE 512
@@ -838,6 +838,9 @@ typedef struct ecm_request_t {
 	uint8_t			from_cacheex;				// =1 if er from cacheex client pushing cache
 	uint8_t			from_cacheex1_client;  		// =1 if er from cacheex-1 client
 	char			msglog[MSGLOGSIZE];
+#ifdef CW_CYCLE_CHECK
+	char			cwc_msg_log[MSGLOGSIZE];
+#endif
 	struct ecm_request_t	*parent;
 	struct ecm_request_t	*next;
 } ECM_REQUEST;
@@ -1742,6 +1745,7 @@ struct s_config
 	int8_t			onbadcycle;			// what to do on bad cwcycle
 	int8_t			cwcycle_dropold;		// what to do on old ecmd5/cw
 	int8_t			cwcycle_sensitive;
+	int8_t			cwcycle_allowbadfromffb;		//allow Bad cycles from Fixed Fallbackreader
 #endif
 
 	//Global whitelist:

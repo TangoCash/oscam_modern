@@ -567,6 +567,9 @@ static char *send_oscam_config_cache(struct templatevars *vars, struct uriparams
 		case 4:
 			tpl_addVar(vars, TPLADD, "CWCSEN4", "selected");
 			break;
+    } 
+ 	    if (cfg.cwcycle_allowbadfromffb == 1) { 
+ 	        tpl_addVar(vars, TPLADD, "ALLOWBADFROMFFB", "selected");
 	}
 #endif
 
@@ -3089,7 +3092,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	}
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
-	tpl_printf(vars, TPLADD, "SVNREV", "8923");
+	tpl_printf(vars, TPLADD, "SVNREV", "8930");
 	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "OSCAMLOGO");
 	if (picon_exists(picon_name)) {
 		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;Revision #%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
@@ -3661,6 +3664,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	if (cachesum < 1) {
 		cachesum = 1;
 	}
+	tpl_printf(vars, TPLADD, "TOTAL_CW", "%d", first_client->cwfound + first_client->cwcache + first_client->cwnot + first_client->cwignored + first_client->cwtout); // dont count TUN its included
 	tpl_printf(vars, TPLADD, "TOTAL_CACHEXPUSH", "%d", first_client ? first_client->cwcacheexpush : 0);
 	tpl_addVar(vars, TPLADD, "TOTAL_CACHEXPUSH_IMG", pushing);
 	tpl_printf(vars, TPLADD, "TOTAL_CACHEXGOT", "%d", first_client ? first_client->cwcacheexgot : 0);
@@ -3709,17 +3713,34 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", "%d", first_client->cwtout);
 	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", "%d", first_client->cwcache);
 	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", "%d", first_client->cwtun);
-
-	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache + first_client->cwtun;
+	tpl_printf(vars, TPLADD, "TOTAL_CWPOS", "%d", first_client->cwfound + first_client->cwcache);
+	tpl_printf(vars, TPLADD, "TOTAL_CWNEG", "%d", first_client->cwnot + first_client->cwignored + first_client->cwtout);
+	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache; //dont count TUN its included
 	if (ecmsum < 1) {
 		ecmsum = 1;
 	}
+	float ecmpos = first_client->cwfound + first_client->cwcache; // dont count TUN its included
+	if (ecmpos < 1) {
+		ecmpos = 1;
+	}
+	float ecmneg = first_client->cwnot + first_client->cwignored + first_client->cwtout;
+	if (ecmneg < 1) {
+		ecmneg = 1;
+	}
+
 	tpl_printf(vars, TPLADD, "REL_CWOK", "%.2f", first_client->cwfound * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWNOK", "%.2f", first_client->cwnot * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWIGN", "%.2f", first_client->cwignored * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWTOUT", "%.2f", first_client->cwtout * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWCACHE", "%.2f", first_client->cwcache * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWTUN", "%.2f", first_client->cwtun * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWPOS", "%.2f", (first_client->cwfound + first_client->cwcache) * 100 / ecmsum);   
+ 	tpl_printf(vars, TPLADD, "REL_CWNEG", "%.2f", (first_client->cwnot + first_client->cwignored + first_client->cwtout) * 100 / ecmsum); 
+ 	tpl_printf(vars, TPLADD, "REL_CWPOSOK", "%.2f", first_client->cwfound * 100 / ecmpos); 
+ 	tpl_printf(vars, TPLADD, "REL_CWPOSCACHE", "%.2f", first_client->cwcache * 100 / ecmpos); 
+ 	tpl_printf(vars, TPLADD, "REL_CWNEGNOK", "%.2f", first_client->cwnot * 100 / ecmneg); 
+ 	tpl_printf(vars, TPLADD, "REL_CWNEGIGN", "%.2f", first_client->cwignored * 100 / ecmneg); 
+ 	tpl_printf(vars, TPLADD, "REL_CWNEGTOUT", "%.2f", first_client->cwtout * 100 / ecmneg);
 
 #ifdef WITH_DEBUG
 	// Debuglevel Selector
