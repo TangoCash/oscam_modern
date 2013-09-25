@@ -3665,6 +3665,11 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 		cachesum = 1;
 	}
 
+	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache; //dont count TUN its included
+	if (ecmsum < 1) {
+		ecmsum = 1;
+	}
+
 	float ecmpos = first_client->cwfound + first_client->cwcache; // dont count TUN its included
 	if (ecmpos < 1) {
 		ecmpos = 1;
@@ -3735,11 +3740,6 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", 	"%d", first_client->cwtun);
 	tpl_printf(vars, TPLADD, "TOTAL_CWPOS", 	"%d", first_client->cwfound + first_client->cwcache);
 	
-	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache; //dont count TUN its included
-	if (ecmsum < 1) {
-		ecmsum = 1;
-	}
-
 	tpl_printf(vars, TPLADD, "REL_CWOK", 		"%.2f", first_client->cwfound	* 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWPOS", 		"%.2f", (first_client->cwfound 	+ first_client->cwcache) * 100 / ecmsum);   
 	tpl_printf(vars, TPLADD, "REL_CWNOK", 		"%.2f", first_client->cwnot 	* 100 / ecmsum);
