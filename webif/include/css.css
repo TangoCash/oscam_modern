@@ -718,15 +718,15 @@ span.span_notifiertop {
     bottom: 0px;
     z-index:1099;
 }
-span.span_notifier{ 
+span.span_notifier{
     margin:0;
-    margin-top: -24px;
-    margin-left: 0px;
+    margin-top: -8px;
+    margin-left: -5px;
     border-left-width: 2px;
     margin-right: -5px;
     float:right;
-    min-width: 8px;
-    padding: 1px 1px 0px 1px;
+    min-width: 10px;
+    padding: 2px;
     border-bottom-width: 2px;
     z-index:1099;
 }
