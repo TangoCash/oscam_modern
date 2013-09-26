@@ -56,7 +56,7 @@ hr {color:white;}
     border:none;
 }
 
-#menu li a {padding-left:6px;padding-right:6px;padding-top: 6px;padding-bottom: 12px;text-decoration:none;}
+#menu li a {margin-left: 2px;margin-right: 2px;padding-left:3px;padding-right:3px;padding-top: 6px;padding-bottom: 12px;text-decoration:none;}
 
 ul#menu li.menu a         {color:#fff;}
 li.menu:hover a:hover,
@@ -156,7 +156,7 @@ table tr th {
     font-weight:bold, border:1px
 }
 table.config tr:hover td, table.configreader tr:hover td {
-    background-color:#CCC;
+    background-color:#DDD;
     color:#000;
 }
 table.config {
@@ -340,16 +340,16 @@ tr.expired td {
     background-color:#bdb
 }
 tr.connected td {
-    background-color:#eeb
+    background-color:#bdb
 }
 tr.online:hover td,
 tr.connected:hover td{
- background-color:#ccc;   
+ background-color:#ad9;   
 }
 tr.offline:hover td,
 tr.disabled:hover td,
 tr.expired:hover td{
-    background-color:#FCC;
+    background-color:#DDD;
     color:#000
 }
 table.user_totals,
@@ -357,7 +357,7 @@ table.users{
  background-color:#888;   
 }
 tr.enabledreader:hover td {
-    background-color:#CCC;
+    background-color:#DDD;
     color:#000
 }
 tr.disabledreader td:first-child img.icon {
@@ -444,15 +444,15 @@ tr.h:hover td, tr.h:hover td span, tr.h:hover td span a {
     color:#000
 }
 tr.c:hover td, tr.c:hover td span, tr.c:hover td span a {
-    background-color:#f2efd3;
+    background-color:#ad9;
     color:#000
 }
 tr.p:hover td, tr.p:hover td span, tr.p:hover td span a {
-    background-color:#dfebf2;
+    background-color:#cdf;
     color:#000
 }
 tr.r:hover td, tr.r:hover td span, tr.r:hover td span a {
-    background-color:#e1ebe3;
+    background-color:#ffa;
     color:#000
 }
 tr.s:hover td, tr.s:hover td span, tr.s:hover td span a {
@@ -846,7 +846,7 @@ div.footer a:hover {
     color:#fff1c3
 }
 .mandatory {
-    background-color: #fc6;
+    background-color: #FD9;
 }
 .mandatory > a:link, .mandatory > a:visited, .mandatory > a:active {
     color: #000;
