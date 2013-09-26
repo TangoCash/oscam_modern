@@ -689,8 +689,7 @@ span.e_valid {
 span.e_expired {
     background-color:#fff3e7
 }
-SPAN.span_notifier {padding:1px 3px;border-radius:10px;color:#fff;margin-left:2px;background:#f00}
-span.span_notifiertop {
+span.span_notifier, span.span_notifiertop {
     background: radial-gradient( 1px -11px, circle, white 8%, red 26px );
     background: -moz-radial-gradient( 1px -11px, circle, white 8%, red 26px );
     background: -ms-radial-gradient( 1px -11px, circle, white 8%, red 26px );
@@ -706,16 +705,30 @@ span.span_notifiertop {
     padding: 2px 3px 0 3px;
     text-align: center;
     min-width: 8px;
-    float: left;left: 0px;
     right: 0px;
+}
+span.span_notifiertop {
+    float: left;
     position: relative;
+    padding-top: 3px;
     padding-right: 3px;
     margin-right: 0px;
     left: 75px;
     top: -28px;
     bottom: 0px;
-    z-index:1061;
-    
+    z-index:1099;
+}
+span.span_notifier{ 
+    margin:0;
+    margin-top: -24px;
+    margin-left: 0px;
+    border-left-width: 2px;
+    margin-right: -5px;
+    float:right;
+    min-width: 8px;
+    padding: 1px 1px 0px 1px;
+    border-bottom-width: 2px;
+    z-index:1099;
 }
 span.idlesec_normal {
     font-size:10px;
