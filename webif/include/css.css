@@ -689,7 +689,8 @@ span.e_valid {
 span.e_expired {
     background-color:#fff3e7
 }
-span.span_notifier {
+SPAN.span_notifier {padding:1px 3px;border-radius:10px;color:#fff;margin-left:2px;background:#f00}
+span.span_notifiertop {
     background: radial-gradient( 1px -11px, circle, white 8%, red 26px );
     background: -moz-radial-gradient( 1px -11px, circle, white 8%, red 26px );
     background: -ms-radial-gradient( 1px -11px, circle, white 8%, red 26px );

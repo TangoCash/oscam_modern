@@ -2284,10 +2284,12 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 			char picon_name[32];
 			snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s", (char *)proto, newcamd_get_client_name(cl->ncd_client_id));
 			if (picon_exists(picon_name)) {
+				tpl_printf(vars, TPLADDONCE, "CLIENTPROTO","%s (%s)", proto, newcamd_get_client_name(cl->ncd_client_id));
 				tpl_printf(vars, TPLADD, "PROTOICON",
 				"<img class=\"protoicon\" src=\"image?i=IC_%s_%s\" alt=\"IC_%s_%s\" title=\"Protocol %s %s\">",
 				proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id));
 			} else {
+				tpl_printf(vars, TPLADDONCE, "CLIENTPROTO","%s (%s)", proto, newcamd_get_client_name(cl->ncd_client_id));
 				tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s_%s\">%s (%s)</SPAN>",
 				proto, newcamd_get_client_name(cl->ncd_client_id), proto, newcamd_get_client_name(cl->ncd_client_id));
 			}
@@ -2306,16 +2308,15 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 				char picon_name[32];
 				snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s_%s_%s", proto, cc->remote_version, cc->remote_build);
 				if (picon_exists(picon_name)) {
+					tpl_printf(vars, TPLADDONCE, "CLIENTPROTO", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
+					tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE","cccam extinfo: %s missing icon: IC_%s_%s_%s", cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
 					tpl_printf(vars, TPLADD, "PROTOICON",
 					"<img class=\"protoicon\" src=\"image?i=IC_%s_%s_%s\" alt=\"IC_%s (%s-%s)\" title=\"Protocol %s (%s-%s) %s\">",
-					proto, cc->remote_version, cc->remote_build,
-					proto, cc->remote_version, cc->remote_build,
-					proto, cc->remote_version, cc->remote_build,
-					cc->extended_mode ? cc->remote_oscam : "");
+					proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build, proto, cc->remote_version, cc->remote_build, cc->extended_mode ? cc->remote_oscam : "");
 				} else {
 					tpl_printf(vars, TPLADD, "PROTOICON","%s (%s-%s)",proto, cc->remote_version, cc->remote_build);
-					tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE","cccam extinfo: %s missing icon: IC_%s_%s_%s",
-					cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
+					tpl_printf(vars, TPLADDONCE, "CLIENTPROTO", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
+					tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", cc->extended_mode ? cc->remote_oscam : "");
 				}
 			} else {
 				tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s (%s-%s)", proto, cc->remote_version, cc->remote_build);
@@ -2331,8 +2332,12 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 		snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "%s", proto);
 		if (picon_exists(picon_name)) {
 			tpl_printf(vars, TPLADD, "PROTOICON", "<img class=\"protoicon\" src=\"image?i=IC_%s\" alt=\"IC_%s\" title=\"Protocol %s\">", proto, proto, proto);
+			tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", (char *)proto);
+			tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
 		} else {
 			tpl_printf(vars, TPLADD, "PROTOICON", "<SPAN TITLE=\"IC_%s\">%s</SPAN>", proto, proto);
+			tpl_addVar(vars, TPLADDONCE, "CLIENTPROTO", (char *)proto);
+			tpl_addVar(vars, TPLADDONCE, "CLIENTPROTOTITLE", "");
 		}
 	} else {
 		tpl_addVar(vars, TPLADDONCE, "PROTOICON", (char *)proto);
@@ -2697,22 +2702,41 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 	tpl_printf(vars, TPLADD, "TOTAL_CONNECTED", "%d", connected_users);
 	tpl_printf(vars, TPLADD, "TOTAL_ONLINE", "%d", online_users);
 
+	tpl_printf(vars, TPLADD, "TOTAL_CW", "%d", first_client->cwfound + first_client->cwcache + first_client->cwnot + first_client->cwignored + first_client->cwtout); // dont count TUN its included
 	tpl_printf(vars, TPLADD, "TOTAL_CWOK", "%d", first_client->cwfound);
 	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", "%d", first_client->cwnot);
 	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", "%d", first_client->cwignored);
 	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", "%d", first_client->cwtout);
 	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", "%d", first_client->cwcache);
 	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", "%d", first_client->cwtun);
+	tpl_printf(vars, TPLADD, "TOTAL_CWPOS", "%d", first_client->cwfound + first_client->cwcache);
+	tpl_printf(vars, TPLADD, "TOTAL_CWNEG", "%d", first_client->cwnot + first_client->cwignored + first_client->cwtout);
 
-	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache + first_client->cwtun;
+	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache; //dont count TUN its included
 	if (ecmsum < 1) {
 		ecmsum = 1;
+	}
+	float ecmpos = first_client->cwfound + first_client->cwcache; // dont count TUN its included
+	if (ecmpos < 1) {
+		ecmpos = 1;
+	}
+	float ecmneg = first_client->cwnot + first_client->cwignored + first_client->cwtout;
+	if (ecmneg < 1) {
+		ecmneg = 1;
 	}
 	tpl_printf(vars, TPLADD, "REL_CWOK", "%.2f", first_client->cwfound * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWNOK", "%.2f", first_client->cwnot * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWIGN", "%.2f", first_client->cwignored * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWTOUT", "%.2f", first_client->cwtout * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWCACHE", "%.2f", first_client->cwcache * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWTUN", "%.2f", first_client->cwtun * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWPOS", "%.2f", (first_client->cwfound + first_client->cwcache) * 100 / ecmsum);	
+	tpl_printf(vars, TPLADD, "REL_CWNEG", "%.2f", (first_client->cwnot + first_client->cwignored + first_client->cwtout) * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWPOSOK", "%.2f", first_client->cwfound * 100 / ecmpos);
+	tpl_printf(vars, TPLADD, "REL_CWPOSCACHE", "%.2f", first_client->cwcache * 100 / ecmpos);
+	tpl_printf(vars, TPLADD, "REL_CWNEGNOK", "%.2f", first_client->cwnot * 100 / ecmneg);
+	tpl_printf(vars, TPLADD, "REL_CWNEGIGN", "%.2f", first_client->cwignored * 100 / ecmneg);
+	tpl_printf(vars, TPLADD, "REL_CWNEGTOUT", "%.2f", first_client->cwtout * 100 / ecmneg);
 
 
 	if (!apicall)
@@ -3279,25 +3303,27 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 				localtime_r(&cl->login, &lt);
 
+				tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
+
 				if(!apicall) {
 					if(cl->typ == 'c' && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "HIDEIDX", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this User\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
+						tpl_printf(vars, TPLADD, "HIDEIDXFULL", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this User\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
 						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=kill&threadid=%p\" TITLE=\"Kill this User\"><IMG CLASS=\"icon\" SRC=\"image?i=ICKIL\" ALT=\"Kill\"></A>", cl);
 					}
 					else if(cl->typ == 'p' && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "HIDEIDX", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this Proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
+						tpl_printf(vars, TPLADD, "HIDEIDXFULL", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this Proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
 						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this Proxy\"><IMG CLASS=\"icon\" SRC=\"image?i=ICRES\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
 					}
 					else if(cl->typ == 'r' && !cfg.http_readonly) {
-						tpl_printf(vars, TPLADD, "HIDEIDX", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this Reader\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
+						tpl_printf(vars, TPLADD, "HIDEIDXFULL", "<A HREF =\"status.html?hide=%p\" TITLE=\"Hide this Reader\"><IMG CLASS=\"icon\" SRC=\"image?i=ICHID\" ALT=\"Hide\"></A>", cl);
 						tpl_printf(vars, TPLADD, "CSIDX", "<A HREF=\"status.html?action=restart&amp;label=%s\" TITLE=\"Restart this Reader\"><IMG CLASS=\"icon\" SRC=\"image?i=ICRES\" ALT=\"Restart\"></A>", urlencode(vars, cl->reader->label));
 					}
 					else {
-						tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
+						tpl_printf(vars, TPLADD, "HIDEIDXFULL", "%p", cl);
 						tpl_printf(vars, TPLADD, "CSIDX", "%p&nbsp;", cl);
 					}
 				} else {
-					tpl_printf(vars, TPLADD, "HIDEIDX", "%p", cl);
+					tpl_printf(vars, TPLADD, "HIDEIDXFULL", "%p", cl);
 					tpl_printf(vars, TPLADD, "CSIDX", "%p", cl);
 				}
 
@@ -3664,23 +3690,6 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	if (cachesum < 1) {
 		cachesum = 1;
 	}
-
-	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache; //dont count TUN its included
-	if (ecmsum < 1) {
-		ecmsum = 1;
-	}
-
-	float ecmpos = first_client->cwfound + first_client->cwcache; // dont count TUN its included
-	if (ecmpos < 1) {
-		ecmpos = 1;
-	}
-	
-	float ecmneg = first_client->cwnot + first_client->cwignored + first_client->cwtout;
-	if (ecmneg < 1) {
-		ecmneg = 1;
-	}
-
-	tpl_printf(vars, TPLADD, "TOTAL_CW", "%d", first_client->cwfound + first_client->cwcache + first_client->cwnot + first_client->cwignored + first_client->cwtout); // dont count TUN its included
 	tpl_printf(vars, TPLADD, "TOTAL_CACHEXPUSH", "%d", first_client ? first_client->cwcacheexpush : 0);
 	tpl_addVar(vars, TPLADD, "TOTAL_CACHEXPUSH_IMG", pushing);
 	tpl_printf(vars, TPLADD, "TOTAL_CACHEXGOT", "%d", first_client ? first_client->cwcacheexgot : 0);
@@ -3689,15 +3698,6 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	tpl_printf(vars, TPLADD, "TOTAL_CACHESIZE", "%d", ecmcwcache_size);
 	tpl_printf(vars, TPLADD, "REL_CACHEXHIT", "%.2f", (first_client ? first_client->cwcacheexhit : 0) * 100 / cachesum);
 	tpl_addVar(vars, TPLADD, "CACHEEXSTATS", tpl_getTpl(vars, "STATUSCACHEX"));
-
-// cacheex-stats
- 	tpl_printf(vars, TPLADD, "REL_CWPOSOK", 	"%.2f", first_client->cwfound 	* 100 / ecmpos); 
- 	tpl_printf(vars, TPLADD, "REL_CWPOSCACHE", 	"%.2f", first_client->cwcache 	* 100 / ecmpos); 
- 	tpl_printf(vars, TPLADD, "REL_CWNEGNOK", 	"%.2f", first_client->cwnot 	* 100 / ecmneg); 
- 	tpl_printf(vars, TPLADD, "REL_CWNEGIGN", 	"%.2f", first_client->cwignored * 100 / ecmneg); 
- 	tpl_printf(vars, TPLADD, "REL_CWNEGTOUT", 	"%.2f", first_client->cwtout 	* 100 / ecmneg);
-	tpl_printf(vars, TPLADD, "TOTAL_CWNEG", 	"%.2f",	first_client->cwnot 	+ first_client->cwignored + first_client->cwtout);
- 	tpl_printf(vars, TPLADD, "REL_CWNEG", 		"%.2f", (first_client->cwnot 	+ first_client->cwignored + first_client->cwtout) * 100 / ecmsum); 
 #endif
 //userinfo////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	struct s_auth *account;
@@ -3732,21 +3732,23 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	}
 
 //userinfo////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	tpl_printf(vars, TPLADD, "TOTAL_CWOK",		"%d", first_client->cwfound);
-	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", 	"%d", first_client->cwnot);
-	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", 	"%d", first_client->cwignored);
-	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", 	"%d", first_client->cwtout);
-	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", 	"%d", first_client->cwcache);
-	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", 	"%d", first_client->cwtun);
-	tpl_printf(vars, TPLADD, "TOTAL_CWPOS", 	"%d", first_client->cwfound + first_client->cwcache);
-	
-	tpl_printf(vars, TPLADD, "REL_CWOK", 		"%.2f", first_client->cwfound	* 100 / ecmsum);
-	tpl_printf(vars, TPLADD, "REL_CWPOS", 		"%.2f", (first_client->cwfound 	+ first_client->cwcache) * 100 / ecmsum);   
-	tpl_printf(vars, TPLADD, "REL_CWNOK", 		"%.2f", first_client->cwnot 	* 100 / ecmsum);
-	tpl_printf(vars, TPLADD, "REL_CWIGN", 		"%.2f", first_client->cwignored * 100 / ecmsum);
-	tpl_printf(vars, TPLADD, "REL_CWTOUT", 		"%.2f", first_client->cwtout 	* 100 / ecmsum);
-	tpl_printf(vars, TPLADD, "REL_CWCACHE", 	"%.2f", first_client->cwcache 	* 100 / ecmsum);
-	tpl_printf(vars, TPLADD, "REL_CWTUN", 		"%.2f", first_client->cwtun 	* 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "TOTAL_CWOK", "%d", first_client->cwfound);
+	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", "%d", first_client->cwnot);
+	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", "%d", first_client->cwignored);
+	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", "%d", first_client->cwtout);
+	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", "%d", first_client->cwcache);
+	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", "%d", first_client->cwtun);
+
+	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwignored + first_client->cwtout+ first_client->cwcache + first_client->cwtun;
+	if (ecmsum < 1) {
+		ecmsum = 1;
+	}
+	tpl_printf(vars, TPLADD, "REL_CWOK", "%.2f", first_client->cwfound * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWNOK", "%.2f", first_client->cwnot * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWIGN", "%.2f", first_client->cwignored * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWTOUT", "%.2f", first_client->cwtout * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWCACHE", "%.2f", first_client->cwcache * 100 / ecmsum);
+	tpl_printf(vars, TPLADD, "REL_CWTUN", "%.2f", first_client->cwtun * 100 / ecmsum);
 
 #ifdef WITH_DEBUG
 	// Debuglevel Selector
@@ -5504,7 +5506,7 @@ static int32_t process_request(FILE *f, IN_ADDR_T in) {
 				tpl_addVar(vars, TPLAPPEND, "BTNDISABLED", "DISABLED");
 
 			i = ll_count(cfg.v_list);
-			if(i > 0)tpl_printf(vars, TPLADD, "FAILBANNOTIFIER", "<SPAN CLASS=\"span_notifier\">%d</SPAN>", i);
+			if(i > 0)tpl_printf(vars, TPLADD, "FAILBANNOTIFIER", "<SPAN CLASS=\"span_notifiertop\">%d</SPAN>", i);
 
 			char *result = NULL;
 
