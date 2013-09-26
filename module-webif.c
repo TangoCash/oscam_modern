@@ -97,14 +97,6 @@ enum refreshtypes { REFR_ACCOUNTS, REFR_CLIENTS, REFR_SERVER, REFR_ANTICASC, REF
 #define MNU_CFG_WHITELIST 25
 #define MNU_CFG_TOTAL_ITEMS 26 // sum of items above. Use it for "All inactive" in function calls too.
 
-static bool picon_exists(char *name) {
-	char picon_name[64], path[255];
-	if (!cfg.http_tpl)
-		return false;
-	snprintf(picon_name, sizeof(picon_name) - 1, "IC_%s", name);
-	return strlen(tpl_getTplPath(picon_name, cfg.http_tpl, path, sizeof(path) - 1)) && file_exists(path);
-}
-
 static void refresh_oscam(enum refreshtypes refreshtype) {
 
 	switch (refreshtype) {
@@ -303,6 +295,8 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "CLIENTTIMEOUT", "%u", cfg.ctimeout);
 	tpl_printf(vars, TPLADD, "FALLBACKTIMEOUT", "%u", cfg.ftimeout);
 	tpl_printf(vars, TPLADD, "CLIENTMAXIDLE", "%u", cfg.cmaxidle);
+        
+
 	value = mk_t_caidvaluetab(&cfg.ftimeouttab);
 	tpl_addVar(vars, TPLADD, "FALLBACKTIMEOUT_PERCAID", value);
 	free_mk_t(value);
@@ -320,7 +314,8 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 	if (cfg.c35_suppresscmd08)
 		tpl_addVar(vars, TPLADD, "SUPPRESSCMD08", "checked");
 
-	if (cfg.reader_restart_seconds)
+	
+        if (cfg.reader_restart_seconds)
 		tpl_printf(vars, TPLADD, "READERRESTARTSECONDS", "%d", cfg.reader_restart_seconds);
 
 	if (cfg.dropdups)
@@ -567,9 +562,9 @@ static char *send_oscam_config_cache(struct templatevars *vars, struct uriparams
 		case 4:
 			tpl_addVar(vars, TPLADD, "CWCSEN4", "selected");
 			break;
-    } 
- 	    if (cfg.cwcycle_allowbadfromffb == 1) { 
- 	        tpl_addVar(vars, TPLADD, "ALLOWBADFROMFFB", "selected");
+	}
+	if (cfg.cwcycle_allowbadfromffb == 1) {
+		tpl_addVar(vars, TPLADD, "ALLOWBADFROMFFB", "selected");
 	}
 #endif
 
@@ -977,6 +972,14 @@ static void inactivate_reader(struct s_reader *rdr)
 		kill_thread(cl);
 }
 
+static bool picon_exists(char *name) {
+	char picon_name[64], path[255];
+	if (!cfg.http_tpl)
+		return false;
+	snprintf(picon_name, sizeof(picon_name) - 1, "IC_%s", name);
+	return strlen(tpl_getTplPath(picon_name, cfg.http_tpl, path, sizeof(path) - 1)) && file_exists(path);
+}
+
 static char *send_oscam_reader(struct templatevars *vars, struct uriparams *params, int32_t apicall) {
 	struct s_reader *rdr;
 	int32_t i;
@@ -984,7 +987,6 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 	if(!apicall) setActiveMenu(vars, MNU_READERS);
 	if(cfg.http_refresh > 0) {
 		tpl_printf(vars, TPLADD, "REFRESHTIME", "%d", cfg.http_refresh);
-		tpl_addVar(vars, TPLADD, "REFRESHURL", "userconfig.html");
 		tpl_addVar(vars, TPLADD, "REFRESH", tpl_getTpl(vars, "REFRESH"));
 	}
 	if ((strcmp(getParam(params, "action"), "disable") == 0) || (strcmp(getParam(params, "action"), "enable") == 0)) {
@@ -2186,8 +2188,8 @@ static char *send_oscam_user_config_edit(struct templatevars *vars, struct uripa
 	//Sleepsend
 	tpl_printf(vars, TPLADD, "SLEEPSEND", "%u", account->c35_sleepsend);
         
-    //User Max Idle
-    tpl_printf(vars, TPLADD, "UMAXIDLE", "%u", account->umaxidle);
+        //User Max Idle
+        tpl_printf(vars, TPLADD, "UMAXIDLE", "%u", account->umaxidle);
 
 	//EMM Reassembly selector
 	if(!apicall) {
@@ -2565,7 +2567,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 			char channame[32];
 			status = (!apicall) ? "<b>connected</b>" : "connected";
 			if(account->expirationdate && account->expirationdate < now) classname = "expired";
-			else classname = "connected";isactive = 1;
+			else classname = "connected";
 			proto = client_get_proto(latestclient);
 			if (latestclient->last_srvid != NO_SRVID_VALUE || latestclient->last_caid != NO_CAID_VALUE)
 				lastchan = xml_encode(vars, get_servicename(latestclient, latestclient->last_srvid, latestclient->last_caid, channame));
@@ -2600,9 +2602,10 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 				isec = now - latestactivity;
 				chsec = latestclient->lastswitch ? now - latestclient->lastswitch : 0;
 				if (isec < cfg.hideclient_to) {
+					isactive = 1;
 					status = (!apicall) ? "<b>online</b>" : "online";
 					if(account->expirationdate && account->expirationdate < now) classname = "expired";
-					else classname = "online";isactive = 1;
+					else classname = "online";
 					if (latestclient->cwfound + latestclient->cwnot + latestclient->cwcache > 0) {
 						cwrate2 = now - latestclient->login;
 						cwrate2 /= (latestclient->cwfound + latestclient->cwnot + latestclient->cwcache);
@@ -3114,6 +3117,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	if(!sysinfo(&info)){
 		tpl_printf(vars, TPLADD, "MEM_INFO","<tr><th class=\"centered\">Memory Info</th><td colspan=\"5\"><B>Total RAM:</B>&nbsp;&nbsp;%lluMB&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<B>Free RAM:</B>&nbsp;&nbsp;%lluMB&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<B>Used RAM:</B>&nbsp;&nbsp;%lluMB&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<B>Buffer RAM:</B>&nbsp;&nbsp;%lluMB</td></tr>",((unsigned long long)info.totalram  * info.mem_unit / (1024*1024)),((unsigned long long)info.freeram * info.mem_unit / (1024*1024)),(((unsigned long long)info.totalram * info.mem_unit / (1024*1024)) - ((unsigned long long)info.freeram * info.mem_unit / (1024*1024))),((unsigned long long)info.bufferram * info.mem_unit / (1024*1024)));
 	}
+
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
 	tpl_printf(vars, TPLADD, "SVNREV", "8930");
@@ -3121,11 +3125,9 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 	if (picon_exists(picon_name)) {
 		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;Revision #%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
 	}
-
 	if (strcmp(getParam(params, "action"), "resetserverstats") == 0) {
 		clear_system_stats();
 	}
-
 	if (strcmp(getParam(params, "action"), "kill") == 0) {
 		char *cptr = getParam(params, "threadid");
 		struct s_client *cl = NULL;
@@ -3233,11 +3235,12 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 			filtered = !(cfg.http_hide_idle_clients != 1 || cl->typ != 'c' || (now - cl->lastecm) <= cfg.hideclient_to);
 			if (!filtered && cfg.http_hide_type) {
 				char *p = cfg.http_hide_type;
-				while (*p && !filtered) {
-					filtered = (*p++ == cl->typ);
+			        while (*p && !filtered) {
+			        	filtered = (*p++ == cl->typ);
 				}
 			}
-			if (!filtered) {
+			
+                        if (!filtered) {
 				if (cl->typ=='c'){
 					user_count_shown++;
 					if (cfg.http_hide_idle_clients != 1 && cfg.hideclient_to > 0 && (now - cl->lastecm) <= cfg.hideclient_to) {
@@ -4829,7 +4832,6 @@ static char *send_oscam_cacheex(struct templatevars *vars, struct uriparams *par
 	}
 	if(cfg.http_refresh > 0) {
 		tpl_printf(vars, TPLADD, "REFRESHTIME", "%d", cfg.http_refresh);
-		tpl_addVar(vars, TPLADD, "REFRESHURL", "userconfig.html");
 		tpl_addVar(vars, TPLADD, "REFRESH", tpl_getTpl(vars, "REFRESH"));
 	}
 	char *level[]= {"NONE","CACHE PULL","CACHE PUSH","REVERSE CACHE PUSH"};
@@ -5713,8 +5715,8 @@ static void *http_server(void *UNUSED(d)) {
 	struct SOCKADDR sin;
 	socklen_t len = 0;
 	memset(&sin, 0, sizeof(sin));	
-
-	bool do_ipv6 = config_enabled(IPV6SUPPORT);	
+	
+	bool do_ipv6 = config_enabled(IPV6SUPPORT);
 #ifdef IPV6SUPPORT
 	if (do_ipv6) {
 		len = sizeof(struct sockaddr_in6);
