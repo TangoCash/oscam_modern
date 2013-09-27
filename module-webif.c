@@ -3120,7 +3120,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
-	tpl_printf(vars, TPLADD, "SVNREV", "8930");
+	tpl_printf(vars, TPLADD, "SVNREV", "8938");
 	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "OSCAMLOGO");
 	if (picon_exists(picon_name)) {
 		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;Revision #%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
@@ -3236,7 +3236,13 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 			if (!filtered && cfg.http_hide_type) {
 				char *p = cfg.http_hide_type;
 			        while (*p && !filtered) {
-			        	filtered = (*p++ == cl->typ);
+			        	char type = *p++;
+			        	// 'x' is a virtual type to match cacheex
+#ifdef CS_CACHEEX			        	
+			        	filtered = (type == cl->typ) || (type == 'x' && (cl->typ == 'p' || cl->typ == 'r') && (cl->reader && cl->reader->cacheex.mode));
+#else
+						filtered = (type == cl->typ);
+#endif
 				}
 			}
 			
