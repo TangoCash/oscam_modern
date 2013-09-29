@@ -759,13 +759,13 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, unsigned char FI, 
 
 	uint32_t ETU = Fi / D;
 	F = atr_fs_table[FI];
-	/*if (atr->hbn >= 6 && !memcmp(atr->hb, "IRDETO", 6) && reader->protocol_type == ATR_PROTOCOL_TYPE_T14){
+	if (atr->hbn >= 6 && !memcmp(atr->hb, "IRDETO", 6) && reader->protocol_type == ATR_PROTOCOL_TYPE_T14){
 		ETU = 0;	// for Irdeto T14 cards, do not set ETU
 		reader->worketu *=2; // overclocked T14 needs this otherwise high ecm reponses
-	}*/
+	}
 		
 	if (reader->crdr.write_settings) {
-		call(reader->crdr.write_settings(reader, ETU, EGT, 5, I, (uint16_t) F, (unsigned char)D, N));
+		call(reader->crdr.write_settings(reader, ETU, EGT, 5, I, (uint16_t) Fi, (unsigned char)D, N));
 	} else if (reader->crdr.write_settings2) {
 		call(reader->crdr.write_settings2(reader, (uint16_t) F, (uint8_t) D, WWT, EGT, BGT));
 	} else if (reader->crdr.write_settings3) {
@@ -775,7 +775,7 @@ static int32_t InitCard (struct s_reader * reader, ATR * atr, unsigned char FI, 
 	if (reader->typ == R_INTERNAL){
 		if (reader->mhz > 2000) {
 			rdr_log(reader, "PLL Reader: ATR Fsmax is %i MHz, clocking card to %.2f Mhz (nearest possible mhz specified reader->cardmhz)",
-				atr_fs_table[FI] / 1000000, (float) reader->cardmhz / 100);
+				atr_fs_table[FI] / 1000000,	(float) reader->cardmhz / 100);
 		} else {
 			rdr_log(reader, "ATR Fsmax is %i MHz, clocking card to %.2f (specified in reader->mhz)",
 				atr_fs_table[FI] / 1000000,	(float) reader->mhz / 100);
