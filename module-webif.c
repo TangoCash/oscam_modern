@@ -3007,7 +3007,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 				struct s_client *cl = rdr->client;
 				if (rdr->ll_entitlements) {
 
-					time_t now = (time((time_t*)0);
+					time_t now = time((time_t*)0);
 
 					struct tm start_t, end_t;
 					LL_ITER itr = ll_iter_create(rdr->ll_entitlements);
