@@ -3007,7 +3007,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 				struct s_client *cl = rdr->client;
 				if (rdr->ll_entitlements) {
 
-					time_t now = (time((time_t*)0)/84600)*84600;
+					time_t now = (time((time_t*)0);
 
 					struct tm start_t, end_t;
 					LL_ITER itr = ll_iter_create(rdr->ll_entitlements);
@@ -3120,7 +3120,7 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 
 	if(!apicall) setActiveMenu(vars, MNU_STATUS);
 	char picon_name[32];
-	tpl_printf(vars, TPLADD, "SVNREV", "8943");
+	tpl_printf(vars, TPLADD, "SVNREV", "8948");
 	snprintf(picon_name, sizeof(picon_name)/sizeof(char) - 1, "OSCAMLOGO");
 	if (picon_exists(picon_name)) {
 		tpl_printf(vars, TPLADD, "OSCAMLOGO", "<div class=\"oscamlogo\"><a class=\"oscamlogo\" href=\"http://www.streamboard.tv/oscam/timeline\"><img class=\"oscamlogo\" src=\"image?i=IC_OSCAMLOGO\" TITLE=\"Oscam&nbsp;Revision #%s Modern Trunk\"></a></div>", CS_SVN_VERSION);
@@ -3527,14 +3527,13 @@ static char *send_oscam_status(struct templatevars *vars, struct uriparams *para
 							S_ENTITLEMENT *ent;
 							uint16_t total_ent = 0;
 							uint16_t active_ent = 0;
-							time_t now_day = (now / 84600) * 84600;
 							struct tm end_t;
 
 							tpl_addVar(vars, TPLADD, "TMPSPAN", "<SPAN>");
 							while((ent = ll_iter_next(&itr)))
 							{
 								total_ent++;
-								if ((ent->end > now_day) && (ent->type != 7))
+								if ((ent->end > now) && (ent->type != 7))
 								{
 									if (active_ent) tpl_addVar(vars, TPLAPPEND, "TMPSPAN", "<BR><BR>");
 									active_ent++;
