@@ -888,7 +888,6 @@ void gbox_encrypt8(unsigned char *buffer, unsigned char *pass)
     for (passcounter = 0; passcounter < 4; passcounter++)
         for (bufcounter = 7; bufcounter >= 0; bufcounter--)
         {
-            temp = ( buffer[bufcounter] >> 2);
             temp = pass[3];
             pass[3] = (pass[3] / 2) + (pass[2] & 1) * 0x80;
             pass[2] = (pass[2] / 2) + (pass[1] & 1) * 0x80;
@@ -1984,7 +1983,6 @@ static int32_t gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSE
                     cont_1 = cont_1 + 3;
                     cont_card_1++;
                     cont_send++;
-                    sid_verified = 0;
 
                     if (!cs_malloc(&srvid1, sizeof(struct gbox_srvid)))
                         return 0;
