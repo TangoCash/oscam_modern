@@ -3634,7 +3634,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 
 	if(!apicall) { setActiveMenu(vars, MNU_STATUS); }
 	char picon_name[32];
-	tpl_printf(vars, TPLADD, "SVNREV", "8963");
+	tpl_printf(vars, TPLADD, "SVNREV", "8964");
 	snprintf(picon_name, sizeof(picon_name) / sizeof(char) - 1, "OSCAMLOGO");
 	if(picon_exists(picon_name))
 	{
