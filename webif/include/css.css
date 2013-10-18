@@ -337,24 +337,29 @@ tr.online td {
     background-color:#bdb
 }
 tr.expired td {
-    background-color:#bdb
+    background-color:#fdd
 }
 tr.connected td {
-    background-color:#bdb
+    background-color:#ffd
 }
-tr.online:hover td,
+tr.online:hover td{
+ background-color:#ad9;
+}
 tr.connected:hover td{
- background-color:#ad9;   
+ background-color:#eea;
 }
 tr.offline:hover td,
-tr.disabled:hover td,
+tr.disabled:hover td{
+    background-color:#ccc;
+    color:#000
+}
 tr.expired:hover td{
-    background-color:#DDD;
+    background-color:#eaa;
     color:#000
 }
 table.user_totals,
 table.users{
- background-color:#888;   
+ background-color:#888;
 }
 tr.enabledreader:hover td {
     background-color:#DDD;
@@ -553,23 +558,25 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#45484d', end
     padding:5px;
     font-size:12px
 }
-a.tooltip1 {
-    font-weight: bold;
-    color:#ec373a
-}
-a.tooltip {
-font-weight: bold;
-}
 a.tooltip span,
 table.users a.tooltip1 span {
     display:none;
     z-index:99
 }
+td.statuscol16 a.tooltip1 {
+    font-weight: bold;
+    color:#f33
+}
+td.statuscol16 a.tooltip,
+td.statuscol5 a.tooltip {
+    color:#fff;
+    font-weight: bold
+}
 table.users td.statuscol16 a.tooltip:hover,
 table.users td.statuscol16 a.tooltip1:hover,
 table.users td.statuscol5  a.tooltip:hover,
 table.users td.statuscol5  a.tooltip1:hover{
-    color:#ff6400
+    color:#f60
 }
 table.users td.statuscol5 a.tooltip:hover span,
 table.users td.statuscol5 a.tooltip1:hover span,
@@ -601,7 +608,6 @@ table.users td.statuscol5 a.tooltip1 {
     border-radius:2px;
     font-size:10.5px;
     line-height:14px;
-    color:#fff;
     vertical-align:baseline;
     white-space:nowrap;
     text-shadow:0 -1px 0 rgba(0, 0, 0, .25);
