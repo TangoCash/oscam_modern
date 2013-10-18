@@ -554,7 +554,11 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#45484d', end
     font-size:12px
 }
 a.tooltip1 {
+    font-weight: bold;
     color:#ec373a
+}
+a.tooltip {
+font-weight: bold;
 }
 a.tooltip span,
 table.users a.tooltip1 span {
@@ -640,7 +644,8 @@ a:hover span {
     border: 1px solid #666
 }
 a.statususericon {
-    text-decoration:none
+    text-decoration:none;
+    font-weight: bold
 }
 img {
     border:0px solid
