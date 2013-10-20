@@ -624,6 +624,11 @@ a.debugls:link, a.debugls:visited {
 a:link, a:visited, a:active {
     color:#050840
 }
+td.subheadline a:link,
+td.subheadline a:visited,
+td.subheadline a:active{
+    color:#fff;
+}
 a:hover {
     color:#cc0000;
     font-weight: bold;
