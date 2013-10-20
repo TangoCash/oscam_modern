@@ -3066,7 +3066,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		if(isactive > 0 || !cfg.http_hide_idle_clients)
 		{
 			tpl_printf(vars, TPLADDONCE, "CWLASTRESPONSET", "%d", lastresponsetm);
-			tpl_addVar(vars, TPLADDONCE, "IDLESECS", sec2timeformat(vars, isec));
+			tpl_printf(vars, TPLADDONCE, "IDLESECS", "<br>(%d)", sec2timeformat(vars, isec));
 			if(isactive > 0)
 			{
 				tpl_printf(vars, TPLADDONCE, "CLIENTTIMEONCHANNELAPI", "%d", chsec);
