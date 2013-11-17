@@ -1320,6 +1320,8 @@ struct s_reader                                     //contains device info, read
 	unsigned char ns;               // Send sequence number
 	int16_t             smartdev_found;
 	int16_t				smart_type;
+	uint16_t   statuscnt;
+	uint16_t   modemstat;
 #endif
 	unsigned char   rom[15];
 	unsigned char   irdId[4];
