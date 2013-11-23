@@ -726,8 +726,9 @@ int smartreader_set_baudrate(struct s_reader *reader, int baudrate)
         rdr_log(reader, "Setting new baudrate failed");
 		return (-2);
 	}
-//	rdr_log(reader,"De baudrate is set on %u baud de value = %u  de idx = %u", baudrate, value, idx);
     crdr_data->baudrate = baudrate;
+//	rdr_log(reader,"BAUDRATE IS NOW SET ON %u", crdr_data->baudrate);
+//	rdr_log(reader,"ACTUAL BAUDRATE = %u", actual_baudrate);
     return 0;
 }
 
@@ -1068,7 +1069,7 @@ static int32_t smartreader_usb_open_dev(struct s_reader *reader)
 	else if(usbdesc.bcdDevice == 0x200)
 		{ crdr_data->type = TYPE_AM; }
 	else if((usbdesc.bcdDevice == 0x500) && (usbdesc.idProduct == 0x6011))
-		{ crdr_data->type = TYPE_2232C; }
+		{ crdr_data->type = TYPE_4232H; }
 	else if((usbdesc.bcdDevice == 0x500) && (usbdesc.idProduct != 0x6011))
 		{ crdr_data->type = TYPE_2232C; }
 	else if(usbdesc.bcdDevice == 0x600)
@@ -1394,7 +1395,6 @@ static int32_t SR_Reset(struct s_reader *reader, ATR *atr)
 	int32_t  i;
 	int32_t parity[4] = {EVEN, ODD, NONE, EVEN};    // the last EVEN is to try with different F, D values for irdeto card.
 	static const char *const parity_str[5] = {"NONE", "ODD", "EVEN", "MARK", "SPACE"};
-//	rdr_log(reader," SR_reset wordt gerund");
 
 	crdr_data->fs = reader->cardmhz * 10000;
 
@@ -1405,8 +1405,8 @@ static int32_t SR_Reset(struct s_reader *reader, ATR *atr)
 	crdr_data->N = 1;
 	crdr_data->T = 1;
 	crdr_data->inv = 0;
-//	baud_temp = (double)(crdr_data->D * crdr_data->fs / (double)crdr_data->F);
-	baud_temp2 = 9600;
+	baud_temp2 = (double)(crdr_data->D * crdr_data->fs / (double)crdr_data->F);
+	rdr_log(reader,"CARD INIT BAUDRATE = %u", baud_temp2);
 
 	for(i = 0 ; i < 4 ; i++)
 	{
@@ -1423,8 +1423,7 @@ static int32_t SR_Reset(struct s_reader *reader, ATR *atr)
 			crdr_data->D = 1;
 			crdr_data->T = 2; // will be set to T=1 in EnableSmartReader
 			crdr_data->fs = 6000000;
-//			baud_temp = (double)(crdr_data->D * crdr_data->fs / (double)crdr_data->F);
-			baud_temp2 = 9600;
+			baud_temp2 = (double)(crdr_data->D * crdr_data->fs / (double)crdr_data->F);
 		}
 
 		smart_flush(reader);
@@ -1576,32 +1575,12 @@ int32_t SR_WriteSettings(struct s_reader *reader, uint16_t  F, unsigned char D, 
 	struct sr_data *crdr_data = reader->crdr_data;
 	crdr_data->inv = convention;//FIXME this one is set by icc_async and local smartreader reset routine
 	static const char *const parity_str[5] = {"NONE", "ODD", "EVEN", "MARK", "SPACE"};
-//	rdr_log(reader, "the SR_WriteSettings is called");
-	if (crdr_data->rdrtype <= 1) {
-	if(reader->mhz >= 1600) { reader->mhz = 1600; }
-	else if(reader->mhz >= 1200) { reader->mhz = 1200; }
-	else if(reader->mhz >= 961)  { reader->mhz =  961; }
-	else if(reader->mhz >= 800)  { reader->mhz =  800; }
-	else if(reader->mhz >= 686)  { reader->mhz =  686; }
-	else if(reader->mhz >= 600)  { reader->mhz =  600; }
-	else if(reader->mhz >= 534)  { reader->mhz =  534; }
-	else if(reader->mhz >= 480)  { reader->mhz =  480; }
-	else if(reader->mhz >= 436)  { reader->mhz =  436; }
-	else if(reader->mhz >= 400)  { reader->mhz =  400; }
-	else if(reader->mhz >= 369)  { reader->mhz =  369; }
-	else if(reader->mhz >= 357)  { reader->mhz =  369; } // 357 not suported by smartreader
-	else if(reader->mhz >= 343)  { reader->mhz =  343; }
-	else
-		{ reader->mhz =  320; }
-	}
+	rdr_log(reader,"smargoautospeed = %u", reader->smargoautospeed);
 	rdr_log(reader, "Effectif reader settings mhz =%u F= %u D= %u N=%u T=%u inv=%u parity=%s", reader->mhz, F, D, N, T, crdr_data->inv, parity_str[crdr_data->parity]);
 	smart_fastpoll(reader, 1);
 	uint32_t baud_temp2 = (double)(D * (reader->mhz * 10000) / (double)F);
-//	uint32_t baud_temp2 = 9600; // this baudrate is used for reader setup and card init
 	smart_flush(reader);
 	EnableSmartReader(reader, baud_temp2, reader->mhz, F, D, N, T, crdr_data->inv, crdr_data->parity);
-//	smartreader_set_baudrate(reader, 3000000); // set to max as the mhz does determine the used baudrate and we are working async
-//	rdr_log(reader,"de baudrate set = 3000000");
 	smart_fastpoll(reader, 0);
 
 	return OK;
@@ -1740,7 +1719,6 @@ static int32_t sr_init_locks(struct s_reader *UNUSED(reader))
 
 	return 0;
 }
-	
 
 void cardreader_smartreader(struct s_cardreader *crdr)
 {
