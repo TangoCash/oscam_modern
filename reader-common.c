@@ -330,9 +330,9 @@ bool cardreader_init(struct s_reader *reader)
 			if (reader->mhz >= 534)  reader->mhz =  534; else
 			if (reader->mhz >= 480)  reader->mhz =  480; else
 			if (reader->mhz >= 436)  reader->mhz =  436; else
-			if (reader->mhz >= 400)  reader->mhz =  400; else
+			if (reader->mhz >= 400)  reader->mhz =  369; else
 			if (reader->mhz >= 369)  reader->mhz =  369; else
-			if (reader->mhz == 357)  reader->mhz =  400; else // 357 not a default smartreader setting
+			if (reader->mhz == 357)  reader->mhz =  369; else // 357 not a default smartreader setting
 			if (reader->mhz >= 343)  reader->mhz =  343; else 
 			reader->mhz =  320;
 	    }
