@@ -3509,18 +3509,15 @@ static void *dvbapi_main_local(void *cli)
 			if(demux[i].socket_fd > 0 && cfg.dvbapi_pmtmode != 6)
 			{
 				rc = 0;
-				if(cfg.dvbapi_boxtype == BOXTYPE_IPBOX)
+				for(j = 0; j < pfdcount; j++)
 				{
-					for(j = 0; j < pfdcount; j++)
+					if(pfd2[j].fd == demux[i].socket_fd)
 					{
-						if(pfd2[j].fd == demux[i].socket_fd)
-						{
-							rc = 1;
-							break;
-						}
+						rc = 1;
+						break;
 					}
-					if(rc == 1) { continue; }
 				}
+				if(rc == 1) { continue; }
 
 				pfd2[pfdcount].fd = demux[i].socket_fd;
 				pfd2[pfdcount].events = (POLLIN | POLLPRI);
@@ -3541,7 +3538,7 @@ static void *dvbapi_main_local(void *cli)
 		if(rc > 0)
 		{
 			cs_ftime(&end); // register end time
-			cs_debug_mask(D_TRACE, "[DVBAPI] new events occurred on %d of %d handlers after %d ms inactivity", rc, pfdcount, comp_timeb(&start, &end));
+			cs_debug_mask(D_TRACE, "[DVBAPI] new events occurred on %d of %d handlers after %d ms inactivity", rc, pfdcount, comp_timeb(&end, &start));
 			cs_ftime(&start); // register new start time for next poll
 		}
 
