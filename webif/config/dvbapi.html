@@ -5,15 +5,13 @@
 <form action="config.html" method="get">
 	<input name="part" type="hidden" value="dvbapi">
 	<input name="action" type="hidden" value="execute">
-	<input name="enabled" type="hidden" value="0">
-	<input name="reopenonzap" type="hidden" value="0">
+	<input name="enabled" type="hidden" value="0">"0">
 	<input name="au" type="hidden" value="0">
 	<TABLE class="config">
 		<TR><TH COLSPAN="2">Edit DVB Api Config</TH></TR>
 		<TR><TD class="mandatory">##TPLHELPPREFIX##conf#enabled##TPLHELPSUFFIX##Enabled:</A></TD><TD class="mandatory"><input name="enabled" type="checkbox" value="1" ##ENABLEDCHECKED##>
 		<TR><TD>##TPLHELPPREFIX##conf#au##TPLHELPSUFFIX##AU:</A></TD><TD><input name="au" type="checkbox" value="1" ##AUCHECKED##>
 		<TR><TD class="mandatory">##TPLHELPPREFIX##conf#boxtype##TPLHELPSUFFIX##Boxtype:</A></TD><TD class="mandatory"><SELECT name="boxtype">##BOXTYPE##</select></TD></TR>
-		<TR><TD>##TPLHELPPREFIX##conf#reopenonzap##TPLHELPSUFFIX##ReopenOnZap:</A></TD><TD><input name="reopenonzap" type="checkbox" value="1" ##REOPENONZAPCHECKED##>
 		<TR><TD class="mandatory">##TPLHELPPREFIX##conf#user_2##TPLHELPSUFFIX##User:</A></TD><TD class="mandatory"><input name="user" type="text" size="63" maxlength="63" value="##USER##"></TD></TR>
 		<TR><TD>##TPLHELPPREFIX##conf#pmt_mode##TPLHELPSUFFIX##PMT Mode:</A></TD><TD><select name="pmt_mode">
 			<option value="0" ##PMTMODESELECTED0##>0 - use camd.socket and PMT file</option>
