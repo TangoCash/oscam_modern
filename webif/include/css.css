@@ -215,20 +215,20 @@ table.configreader th, table.configreader td, table.configreader a {
 table.invisiblelb th {
     color:#fff;
     background-color:#0078a5;
-    padding:3px
+    padding:3px;
 }
 table.configreader th.cnt, table.configreader td.cnt {
     margin: 0px auto 0px auto;
-    text-align: center
+    text-align: center;
 }
 table.statsbalance td:last-child {
     line-height:20px;
     margin-left: 0;
-    width:22px
+    text-align: center;
+    width:22px;
 }
 table.statsbalance td:last-child img.icon {
     float:right;
-    margin-left:10px
 }
 table.invisible tr td:first-child, table.invisible td {
     text-align:left;

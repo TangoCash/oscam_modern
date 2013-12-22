@@ -2021,7 +2021,7 @@ static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams
 
 	if(error)
 	{
-		tpl_addVar(vars, TPLAPPEND, "READERSTATSROW", "<TR><TD colspan=\"8\"> No statistics found - Reader exist and active?</TD></TR>");
+		tpl_addVar(vars, TPLAPPEND, "READERSTATSROW", "<TR><TD colspan=\"9\"> No statistics found - Reader exist and active?</TD></TR>");
 		if(!apicall)
 			{ return tpl_getTpl(vars, "READERSTATS"); }
 		else
