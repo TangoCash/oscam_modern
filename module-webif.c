@@ -4398,7 +4398,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 	tpl_printf(vars, TPLADD, "TOTAL_CACHEXGOT", "%d", first_client ? first_client->cwcacheexgot : 0);
 	tpl_addVar(vars, TPLADD, "TOTAL_CACHEXGOT_IMG", getting);
 	tpl_printf(vars, TPLADD, "TOTAL_CACHEXHIT", "%d", first_client ? first_client->cwcacheexhit : 0);
-	tpl_printf(vars, TPLADD, "TOTAL_CACHESIZE", "%d", ecmcwcache_size);
+	tpl_printf(vars, TPLADD, "TOTAL_CACHESIZE", "%d", cache_size());
 	tpl_printf(vars, TPLADD, "REL_CACHEXHIT", "%.2f", (first_client ? first_client->cwcacheexhit : 0) * 100 / cachesum);
 	tpl_addVar(vars, TPLADD, "CACHEEXSTATS", tpl_getTpl(vars, "STATUSCACHEX"));
 #endif
