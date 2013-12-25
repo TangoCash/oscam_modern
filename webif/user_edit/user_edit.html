@@ -28,12 +28,17 @@
 			<TR><TD>##TPLHELPPREFIX##user#sleep##TPLHELPSUFFIX##Sleep:</A></TD><TD><input name="sleep" type="text" size="4" maxlength="4" value="##SLEEP##"></TD></TR>
 ##TPLUSEREDITMONLEVEL##
 			<TR><TD>##TPLHELPPREFIX##user#au##TPLHELPSUFFIX##AU:</A></TD><TD><input name="au" type="text" size="63" maxlength="63" value="##AUREADER##"></TD></TR>
-			<TR><TD>##TPLHELPPREFIX##user#services##TPLHELPSUFFIX##Services:</A></TD>
-				<TD>
-					<TABLE class="invisible">
+			<TR><TH COLSPAN="3">User services settings</TH></TR>
+			<TR><TD COLSPAN="2">
+			<TABLE CLASS="invisiblelb">
+				<TR>
+					<TH>&nbsp;</TH>
+					<TH class="withservices">##TPLHELPPREFIX##user#services##TPLHELPSUFFIX##With_Services:</A></TH>
+					<TH class="notservices">##TPLHELPPREFIX##user#services##TPLHELPSUFFIX##Not_Services:</A></TH>
+				</TR>
 ##SIDS##
-					</TABLE>
-				</TD>
+			</TABLE>
+			</TD>
 			</TR>
 			<TR><TD>##TPLHELPPREFIX##user#caid##TPLHELPSUFFIX##CAID:</A></TD><TD><input name="caid" type="text" size="63" maxlength="160" value="##CAIDS##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##user#ident##TPLHELPSUFFIX##Ident:</A></TD><TD><textarea name="ident" cols="58" rows="3" class="bt">##IDENTS##</textarea></TD></TR>

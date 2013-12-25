@@ -209,8 +209,27 @@ table.invisiblelb, table.configreader {
     border-bottom:3px solid #0f1517;
     text-decoration: none
 }
-table.configreader th, table.configreader td, table.configreader a {
-    text-align:left
+th.lbservices a,
+th.notservices a,
+th.withservices a {
+    color:#FFFFFF;
+}
+th.lbservices a:hover,
+th.notservices a:hover,
+th.withservices a:hover {
+    color:#EE0000;
+}
+td.servicescol1,
+table.configreader td {
+    text-align:left;
+}
+table.configreader td:first-child {
+    text-align:center;
+}
+table.configreader th,
+table.configreader a {
+    font-weight:bold;
+    text-align:center;
 }
 table.invisiblelb th {
     color:#fff;
@@ -938,6 +957,8 @@ table#dataTable.users thead tr th{
 .user_totals{
     width: 800px;
 }
+
+
 
 td.select {
     text-align:center;
