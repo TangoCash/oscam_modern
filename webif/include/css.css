@@ -949,7 +949,6 @@ table#dataTable.readers thead tr th table.subtable tbody tr th
 table#dataTable.users thead tr th{
     padding: 1px 1px 1px 1px;
 }
-
 .debugline{
     font-weight:bold;
     line-height: 20px;
@@ -957,9 +956,6 @@ table#dataTable.users thead tr th{
 .user_totals{
     width: 800px;
 }
-
-
-
 td.select {
     text-align:center;
     vertical-align:middle;
@@ -994,13 +990,11 @@ input[type="submit"]:active {
     color:#ffffff;
     background-color:#ff0000;
 }
-
 input[type="text"] {
     border: .5px solid #000;
     padding:2px;
     cursor:text
 }
-
 input[type="text"]:hover{
     border:.5px solid #000;
     padding:2px;
@@ -1021,6 +1015,14 @@ div#newreader.newuser form table.users tbody tr th select{
     padding:2px;
     cursor: pointer;   
 }
+.groups {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -o-text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 40px;
+    text-align:center;
+} 
 @media only screen and (max-width: 1039px) {
     tr th#hide,
     td#hide{
