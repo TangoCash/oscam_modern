@@ -561,6 +561,7 @@ div.sidlist {
     text-align:left
 }
 div.message {
+    color:#EE0000;
     font-size: 12px;
     font-weight:bold
 }
