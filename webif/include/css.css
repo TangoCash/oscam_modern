@@ -168,7 +168,7 @@ div a img.oscamlogo,
 div a img.oscamlogo:hover {position:absolute;top:80px;padding:2px;}
 div.oscamlogo             {margin-bottom: 40px;padding-bottom: 2px;}
 
-table {top:80px;border-spacing:1px;margin-left:auto;margin-right:auto}
+table {top:80px;border-spacing:1px;margin-left:auto;margin-right:auto;background-color:#DDD;}
 table.menu {border-spacing:0px}
 
 table tr th {
