@@ -204,7 +204,7 @@ table.config tr td:first-child {
 table.invisiblelb, table.configreader {
     text-align:left;
     width:855px;
-    background-color:#0078a5;
+    background-color:#ccc;
     font-size: 12px;
     border-bottom:3px solid #0f1517;
     text-decoration: none
