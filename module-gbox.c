@@ -37,6 +37,8 @@
 #define GBOX_STAT_HELLO3	3
 #define GBOX_STAT_HELLO4	4
 
+#define RECEIVE_BUFFER_SIZE	1024
+
 enum
 {
 	MSG_ECM = 0x445c,
@@ -101,7 +103,7 @@ struct gbox_data
 	uint16_t exp_seq; // hello seq
 	struct gbox_peer peer;
 	CS_MUTEX_LOCK lock;
-	uchar buf[1024];
+	uchar buf[RECEIVE_BUFFER_SIZE];
 	pthread_mutex_t hello_expire_mut;
 	pthread_cond_t hello_expire_cond;
 	LLIST *local_cards;
@@ -727,7 +729,7 @@ static int32_t gbox_recv2(struct s_client *cli, uchar *b, int32_t l)
 	uchar *data = gbox->buf;
 	char tmp[0x50];
 
-	if(!gbox)
+	if(!gbox || l > RECEIVE_BUFFER_SIZE)
 		{ return -1; }
 
 	int32_t n = l;
@@ -759,11 +761,13 @@ static int32_t gbox_recv2(struct s_client *cli, uchar *b, int32_t l)
 	{
 		cs_debug_mask(D_READER, "received data, peer : %04x   data: %s", gbox->peer.id, cs_hexdump(0, data, l, tmp, sizeof(tmp)));
 
-		if(data[0] != 0x48 && data[1] != 0x44)  // if MSG_CW
+		if (gbox_decode_cmd(data) != MSG_CW)
 		{
-			if(data[6] != gbox->peer.key[0] && data[7] != gbox->peer.key[1] && data[8] != gbox->peer.key[2] && data[9] != gbox->peer.key[3])
+			if(data[6] != gbox->peer.key[0] || data[7] != gbox->peer.key[1] || data[8] != gbox->peer.key[2] || data[9] != gbox->peer.key[3])
 			{
+				cs_log("gbox peer: %04X sends wrong password", gbox->peer.id);
 				cs_writeunlock(&gbox->lock);
+				return -1;
 				//continue; // next client
 			}
 		}
@@ -773,6 +777,7 @@ static int32_t gbox_recv2(struct s_client *cli, uchar *b, int32_t l)
 		cs_log("gbox: ATTACK ALERT: proxy %s:%d", cs_inet_ntoa(cli->ip), cli->reader->r_port);
 		cs_log("received data, peer : %04x   data: %s", gbox->peer.id, cs_hexdump(0, data, n, tmp, sizeof(tmp)));
 		cs_writeunlock(&gbox->lock);
+		return -1;
 		//continue; // next client
 	}
 	if(gbox_cmd_switch(cli, n) < 0)
