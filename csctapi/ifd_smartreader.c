@@ -314,7 +314,7 @@ void smartreader_init(struct s_reader *reader)
 
 	crdr_data->type = TYPE_BM;    /* chip type */
 	crdr_data->baudrate = -1;
-	crdr_data->bitbang_enabled = 0;  /* 0: normal mode 1: any of the bitbang modes enabled */
+	crdr_data->bitbang_enabled = 1;  /* 0: normal mode 1: any of the bitbang modes enabled */
 
 	crdr_data->writebuffer_chunksize = 4096;
 	crdr_data->max_packet_size = 0;
@@ -1398,17 +1398,18 @@ static int32_t SR_Reset(struct s_reader *reader, ATR *atr)
 	int32_t parity[4] = {EVEN, ODD, NONE, EVEN};    // the last EVEN is to try with different F, D values for irdeto card.
 	static const char *const parity_str[5] = {"NONE", "ODD", "EVEN", "MARK", "SPACE"};
 
+/*	Temporary removed until a better way off passing from 369 to 600 is find
 	if (reader->autospeed == 0 && reader->cardmhz == reader->mhz && reader->cardmhz > 369)
-	crdr_data->fs = reader->cardmhz * 10000; else
-	crdr_data->fs = 3690000;
+	crdr_data->fs = reader->cardmhz * 10000; else */
+	crdr_data->fs = reader->cardmhz * 10000;
 
-	rdr_log(reader," init card at %u mhz", crdr_data->fs / 10000);
+//	rdr_log(reader," init card at %u mhz", crdr_data->fs / 10000);
 
 	smart_fastpoll(reader, 1);
 	// set smartreader+ default values
 	crdr_data->F = 372;
 	crdr_data->D = 1;
-	crdr_data->N = 1;
+	crdr_data->N = 0;
 	crdr_data->T = 1;
 	crdr_data->inv = 0;
 	baud_temp2 = (double)(crdr_data->D * crdr_data->fs / (double)crdr_data->F);
@@ -1425,7 +1426,7 @@ static int32_t SR_Reset(struct s_reader *reader, ATR *atr)
 		if(i == 3)
 		{
 			rdr_debug_mask(reader, D_DEVICE, "SR: Trying irdeto");
-			crdr_data->F = 558; /// changed this from 618 to 558 atr iso table shows 558 as convertion factor
+			crdr_data->F = 618; // why 618 needs to be used instead off 558 ?
 			crdr_data->D = 1;
 			crdr_data->T = 2; // will be set to T=1 in EnableSmartReader
 			crdr_data->fs = 6000000;
