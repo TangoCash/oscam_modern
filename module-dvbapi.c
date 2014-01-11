@@ -893,7 +893,7 @@ int32_t dvbapi_start_emm_filter(int32_t demux_index)
 		cs_debug_mask(D_DVBAPI, "[EMM Filter] %i matching emm filter skipped because they are already active on same emmpid:provid", fcount_added);
 	}
 	if(!fcount) { return 2; }
-	if(fcount == abs(demux[demux_index].emm_filter)) { return 0; }
+	if(fcount == (unsigned int)abs(demux[demux_index].emm_filter)) { return 0; }
 	else { return 1; }
 }
 
@@ -1179,6 +1179,7 @@ void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t idx, bool enable)
 	{
 #ifdef WITH_STAPI
 	case STAPI:
+		if (idx != -1) idx = 1; // use always indexer 1 for start or stop exeception = -1 disable all (stapi doesnt use indexers!)
 		stapi_set_pid(demux_id, idx, demux[demux_id].STREAMpids[num], enable, demux[demux_id].pmt_file); 
 		break;
 #endif
@@ -1267,12 +1268,12 @@ void dvbapi_stop_descrambling(int32_t demux_id)
 	i = demux[demux_id].pidindex;
 	if(i < 0) { i = 0; }
 	int32_t idx = demux[demux_id].ECMpids[i].index;
+#ifdef WITH_STAPI
+	idx = -1; // remove all!
+#endif
 	get_servicename(dvbapi_client, demux[demux_id].program_number, demux[demux_id].ECMpidcount > 0 ? demux[demux_id].ECMpids[i].CAID : 0, channame);
 	cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d stop descrambling program number %04X (%s)", demux_id, demux[demux_id].program_number, channame);
 	dvbapi_stop_filter(demux_id, TYPE_EMM);
-#ifdef WITH_STAPI
-	idx = -1; // on stop descrambling remove all streampids!
-#endif
 	if(demux[demux_id].ECMpidcount > 0)
 	{
 		dvbapi_stop_filter(demux_id, TYPE_ECM);
@@ -1798,7 +1799,7 @@ void dvbapi_resort_ecmpids(int32_t demux_index)
 	demux[demux_index].curindex = -1;
 	demux[demux_index].pidindex = -1;
 
-	struct s_channel_cache *c;
+	struct s_channel_cache *c = NULL;
 
 	if(cfg.dvbapi_requestmode == 1)
 	{
@@ -2792,8 +2793,7 @@ void event_handler(int32_t UNUSED(signal))
 
 				if((time_t)pmt_info.st_mtime != demux[i].pmt_time)
 				{
-					cs_log("[DVBAPI] Demuxer #%d PMT file %s is updated!", i, dest);
-					//dvbapi_stop_descrambling(i);
+					dvbapi_stop_descrambling(i);
 				}
 
 				int32_t ret = close(pmt_fd);
@@ -3022,7 +3022,7 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 		memcpy(er->ecm, buffer, er->ecmlen);
 
 		chid = get_subid(er); // fetch chid or fake chid
-		er->chid = (chid != 0 ? chid : 0x10000); // if not zero apply, otherwise use no chid value 0x10000
+		er->chid = chid;
 
 		if(curpid->CAID >> 8 == 0x06)  //irdeto cas
 		{
@@ -4505,7 +4505,8 @@ void disable_unused_streampids(int16_t demux_id)
 	int32_t i,n;
 	struct s_streampid *listitem;
 	// search for old enabled streampids on all ca devices that have to be disabled, index 0 is skipped as it belongs to fta!
-#ifdef WITH_STAPI	
+#ifdef WITH_STAPI
+	idx = 2; // idx-1 = 2-1 = 1 = used indexer for starting pids on stapi
 	for(i = 0; i < PTINUM; i++){
 #else
 	for(i = 0; i < 8 && idx; i++){
