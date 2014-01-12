@@ -1,6 +1,8 @@
 #include "globals.h"
 #include "oscam-time.h"
 
+static enum clock_type clock_type = CLOCK_TYPE_UNKNOWN;
+
 int32_t comp_timeb(struct timeb *tpa, struct timeb *tpb)
 {
 	return ((tpa->time - tpb->time) * 1000) + (tpa->millitm - tpb->millitm);
@@ -173,6 +175,51 @@ int32_t add_ms_to_timeb(struct timeb *tb, int32_t ms)
 	return comp_timeb(tb, &tb_now);
 }
 
+#if defined(__UCLIBC__)
+#  define __UCLIBC_VER (__UCLIBC_MAJOR__ * 10000 + __UCLIBC_MINOR__ * 100 + __UCLIBC_SUBLEVEL__)
+#else
+#  define __UCLIBC_VER 999999
+#endif
+
+#if defined(__GLIBC__)
+#  define __GLIBCVER (__GLIBC__ * 100 + __GLIBC_MINOR__)
+#else
+#  define __GLIBCVER 9999
+#endif
+
+// Assume we have HAVE_pthread_condattr_setclock if CLOCK_MONOTONIC is defined
+#if defined(CLOCKFIX) && defined(CLOCK_MONOTONIC)
+#define HAVE_pthread_condattr_setclock 1
+#endif
+
+#if defined(HAVE_pthread_condattr_setclock)
+// UCLIBC 0.9.31 does not have pthread_condattr_setclock
+#  if __UCLIBC_VER < 932
+#     undef HAVE_pthread_condattr_setclock
+#  endif
+// glibc 2.3.6 in ppc old toolchain do not have pthread_condattr_setclock
+#  if __GLIBCVER < 204
+#     undef HAVE_pthread_condattr_setclock
+#  endif
+// android's libc not have pthread_condattr_setclock
+#  if __BIONIC__
+#     undef HAVE_pthread_condattr_setclock
+#  endif
+#endif
+
+void init_rightclock_cond(pthread_cond_t *cond)
+{
+#if !defined(HAVE_pthread_condattr_setclock)
+	(void)cond;
+#else
+	pthread_condattr_t attr;
+	pthread_condattr_init(&attr); // init condattr with defaults
+	enum clock_type ctype = cs_getclocktype(NULL);
+	pthread_condattr_setclock(&attr, (ctype == CLOCK_TYPE_MONOTONIC) ? CLOCK_MONOTONIC : CLOCK_REALTIME);
+	pthread_cond_init(cond, &attr); // init thread with right clock assigned
+#endif
+}
+
 void sleepms_on_cond(pthread_cond_t *cond, pthread_mutex_t *mutex, uint32_t msec)
 {
 	struct timespec ts;
@@ -180,4 +227,65 @@ void sleepms_on_cond(pthread_cond_t *cond, pthread_mutex_t *mutex, uint32_t msec
 	pthread_mutex_lock(mutex);
 	pthread_cond_timedwait(cond, mutex, &ts); // sleep on sleep_cond
 	pthread_mutex_unlock(mutex);
+}
+
+enum clock_type cs_getclocktype(struct timeb *UNUSED(now)) {
+	if (clock_type == CLOCK_TYPE_UNKNOWN) {
+		struct timespec ts;
+		cs_gettime(&ts); // init clock type
+	}
+	return clock_type;
+}
+
+time_t cs_walltime(struct timeb *tp)
+{
+	// we dont need to fetch time again and calculate if oscam is already using realtimeclock!
+	if (clock_type != CLOCK_TYPE_MONOTONIC)
+		return tp->time;
+
+	struct timespec ts;
+	struct timeval tv;
+
+	cs_gettime(&ts);
+	gettimeofday(&tv, NULL);
+	int64_t skew = tv.tv_sec - ts.tv_sec;
+	return(tp->time + skew);
+}
+
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
+void cs_gettime(struct timespec *ts)
+{
+#if !defined(CLOCKFIX) || (!defined(CLOCK_MONOTONIC) && !defined(__MACH__))
+	struct timeval tv;
+    gettimeofday(&tv, NULL);
+	ts->tv_sec = tv.tv_sec;
+	ts->tv_nsec = tv.tv_usec * 1000;
+	clock_type = CLOCK_TYPE_REALTIME;
+	return;
+#elif defined (__MACH__)
+// OS X does not have clock_gettime, use clock_get_time
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	ts->tv_sec = mts.tv_sec;
+	ts->tv_nsec = mts.tv_nsec;
+	clock_type = CLOCK_TYPE_REALTIME;
+#else
+	if (clock_type == CLOCK_TYPE_REALTIME) { // monotonic returned error
+		clock_gettime(CLOCK_REALTIME, ts);
+		return;
+	}
+	int32_t	ret = clock_gettime(CLOCK_MONOTONIC, ts);
+	clock_type = CLOCK_TYPE_MONOTONIC;
+	if ((ret < 0 && errno == EINVAL)){ // Error fetching time from this source (Shouldn't happen on modern Linux)
+		clock_gettime(CLOCK_REALTIME, ts);
+		clock_type = CLOCK_TYPE_REALTIME;
+	}
+#endif
 }
