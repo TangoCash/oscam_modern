@@ -510,29 +510,17 @@ void *stapi_read_thread(void *sparam)
 #define DE_START 0
 #define DE_STOP 1
 
-bool stapi_DescramblerAssociate(int32_t demux_id, uint16_t pid, int32_t mode, int32_t n)
+void stapi_DescramblerAssociate(int32_t demux_id, uint16_t pid, int32_t mode, int32_t n)
 {
 	uint32_t Slot = 0;
 	int32_t ErrorCode = 0;
 
-	if(dev_list[n].SessionHandle == 0) {
-		cs_log("[DVBAPI] Demuxer #%d %s pid %04x on PTI#%d: %s Failed! (no session handle)",demux_id,
-			(mode == ASSOCIATE ? "enable" : "disable"), pid, n, dev_list[n].name);
-		return (mode == ASSOCIATE ? false : true); // return false on enable, true on disable
-	}
+	if(dev_list[n].SessionHandle == 0) { return; }
 
 	Slot = oscam_stapi_PidQuery(dev_list[n].name, pid);
-	if(!Slot) {
-		cs_log("[DVBAPI] Demuxer #%d %s pid %04x on PTI#%d: %s Failed! (no slot assigned)",demux_id,
-			(mode == ASSOCIATE ? "enable" : "disable"), pid, n, dev_list[n].name);
-		return (mode == ASSOCIATE ? false : true); // return false on enable, true on disable
-	}
+	if(!Slot) { return; }
 
-	if(demux[demux_id].DescramblerHandle[n] == 0) {
-		cs_log("[DVBAPI] Demuxer #%d %s pid %04x on PTI#%d: %s Failed! (no descramblerhandle)",demux_id,
-			(mode == ASSOCIATE ? "enable" : "disable"), pid, n, dev_list[n].name);
-		return (mode == ASSOCIATE ? false : true); // return false on enable, true on disable
-	}
+	if(demux[demux_id].DescramblerHandle[n] == 0) { return; }
 
 	if(mode == ASSOCIATE)
 	{
@@ -541,38 +529,32 @@ bool stapi_DescramblerAssociate(int32_t demux_id, uint16_t pid, int32_t mode, in
 		{
 			if(demux[demux_id].slot_assc[n][k] == Slot)
 			{
-				cs_log("[DVBAPI] Demuxer #%d enable pid %04x on PTI#%d: %s Skipped! (already present in slot %d)",demux_id, pid, n,
-					dev_list[n].name, Slot);
-				return true;
+				return;
 			}
 		}
-		
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d enable pid %04x on PTI#%d: %s", demux_id, pid, n, dev_list[n].name);
+
 		ErrorCode = oscam_stapi_DescramblerAssociate(demux[demux_id].DescramblerHandle[n], Slot);
-		if(ErrorCode != 0){
-			cs_log("[DVBAPI] Demuxer #%d enable pid %04x on PTI#%d: %s Failed! (Errorcode = %d)",demux_id, pid, n, dev_list[n].name,
-				ErrorCode);
-			return false;
-		}
+		cs_debug_mask(D_DVBAPI, "set pid %04x on %s", pid, dev_list[n].name);
+
+		if(ErrorCode != 0)
+			{ cs_log("DescramblerAssociate %d", ErrorCode); }
 
 		for(k = 0; k < SLOTNUM; k++)
 		{
 			if(demux[demux_id].slot_assc[n][k] == 0)
 			{
 				demux[demux_id].slot_assc[n][k] = Slot;
-				return true;
+				break;
 			}
 		}
 	}
 	else
 	{
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d disable pid %04x on PTI#%d: %s", demux_id, pid, n, dev_list[n].name);
 		ErrorCode = oscam_stapi_DescramblerDisassociate(demux[demux_id].DescramblerHandle[n], Slot);
-		if(ErrorCode != 0){
-			cs_log("[DVBAPI] Demuxer #%d disable pid %04x on PTI#%d: %s Failed! (Errorcode = %d)",demux_id, pid, n, dev_list[n].name,
-				ErrorCode);
-				return false;
-		}
+		if(ErrorCode != 0)
+			{ cs_debug_mask(D_DVBAPI, "DescramblerDisassociate %d", ErrorCode); }
+
+		cs_debug_mask(D_DVBAPI, "unset pid %04x on %s", pid, dev_list[n].name);
 
 		int32_t k;
 		for(k = 0; k < SLOTNUM; k++)
@@ -580,12 +562,12 @@ bool stapi_DescramblerAssociate(int32_t demux_id, uint16_t pid, int32_t mode, in
 			if(demux[demux_id].slot_assc[n][k] == Slot)
 			{
 				demux[demux_id].slot_assc[n][k] = 0;
-				return true;
+				return;
 			}
 		}
 	}
 
-	return true;
+	return;
 }
 
 void stapi_startdescrambler(int32_t demux_id, int32_t dev_index, int32_t mode)
@@ -595,7 +577,6 @@ void stapi_startdescrambler(int32_t demux_id, int32_t dev_index, int32_t mode)
 	if(mode == DE_START && demux[demux_id].DescramblerHandle[dev_index] == 0)
 	{
 		uint32_t DescramblerHandle = 0;
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d allocate descrambler on PTI#%d: %s", demux_id, dev_index, dev_list[dev_index].name);
 		ErrorCode = oscam_stapi_DescramblerAllocate(dev_list[dev_index].SessionHandle, &DescramblerHandle);
 		if(ErrorCode != 0)
 		{
@@ -608,7 +589,6 @@ void stapi_startdescrambler(int32_t demux_id, int32_t dev_index, int32_t mode)
 
 	if(mode == DE_STOP && demux[demux_id].DescramblerHandle[dev_index] > 0)
 	{
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d deallocate descrambler on PTI#%d: %s", demux_id, dev_index, dev_list[dev_index].name);
 		ErrorCode = oscam_stapi_DescramblerDeallocate(demux[demux_id].DescramblerHandle[dev_index]);
 
 		if(ErrorCode != 0)
@@ -620,78 +600,61 @@ void stapi_startdescrambler(int32_t demux_id, int32_t dev_index, int32_t mode)
 	return;
 }
 
-int32_t stapi_set_pid(int32_t demux_id, int32_t idx, uint16_t pid, bool enable, char *pmtfile)
+int32_t stapi_set_pid(int32_t demux_id, int32_t UNUSED(num), int32_t idx, uint16_t UNUSED(pid), char *UNUSED(pmtfile))
 {
 	int32_t n;
 
-	if(idx == -1){
-		for(n = 0; n < PTINUM; n++){
-			remove_streampid_from_list(n, pid, idx);
-			cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d stop descrambling PTI#%d: %s", demux_id, n, dev_list[n].name);
-			stapi_startdescrambler(demux_id, n, DE_STOP); 
+	if(idx == -1)
+	{
+		for(n = 0; n < PTINUM; n++)
+		{
+			if(demux[demux_id].DescramblerHandle[n] == 0) { continue; }
+
+			cs_debug_mask(D_DVBAPI, "stop descrambling PTI: %s", dev_list[n].name);
+			stapi_startdescrambler(demux_id, n, DE_STOP);
 			memset(demux[demux_id].slot_assc[n], 0, sizeof(demux[demux_id].slot_assc[n]));
-			return 1;
-		}
-	}
-	if(!pmtfile)
-	{
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d no valid pmtfile!", demux_id);
-		return -1;
-	}
-
-	bool actionneeded = false;
-	for(n = 0; n < PTINUM; n++)
-	{
-		if(enable){
-			if(dev_list[n].SessionHandle == 0) { continue; }
-			if(demux[demux_id].DescramblerHandle[n] == 0){
-				struct s_dvbapi_priority *p;
-
-				for(p = dvbapi_priority; p != NULL; p = p->next){
-					if(p->type != 's') { continue; }
-					if(strcmp(pmtfile, p->pmtfile) != 0) { continue; }
-
-					if(strcmp(dev_list[n].name, p->devname) == 0){
-						cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d start descrambling PTI#%d: %s", demux_id, n, dev_list[n].name);
-						stapi_startdescrambler(demux_id, n, DE_START);
-					}
-				}
-			}
-
-			if(demux[demux_id].DescramblerHandle[n] == 0) { continue; }
-			if(!update_streampid_list(n, pid, idx)) { // add only new pid! 
-				if(!stapi_DescramblerAssociate(demux_id, pid, ASSOCIATE, n)){ // try to add pid
-					remove_streampid_from_list(n, pid, idx); // adding failed, remove from list!
-				}
-			}
-			
-		}
-		if(!enable){
-			if(demux[demux_id].DescramblerHandle[n] == 0) { continue; }
-			if(remove_streampid_from_list(n, pid, idx)){ // is pid active and needs removing?
-				if(!stapi_DescramblerAssociate(demux_id, pid, DISASSOCIATE, n)){ // try remove this pid
-					update_streampid_list(n, pid, idx); // removing failed, add to list again
-				}
-				else if(!is_ca_used(n)){ // remove ok, is this last streampid on this descrambler?
-					cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d stop descrambling PTI#%d: %s", demux_id, n, dev_list[n].name);
-					stapi_startdescrambler(demux_id, n, DE_STOP);
-					memset(demux[demux_id].slot_assc[n], 0, sizeof(demux[demux_id].slot_assc[n]));
-				}
-			}
 		}
 	}
 
 	return 1;
 }
 
-int32_t stapi_write_cw(int32_t demux_id, uchar *cw, int32_t pid)
+int32_t stapi_write_cw(int32_t demux_id, uchar *cw, uint16_t *STREAMpids, int32_t STREAMpidcount, char *pmtfile)
 {
-	int32_t ErrorCode, l, n;
+	int32_t ErrorCode, l, n, k;
 	unsigned char nullcw[8];
 	memset(nullcw, 0, 8);
 	char *text[] = { "even", "odd" };
-	
-	dvbapi_ca_setpid(demux_id, pid);  // prepare descrambler
+
+	if(!pmtfile) { return 0; }
+
+	for(n = 0; n < PTINUM; n++)
+	{
+		if(dev_list[n].SessionHandle == 0) { continue; }
+		if(demux[demux_id].DescramblerHandle[n] == 0)
+		{
+			struct s_dvbapi_priority *p;
+
+			for(p = dvbapi_priority; p != NULL; p = p->next)
+			{
+				if(p->type != 's') { continue; }
+				if(strcmp(pmtfile, p->pmtfile) != 0)
+					{ continue; }
+
+				if(strcmp(dev_list[n].name, p->devname) == 0)
+				{
+					cs_debug_mask(D_DVBAPI, "start descrambling PTI: %s", dev_list[n].name);
+					stapi_startdescrambler(demux_id, n, DE_START);
+				}
+			}
+		}
+
+		if(demux[demux_id].DescramblerHandle[n] == 0) { continue; }
+		for(k = 0; k < STREAMpidcount; k++)
+		{
+			stapi_DescramblerAssociate(demux_id, STREAMpids[k], ASSOCIATE, n);
+		}
+	}
 
 	for(l = 0; l < 2; l++)
 	{
@@ -700,12 +663,13 @@ int32_t stapi_write_cw(int32_t demux_id, uchar *cw, int32_t pid)
 			for(n = 0; n < PTINUM; n++)
 			{
 				if(demux[demux_id].DescramblerHandle[n] == 0) { continue; }
-				cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d write cw %s part PTI#%d: %s", demux_id, text[l], n, dev_list[n].name);
+
 				ErrorCode = oscam_stapi_DescramblerSet(demux[demux_id].DescramblerHandle[n], l, cw + (l * 8));
 				if(ErrorCode != 0)
 					{ cs_log("DescramblerSet: ErrorCode: %d", ErrorCode); }
 
 				memcpy(demux[demux_id].lastcw[l], cw + (l * 8), 8);
+				cs_debug_mask(D_DVBAPI, "write cw %s index: %d %s", text[l], demux_id, dev_list[n].name);
 			}
 		}
 	}

@@ -1022,8 +1022,7 @@ static void *reader_check(void)
 	struct s_client *cl;
 	struct s_reader *rdr;
 	set_thread_name(__func__);
-	pthread_mutex_init(&reader_check_sleep_cond_mutex, NULL);
-	init_rightclock_cond(&reader_check_sleep_cond); // init with right clock
+	cs_pthread_cond_init(&reader_check_sleep_cond_mutex, &reader_check_sleep_cond);
 	while(!exit_oscam)
 	{
 		for(cl = first_client->next; cl ; cl = cl->next)
@@ -1044,7 +1043,7 @@ static void *reader_check(void)
 			}
 		}
 		cs_readunlock(&readerlist_lock);
-		sleepms_on_cond(&reader_check_sleep_cond, &reader_check_sleep_cond_mutex, 1000);
+		sleepms_on_cond(&reader_check_sleep_cond_mutex, &reader_check_sleep_cond, 1000);
 	}
 	return NULL;
 }
@@ -1146,6 +1145,9 @@ int32_t main(int32_t argc, char *argv[])
 {
 	int32_t i, j;
 	prog_name = argv[0];
+	struct timespec start_ts;
+	cs_gettime(&start_ts); // Initialize clock_type
+
 	if(pthread_key_create(&getclient, NULL))
 	{
 		fprintf(stderr, "Could not create getclient, exiting...");
@@ -1302,15 +1304,15 @@ int32_t main(int32_t argc, char *argv[])
 	if(cs_confdir[strlen(cs_confdir) - 1] != '/') { strcat(cs_confdir, "/"); }
 	init_signal_pre(); // because log could cause SIGPIPE errors, init a signal handler first
 	init_first_client();
-	cs_lock_create(&system_lock, 5, "system_lock");
-	cs_lock_create(&config_lock, 10, "config_lock");
-	cs_lock_create(&gethostbyname_lock, 10, "gethostbyname_lock");
-	cs_lock_create(&clientlist_lock, 5, "clientlist_lock");
-	cs_lock_create(&readerlist_lock, 5, "readerlist_lock");
-	cs_lock_create(&fakeuser_lock, 5, "fakeuser_lock");
-	cs_lock_create(&ecmcache_lock, 5, "ecmcache_lock");
-	cs_lock_create(&readdir_lock, 5, "readdir_lock");
-	cs_lock_create(&cwcycle_lock, 5, "cwcycle_lock");
+	cs_lock_create(&system_lock, "system_lock", 5000);
+	cs_lock_create(&config_lock, "config_lock", 10000);
+	cs_lock_create(&gethostbyname_lock, "gethostbyname_lock", 10000);
+	cs_lock_create(&clientlist_lock, "clientlist_lock", 5000);
+	cs_lock_create(&readerlist_lock, "readerlist_lock", 5000);
+	cs_lock_create(&fakeuser_lock, "fakeuser_lock", 5000);
+	cs_lock_create(&ecmcache_lock, "ecmcache_lock", 5000);
+	cs_lock_create(&readdir_lock, "readdir_lock", 5000);
+	cs_lock_create(&cwcycle_lock, "cwcycle_lock", 5000);
 	init_cache();
 #ifdef CS_CACHEEX
 	init_hitcache();

@@ -81,29 +81,27 @@ struct sr_data
 
 static int32_t init_count;
 
-static int32_t smart_read(struct s_reader *reader, unsigned char *buff, uint32_t  size, int32_t timeout_sec)
+static int32_t smart_read(struct s_reader *reader, unsigned char *buff, uint32_t  size, int32_t timeout_ms)
 {
 	struct sr_data *crdr_data = reader->crdr_data;
 	int32_t ret = 0;
 	uint32_t  total_read = 0;
-	struct timeval start, now, dif;
-	struct timespec timeout;
+	struct timeb start, now;
 
-	memset(&dif, 0, sizeof(struct timeval));
-
-	gettimeofday(&start, NULL);
-	timeout.tv_sec = start.tv_sec + timeout_sec;
-	timeout.tv_nsec = start.tv_usec * 1000;
-
-	while(total_read < size && dif.tv_sec < timeout_sec)
-	{
+	cs_ftime(&start);
+	now = start;
+	do {
 		pthread_mutex_lock(&crdr_data->g_read_mutex);
 
-		while(crdr_data->g_read_buffer_size == 0 && dif.tv_sec < timeout_sec)
+		while(crdr_data->g_read_buffer_size == 0)
 		{
-			pthread_cond_timedwait(&crdr_data->g_read_cond, &crdr_data->g_read_mutex, &timeout);
-			gettimeofday(&now, NULL);
-			timersub(&now, &start, &dif);
+			int32_t gone = comp_timeb(&now, &start);
+			if (gone >= timeout_ms)
+				break;
+			struct timespec ts;
+			add_ms_to_timespec(&ts, timeout_ms - gone);
+			pthread_cond_timedwait(&crdr_data->g_read_cond, &crdr_data->g_read_mutex, &ts);
+			cs_ftime(&now);
 		}
 
 		ret = (crdr_data->g_read_buffer_size > size - total_read ? size - total_read : crdr_data->g_read_buffer_size);
@@ -115,10 +113,8 @@ static int32_t smart_read(struct s_reader *reader, unsigned char *buff, uint32_t
 
 		total_read += ret;
 		pthread_mutex_unlock(&crdr_data->g_read_mutex);
-
-		gettimeofday(&now, NULL);
-		timersub(&now, &start, &dif);
-	}
+		cs_ftime(&now);
+	} while(total_read < size && comp_timeb(&now, &start) < timeout_ms);
 
 	rdr_ddump_mask(reader, D_DEVICE, buff, total_read, "SR: Receive:");
 	return total_read;
@@ -1221,20 +1217,8 @@ static void *ReaderThread(void *p)
 		if(ret != 0)
 			{ rdr_log(reader, "libusb_handle_events returned with %d", ret); }
 
-		pthread_mutex_lock(&crdr_data->g_usb_mutex);
-
 		if(!crdr_data->poll)
-		{
-			struct timeval start;
-			struct timespec timeout;
-
-			gettimeofday(&start, NULL);
-			timeout.tv_sec = start.tv_sec + 1;
-			timeout.tv_nsec = start.tv_usec * 1000;
-
-			pthread_cond_timedwait(&crdr_data->g_usb_cond, &crdr_data->g_usb_mutex, &timeout);
-		}
-		pthread_mutex_unlock(&crdr_data->g_usb_mutex);
+			sleepms_on_cond(&crdr_data->g_usb_mutex, &crdr_data->g_usb_cond, 1000);
 	}
 
 	pthread_exit(NULL);
@@ -1371,13 +1355,11 @@ static int32_t SR_Init(struct s_reader *reader)
 	// start the reading thread
 	crdr_data->g_read_buffer_size = 0;
 	crdr_data->modem_status = 0 ;
-	pthread_mutex_init(&crdr_data->g_read_mutex, NULL);
-	pthread_cond_init(&crdr_data->g_read_cond, NULL);
-	pthread_mutex_init(&crdr_data->g_usb_mutex, NULL);
-	pthread_cond_init(&crdr_data->g_usb_cond, NULL);
+	cs_pthread_cond_init(&crdr_data->g_read_mutex, &crdr_data->g_read_cond);
+	cs_pthread_cond_init(&crdr_data->g_usb_mutex, &crdr_data->g_usb_cond);
 
 	cs_writeunlock(&sr_lock);
-	rdr_log(reader," Pthread Wordt gecreeerd");
+	rdr_log(reader, "Creating smartreader thread.");
 	ret = pthread_create(&crdr_data->rt, NULL, ReaderThread, (void *)(reader));
 	if(ret)
 	{
@@ -1452,7 +1434,7 @@ static int32_t SR_Reset(struct s_reader *reader, ATR *atr)
 
 
 		//Read the ATR
-		ret = smart_read(reader, data, ATR_MAX_SIZE, 1);
+		ret = smart_read(reader, data, ATR_MAX_SIZE, 1000);
 		rdr_debug_mask(reader, D_DEVICE, "SR: get ATR ret = %d" , ret);
 		if(ret)
 			{ rdr_ddump_mask(reader, D_DEVICE, data, ATR_MAX_SIZE * 2, "SR:"); }
@@ -1568,7 +1550,7 @@ static int32_t SR_Receive(struct s_reader *reader, unsigned char *buffer, uint32
 	uint32_t  ret;
 
 	smart_fastpoll(reader, 1);
-	ret = smart_read(reader, buffer, size, 2);
+	ret = smart_read(reader, buffer, size, 2000);
 	smart_fastpoll(reader, 0);
 	if(ret != size)
 		{ return ERROR; }
@@ -1653,7 +1635,7 @@ static int32_t SR_Close(struct s_reader *reader)
     smartreader_setdtr_rts(reader, 1, 0);
 
     //Read the ATR
-    smart_read(reader,data, ATR_MAX_SIZE,1);
+    smart_read(reader,data, ATR_MAX_SIZE,1000);
     smart_fastpoll(reader, 0);
     return 0;
 } */
@@ -1676,7 +1658,7 @@ static int32_t SR_FastReset_With_ATR(struct s_reader *reader, ATR *atr)
 	smartreader_setdtr_rts(reader, 1, 0);
 
 	//Read the ATR
-	ret = smart_read(reader, data, ATR_MAX_SIZE, 1);
+	ret = smart_read(reader, data, ATR_MAX_SIZE, 1000);
 
 	// parse atr
 	if(ATR_InitFromArray(atr, data, ret) != ERROR)
@@ -1721,7 +1703,7 @@ static pthread_mutex_t init_lock_mutex;
 static int32_t sr_init_locks(struct s_reader *UNUSED(reader))
 {
 	if (pthread_mutex_trylock(&init_lock_mutex)) {
-		cs_lock_create(&sr_lock, 5 , "sr_lock");
+		cs_lock_create(&sr_lock, "sr_lock", 5000);
 	}
 
 	return 0;

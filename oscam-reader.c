@@ -667,8 +667,7 @@ void block_connect(struct s_reader *rdr)
 	if(!rdr->tcp_block_delay)
 		{ rdr->tcp_block_delay = 100; } //starting blocking time, 100ms
 	cs_ftime(&rdr->tcp_block_connect_till);
-	rdr->tcp_block_connect_till.time += rdr->tcp_block_delay / 1000;
-	rdr->tcp_block_connect_till.millitm += rdr->tcp_block_delay % 1000;
+	add_ms_to_timeb(&rdr->tcp_block_connect_till, rdr->tcp_block_delay);
 	rdr->tcp_block_delay *= 4; //increment timeouts
 	if(rdr->tcp_block_delay >= rdr->tcp_reconnect_delay)
 		{ rdr->tcp_block_delay = rdr->tcp_reconnect_delay; }
@@ -679,13 +678,10 @@ int32_t is_connect_blocked(struct s_reader *rdr)
 {
 	struct timeb cur_time;
 	cs_ftime(&cur_time);
-	int32_t blocked = (rdr->tcp_block_delay && comp_timeb(&cur_time, &rdr->tcp_block_connect_till) < 0);
+	int32_t diff = comp_timeb(&cur_time, &rdr->tcp_block_connect_till);
+	int32_t blocked = rdr->tcp_block_delay && diff < 0;
 	if(blocked)
-	{
-		int32_t ts = 1000 * (rdr->tcp_block_connect_till.time - cur_time.time)
-					 + rdr->tcp_block_connect_till.millitm - cur_time.millitm;
-		rdr_debug_mask(rdr, D_TRACE, "connection blocked, retrying in %ds", ts / 1000);
-	}
+		rdr_debug_mask(rdr, D_TRACE, "connection blocked, retrying in %d ms", -diff);
 	return blocked;
 }
 

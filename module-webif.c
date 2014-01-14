@@ -655,7 +655,7 @@ static char *send_oscam_config_cache(struct templatevars *vars, struct uriparams
 	tpl_printf(vars, TPLADD, "MAXCYCLELIST", "%d", cfg.maxcyclelist);
 	tpl_printf(vars, TPLADD, "KEEPCYCLETIME", "%d", cfg.keepcycletime);
 
-	tpl_addVar(vars, TPLADD, "ONBADCYCLE1", (cfg.onbadcycle == 1) ? "checked" : "");
+	tpl_addVar(vars, TPLADD, "ONBADCYCLE1", (cfg.onbadcycle == 1) ? "selected" : "");
 
 	tpl_addVar(vars, TPLADD, "DROPOLD", (cfg.cwcycle_dropold == 1) ? "checked" : "");
 
@@ -6891,7 +6891,7 @@ static void *http_server(void *UNUSED(d))
 
 	tpl_checkDiskRevisions();
 
-	cs_lock_create(&http_lock, 10, "http_lock");
+	cs_lock_create(&http_lock, "http_lock", 10000);
 	init_noncelocks();
 
 	if(pthread_key_create(&getip, NULL))

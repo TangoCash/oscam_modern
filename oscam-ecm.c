@@ -206,8 +206,7 @@ static void *cw_process(void)
 	int32_t time_to_check_cacheex_wait_time;
 #endif
 
-	pthread_mutex_init(&cw_process_sleep_cond_mutex, NULL);
-	pthread_cond_init(&cw_process_sleep_cond, NULL);
+	cs_pthread_cond_init(&cw_process_sleep_cond_mutex, &cw_process_sleep_cond);
 
 #ifdef CS_ANTICASC
 	int32_t ac_next;
@@ -227,7 +226,7 @@ static void *cw_process(void)
 	{
 		if(cw_process_wakeups == 0)    // No waiting wakeups, proceed to sleep
 		{
-			sleepms_on_cond(&cw_process_sleep_cond, &cw_process_sleep_cond_mutex, msec_wait);
+			sleepms_on_cond(&cw_process_sleep_cond_mutex, &cw_process_sleep_cond, msec_wait);
 		}
 		cw_process_wakeups = 0; // We've been woken up, reset the counter
 		if(exit_oscam)
@@ -683,8 +682,7 @@ ECM_REQUEST *get_ecmtask(void)
 	cs_ftime(&er->tps);
 
 #ifdef CS_CACHEEX
-	er->cacheex_wait.time = er->tps.time;
-	er->cacheex_wait.millitm = er->tps.millitm;
+	er->cacheex_wait = er->tps;
 	er->cacheex_wait_time = 0;
 #endif
 #ifdef MODULE_GBOX
@@ -961,7 +959,7 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 	}
 #endif
 
-	client->cwlastresptime = 1000 * (tpe.time - er->tps.time) + tpe.millitm - er->tps.millitm;
+	client->cwlastresptime = comp_timeb(&tpe, &er->tps);
 
 	time_t now = time(NULL);
 	webif_client_add_lastresponsetime(client, client->cwlastresptime, now, er->rc); // add to ringbuffer
@@ -2232,7 +2230,7 @@ void get_cw(struct s_client *client, ECM_REQUEST *er)
 
 			ea->pending = NULL;
 			ea->is_pending = false;
-			cs_lock_create(&ea->ecmanswer_lock, 5, "ecmanswer_lock");
+			cs_lock_create(&ea->ecmanswer_lock, "ecmanswer_lock", 5000);
 		}
 	}
 

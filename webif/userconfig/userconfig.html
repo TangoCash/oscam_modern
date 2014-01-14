@@ -49,42 +49,41 @@
 </DIV>
 
 <TABLE CLASS="users" id="dataTable">
-    <thead>
-        <tr>
-            <th colspan="8">&nbsp;</th>
-            <th id="hideeeee" colspan="7">ECM</th>
-            <th id="hideee" colspan="2">EMM</th>
-            ##TPLCWCYCLETHV##
-            <th id="hideeeeee" colspan="6">&nbsp;</th>
-        </tr>
-        <TR>
-            <TH>&nbsp;</TH>
-            <TH>Label</TH>
-            <TH id="hideeeeee" >Groups</TH>
-            <TH>Status</TH>
-            <TH>Address</TH>
-            <TH>Protocol</TH>
-            <TH>Last Channel</TH>
-            <TH id="hideeeeee">On&nbsp;Channel<br>(Idle)</TH>
-            <TH id="hideeeee" TITLE="Delivered ECM with status OK">OK</TH>
-            <TH id="hideeeee" TITLE="Delivered ECM with status not OK">NOK</TH>
-            <TH id="hideeeee" TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
-            <TH id="hideeeee" TITLE="Timeout ECM, part of NOK">TOUT</TH>
-            <TH id="hideeeee" TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
-            <TH id="hideeeee" TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
-            <TH id="hideeeee" TITLE="Last ECM Time">LTIME</TH>
-            <TH id="hideee" TITLE="EMM delivered OK">OK</TH>
-            <TH id="hideee" TITLE="EMM delivered NOK">NOK</TH>
-            ##TPLCWCYCLETHS##
-            <TH id="hide" TITLE="CW rate since Server start (CW rate current Session)">CW<br>Rate</TH>
-            <TH id="hide" TITLE="Different services during last 60s">CASC<br>USERS</TH>
-            <TH id="hide" TITLE="Expiration date of account">Exp.<br>Date</TH>
-            <TH id="hideeeeee" colspan="3">Action</TH>
-        </TR>
-        <thead>
-            <tbody>
-                ##USERCONFIGS##
-            </tbody>
+	<thead>
+	<TR>
+	    <TH COLSPAN="7"></TH>
+	    <TH COLSPAN="7">ECM</TH>
+##TPLUSERCWCYCLE##
+	    <TH COLSPAN="2">EMM</TH>
+##TPLUSERANTICASC##
+	    <TH COLSPAN="5"></TH>
+	</TR>
+	<TR>
+	    <TH>On/Off</TH>
+	    <TH>Label</TH>
+	    <TH TITLE="Idle & Sleep Info">Status<BR>On Channel*</TH>
+	    <TH>Address</TH>
+	    <TH>Protocol</TH>
+	    <TH>Groups</TH>
+	    <TH>Last Channel</TH>
+	    <TH TITLE="Last ECM Time">LTIME</TH>
+	    <TH TITLE="Delivered ECM with status OK">OK</TH>
+	    <TH TITLE="Delivered ECM with status not OK">NOK</TH>
+	    <TH TITLE="Ignored ECM by filters, part of NOK">IGN</TH>
+	    <TH TITLE="Timeout ECM, part of NOK">TOUT</TH>
+	    <TH TITLE="Delivered ECM from cache, part of OK">CACHE</TH>
+	    <TH TITLE="Delivered ECM from tunneled, part of OK">TUN</TH>
+##TPLCWCYCLETHV##
+	    <TH TITLE="Valid EMM delivered">OK</TH>
+	    <TH TITLE="Invalid EMM delivered">NOK</TH>
+##TPLCWANTICASCTHV##
+	    <TH TITLE="Sum of ECM's in last 60s">ECMs(60s)</TH>
+	    <TH COLSPAN="3" CLASS="centered">Action</TH>
+	</TR>
+	<thead>
+	<tbody>
+		##USERCONFIGS##
+	</tbody>
 </TABLE><br>
        <TABLE CLASS="ECM_totals">
               <TR>

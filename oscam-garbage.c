@@ -130,7 +130,7 @@ static void garbage_collector(void)
 			}
 		}
 
-		sleepms_on_cond(&sleep_cond, &sleep_cond_mutex, 1000);
+		sleepms_on_cond(&sleep_cond_mutex, &sleep_cond, 1000);
 	}
 	pthread_exit(NULL);
 }
@@ -142,12 +142,11 @@ void start_garbage_collector(int32_t debug)
 	int8_t i;
 	for(i = 0; i < HASH_BUCKETS; ++i)
 	{
-		cs_lock_create(&garbage_lock[i], 5, "garbage_lock");
+		cs_lock_create(&garbage_lock[i], "garbage_lock", 5000);
 
 		garbage_first[i] = NULL;
 	}
-	pthread_mutex_init(&sleep_cond_mutex, NULL);
-	pthread_cond_init(&sleep_cond, NULL);
+	cs_pthread_cond_init(&sleep_cond_mutex, &sleep_cond);
 
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);

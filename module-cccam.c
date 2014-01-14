@@ -1324,14 +1324,7 @@ static int8_t cc_request_timeout(struct s_client *cl)
 	if(tt <= 0)
 		{ tt = DEFAULT_CC_RECONNECT; }
 
-	timeout.time += tt / 1000;
-	timeout.millitm += tt % 1000;
-	if(timeout.millitm >= 1000)
-	{
-		timeout.time++;
-		timeout.millitm -= 1000;
-	}
-
+	add_ms_to_timeb(&timeout, tt);
 	return (comp_timeb(&cur_time, &timeout) >= 0);
 }
 
@@ -1621,7 +1614,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
  {
  cl->ecmtask[i].rc=0;
  }
- int32_t td=abs(1000*(ecmtask[i].tps.time-cc->found->tps.time)+ecmtask[i].tps.millitm-cc->found->tps.millitm);
+ int32_t td=abs(comp_timeb(&ecmtask[i].tps, &cc->found->tps);
  if (ecmtask[i].rc>=10 && ecmtask[i].cidx==cc->found->cidx && &ecmtask[i]!=cc->found){
  cs_log("aborting idx:%d caid:%04x client:%d timedelta:%d",ecmtask[i].idx,ecmtask[i].caid,ecmtask[i].cidx,td);
  ecmtask[i].rc=0;
@@ -2815,7 +2808,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			int8_t retry = 1;
 			struct timeb tpe;
 			cs_ftime(&tpe);
-			int32_t cwlastresptime = 1000 * (tpe.time - eei->tps.time) + tpe.millitm - eei->tps.millitm;
+			int32_t cwlastresptime = comp_timeb(&tpe, &eei->tps);
 
 			add_garbage(eei);
 
@@ -3084,7 +3077,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 						//check response time, if > fallbacktime, switch cards!
 						struct timeb tpe;
 						cs_ftime(&tpe);
-						uint32_t cwlastresptime = 1000 * (tpe.time - cc->ecm_time.time) + tpe.millitm - cc->ecm_time.millitm;
+						uint32_t cwlastresptime = comp_timeb(&tpe, &cc->ecm_time);
 						if(cwlastresptime > get_fallbacktimeout(card->caid) && !cc->extended_mode)
 						{
 							cs_debug_mask(D_READER, "%s card %04X is too slow, moving to the end...", getprefix(), card->id);
@@ -3564,8 +3557,8 @@ int32_t cc_recv(struct s_client *cl, uchar *buf, int32_t l)
 
 void cc_init_locks(struct cc_data *cc)
 {
-	cs_lock_create(&cc->lockcmd, 5, "lockcmd");
-	cs_lock_create(&cc->cards_busy, 10, "cards_busy");
+	cs_lock_create(&cc->lockcmd, "lockcmd", 5000);
+	cs_lock_create(&cc->cards_busy, "cards_busy", 10000);
 }
 
 #ifdef MODULE_CCCSHARE
