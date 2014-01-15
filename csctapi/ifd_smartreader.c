@@ -114,6 +114,7 @@ static int32_t smart_read(struct s_reader *reader, unsigned char *buff, uint32_t
 		total_read += ret;
 		pthread_mutex_unlock(&crdr_data->g_read_mutex);
 		cs_ftime(&now);
+		if(ret>0) start=now; // reset timeout calculation again since reader is responsive!
 	} while(total_read < size && comp_timeb(&now, &start) < timeout_ms);
 
 	rdr_ddump_mask(reader, D_DEVICE, buff, total_read, "SR: Receive:");
@@ -310,7 +311,7 @@ void smartreader_init(struct s_reader *reader)
 
 	crdr_data->type = TYPE_BM;    /* chip type */
 	crdr_data->baudrate = -1;
-	crdr_data->bitbang_enabled = 1;  /* 0: normal mode 1: any of the bitbang modes enabled */
+	crdr_data->bitbang_enabled = 0;  /* 0: normal mode 1: any of the bitbang modes enabled */
 
 	crdr_data->writebuffer_chunksize = 4096;
 	crdr_data->max_packet_size = 0;
@@ -1217,8 +1218,14 @@ static void *ReaderThread(void *p)
 		if(ret != 0)
 			{ rdr_log(reader, "libusb_handle_events returned with %d", ret); }
 
+		pthread_mutex_lock(&crdr_data->g_usb_mutex);
 		if(!crdr_data->poll)
-			sleepms_on_cond(&crdr_data->g_usb_mutex, &crdr_data->g_usb_cond, 1000);
+		{
+			struct timespec timeout;
+			add_ms_to_timespec(&timeout, 1000);
+			pthread_cond_timedwait(&crdr_data->g_usb_cond, &crdr_data->g_usb_mutex, &timeout);
+		}
+		pthread_mutex_unlock(&crdr_data->g_usb_mutex);
 	}
 
 	pthread_exit(NULL);
@@ -1543,14 +1550,16 @@ static int32_t SR_GetStatus(struct s_reader *reader, int32_t *in)
 	}
  }
 
-static int32_t SR_Receive(struct s_reader *reader, unsigned char *buffer, uint32_t size, uint32_t delay, uint32_t timeout)   // delay and timeout not used (yet)!
+//static int32_t SR_Receive(struct s_reader *reader, unsigned char *buffer, uint32_t size, uint32_t delay, uint32_t timeout_us)   // temporary set back old way
+static int32_t SR_Receive(struct s_reader *reader, unsigned char *buffer, uint32_t size, uint32_t delay, uint32_t timeout)   // temporary set back old way
 {
 	(void) delay; // delay not used (yet)!
-	(void) timeout; // timeout not used (yet)!
+	(void) timeout; // timeout not used (yet)! removing this did caused a regression temporarely back to old way
 	uint32_t  ret;
 
 	smart_fastpoll(reader, 1);
-	ret = smart_read(reader, buffer, size, 2000);
+//	ret = smart_read(reader, buffer, size, (timeout_us/1000)); // convert timeout to ms precize
+	ret = smart_read(reader, buffer, size, 3000); //keep for the moment deafult timeout new was a regression 
 	smart_fastpoll(reader, 0);
 	if(ret != size)
 		{ return ERROR; }
