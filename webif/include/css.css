@@ -255,8 +255,6 @@ TR.offline TD {}
 TR.expired TD {background-color:#FBA}
 TR.connected TD {background-color:#FFA}
 TR.enabledreader {}
-/*TR.disabled TD:first-child IMG.icon {background-color:#0A0}
-TR.disabledreader TD:first-child IMG.icon {background-color:#0A0}*/
 TR.scanusbsubhead TD {background-color:#FDFBE1}
 TR.e_valid TD {background-color:#E6FEBF;font-family:"Courier New", monospace}
 TR.e_expired TD {background-color:#FFF3E7;font-family:"Courier New", monospace}
@@ -367,7 +365,7 @@ p#filename{color:#000000;font-weight:bold;font-size: 14px;}
 ------------------------------------------------------------------------------------*/
 th#exp, td#exp.usercol20{display: none;}
 th#cwc, td#cwc.usercol13{display: none;}
-th#acasc, td#acasc.usercol19, td#acasc.usercol19{display: none;}
+th#acasc, td#acasc.usercol19, td#acasc.usercol20{display: none;}
 /*color*/
 IMG.icon{background-color:#AA0000;}
 td.subheadline, th, div.footer, #mainmenu, #nav{
@@ -397,7 +395,6 @@ table.user_totals,table.users{ background-color:#AAAAAA;}
 table.user_totals tbody tr,tr.enabledreader:hover td {background-color:#DDD;color:#000}
 tr.disabledreader td:first-child img.icon {background-color:red}
 tr.disabledreader td:first-child a:hover img.icon {background-color:#8A0808}
-/*tr.disabled td.usercol0 img.icon {background-color:red}*/
 tr.disabled td.usercol0 a:hover img.icon {background-color:#8A0808}
 tr.disabledreader:hover td {background-color:#FCC;color:#000}
 tr.scanusbsubhead td {background-color:#CCC}
