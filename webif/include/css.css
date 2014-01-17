@@ -106,6 +106,14 @@ div.mlogo,div.mlogo:hover {
 div.footer{padding-bottom:5px;padding-top:5px;margin-bottom:0px;}
 div.footer p{margin:2px;}
 
+/* 3. NOTIFIER
+------------------------------------------------------------------------------------*/
+span.span_notifier {
+	margin-top: -7px;
+	position: absolute;
+	z-index:1099;
+	margin-left: -10px;
+}
 
 /* 2. BASIC SETTINGS 
 ------------------------------------------------------------------------------------*/
@@ -327,7 +335,6 @@ IMG.statususericon, IMG.protoicon, IMG.usericon, IMG.readericon {min-height:22px
 ------------------------------------------------------------------------------------*/
 SPAN.e_valid {background-color:#E6FEBF}
 SPAN.e_expired {background-color:#FFF3E7}
-SPAN.span_notifier {padding:1px 3px;border-radius:10px;color:#FFF;margin-left:2px;background:#F00}
 SPAN.idlesec_normal {font-size:9px;color:black}
 SPAN.idlesec_alert {font-size:9px;color:red}
 SPAN.global_conf {color:blue;font-size:12px;cursor:default;padding:4px}
@@ -376,11 +383,6 @@ background: -ms-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);
 background: linear-gradient(to bottom, #cfe7fa 0%,#6393c1 100%);
 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#cfe7fa', endColorstr='#6393c1',GradientType=0 );
 border-color:#FFFFFF;}
-
-
-
-
-
 li.menu a,li.configmenu a{color:#FFFFFF;}
 li.menu:hover a,li.menu_selected a,li.configmenu:hover a,li.configmenu_selected a{background-color:#FFFFFF;border-color:#FFFFFF;color:#FFFFFF;}
 div.footer p{color:#FFFFFF;}
@@ -424,3 +426,11 @@ tr.s:hover td, tr.s:hover td span, tr.s:hover td span a {background-color:#aa00a
 div.log {background-color:#DDD;color:#000;font-family: "Lucida Console",Monaco,monospace;}
 tr.disabledreader td.centered a img.icon, tr.disabled td.usercol0 a img.icon{background-color:#009900;}
 tr.disabledreader td.centered a img.icon:hover, tr.disabled td.usercol0 a img.icon:hover{background-color:#00FF00;}
+span.span_notifier{background: radial-gradient( 1px -11px, circle, white 8%, red 26px );
+background: -moz-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+background: -ms-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+background: -o-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+background: -webkit-radial-gradient( 1px -11px, circle, white 8%, red 26px );
+background-color: red;border: 2px solid white;border-radius: 12px;
+box-shadow: 1px 1px 1px black;color: white;font: bold 12px/9px Helvetica, Verdana, Tahoma;
+height: 12px;padding: 2px 3px 0 3px;text-align: center;min-width: 8px;}
