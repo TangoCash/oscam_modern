@@ -1,28 +1,106 @@
 /* 0. RESET
 ------------------------------------------------------------------------------------*/
-HTML,DIV,TABLE,TBODY,TFOOT,THEAD,TR,TH,TD {margin:0;padding:0;border:0}
+HTML,DIV,TABLE,TBODY,TFOOT,THEAD,TR,TH,TD,UL,LI {margin:0;padding:0;border:0}
 
 /* 1. MENU
 ------------------------------------------------------------------------------------*/
-/*shape*/
-#mainmenu{height:30px;}
-#nav{height:20px;}
-#mainmenu li, #nav li{display:inline;margin-left:2px;margin-right:2px;padding-top:5px;padding-bottom:3px;padding-left:3px;padding-right:3px;}
-#nav li{padding-top:0px;padding-bottom:0px;}
-ul#mainmenu.menu, ul#nav{padding-left:0px;margin:0;}
-ul#mainmenu.menu{padding-top:10px;}
-ul#nav{padding-top:0;}
-li.menu a,li.menu_selected a{text-decoration:none;border-top-left-radius:3px;border-top-right-radius:3px;padding-bottom:10px;}
-li.configmenu a, li.configmenu_selected a{text-decoration:none;border-bottom-left-radius:3px;border-bottom-right-radius:3px;padding-top:3px;}
-li.menu:hover a,li.configmenu:hover a{padding-right: 4px; padding-left: 4px;margin-left:-4px;margin-right:-4px;padding-top: 4px;}
-li.menu_selected a, li.configmenu_selected a{padding-right: 4px; padding-left: 4px; padding-top: 4px;}
 
 /*size*/
 #mainmenu li{font-size: 18px;font-weight: bold;}
 #nav li{font-size: 14px;}
+#mainmenu{height:30px;}
+#nav{height:25px;}
 
 /*font*/
 #mainmenu, #nav{font-family:arial}
+
+/*shape*/
+
+#mainmenu li,
+#nav li{
+	display:inline;
+	padding:5px 3px 3px 3px
+	}
+#nav li{
+	padding-top:0px;
+	padding-bottom:0px;
+}
+div#subnav ul#nav{
+	padding-left:0px;
+	padding-top: 3px;
+}
+ul#mainmenu.menu{
+	padding-top:10px;
+	border-bottom-width:2px;
+	border-bottom-style: solid;
+}
+ul#nav.configmenu{
+	margin-top: 1px; padding-top: 5px;
+}
+ul#nav{
+	padding-top:0;
+}
+li.menu a,
+li.menu_selected a{
+	text-decoration:none;
+	border-top-left-radius:3px;
+	border-top-right-radius:3px;
+	padding:3px 3px 10px 3px;
+	margin-left:-2px;
+	margin-right:-2px;
+}
+li.menu:hover a,
+li.menu_selected:hover a{
+	text-decoration:none;
+	border-top-left-radius:3px;
+	border-top-right-radius:3px;
+	padding:3px 3px 10px 3px;
+	margin-left:-2px;
+	margin-right:-2px;
+}
+li.configmenu a,
+li.configmenu_selected a{
+	text-decoration:none;
+	border-bottom-left-radius:3px;
+	border-bottom-right-radius:3px;
+	padding:5px 2px 3px 2px;
+	margin-left:-2px;
+	margin-right:-2px;
+}
+
+li.configmenu:hover,
+li.configmenu{
+	padding-left: 2px;
+	padding-right: 2px;
+	margin-left:-2px;
+	margin-right:-2px;
+}
+div#otherdropdown form{
+	margin-top: 5px;
+}
+p#filename{
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+div#newreader.newuser,
+div#searchTable{
+	margin-top: 10px;
+	padding-left: 0px;
+}
+div#newreader.newuser form table.users tbody tr th,
+div#searchTable table.users tbody tr th{
+	padding-right: 10%;
+}
+
+
+
+
+
+
+
+
+
 
 /* 2. FOOTER
 ------------------------------------------------------------------------------------*/
@@ -51,10 +129,10 @@ TABLE {border-spacing:1px;margin-left:auto;margin-right:auto}
 TABLE.upspace {margin-top:28px}
 TABLE.menu {border-spacing:0px}
 TABLE.status {width:100%;background-color:white;empty-cells:show}
-TABLE.config {width:760px}
+TABLE.stats, TABLE.config {margin-top: 20px;}
+TABLE.config{width:760px}
 TABLE.configreader {width:850px}
 TABLE.readers {width:100%;}
-TABLE.stats {}
 TABLE.statsbalance TD:last-child{line-height:20px;width:125px}
 TABLE.statsbalance TD:last-child IMG.icon{float:right;margin-left:10px}
 TABLE.invisible {margin-left:0}
@@ -203,15 +281,27 @@ TEXTAREA.editor {font-size:11px;width:98%;height:508px;border:1px dotted #AAA;ba
 
 /* 10. BUTTON,INPUT,SELECT
 ------------------------------------------------------------------------------------*/
-/* Firefox */
-SELECT {padding:2px}
-/* Safari and Chrome */
-@media screen and (-webkit-min-device-pixel-ratio:0) {
-SELECT {padding:1px}
-input[type="submit"] {padding:2px 6px;}
-}
-input[type='checkbox'] {width:18px;height:18px;position: relative;top: 5px;}
-
+input[type="submit"] {
+    text-decoration:none;
+    border:0;padding: 2px;border-radius: 4px;
+    text-align:center;font:11px Arial, Helvetica, sans-serif;
+    font-weight:bold;color:#ffffff;background-color:#0066cc;}
+input[type="submit"]:hover {
+    font:11px Arial, Helvetica, sans-serif;
+    border:0;padding: 2px;border-radius: 4px;font-weight:bold;
+    color:#ffffff;background-color:#cc0000;}
+input[type="submit"]:active {
+    font:11px Arial, Helvetica, sans-serif;
+    border:0;padding: 2px;border-radius: 4px;font-weight:bold;
+    color:#ffffff;background-color:#ff0000;}
+input[type="text"] {
+    border: .5px solid #000;padding:2px;cursor:text}
+input[type="text"]:hover{
+    border:.5px solid #000;
+    padding:2px;cursor:text}
+input[type="text"]:active {
+    border:.5px solid #000;
+    padding:2px;    cursor:text}
 /* 11. LINKS
 ------------------------------------------------------------------------------------*/
 A.debugl:link {margin:0 1px;}
@@ -274,7 +364,24 @@ th#cwc, td#cwc.usercol13{display: none;}
 th#acasc, td#acasc.usercol19, td#acasc.usercol19{display: none;}
 /*color*/
 IMG.icon{background-color:#AA0000;}
-td.subheadline, th, div.footer, #mainmenu, #nav{color:#FFFFFF;text-shadow: black 0.2em 0.2em 0.2em;background: #cfe7fa;background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2NmZTdmYSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM2MzkzYzEiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);background: -moz-linear-gradient(top, #cfe7fa 0%, #6393c1 100%);background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#cfe7fa), color-stop(100%,#6393c1));background: -webkit-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);background: -o-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);background: -ms-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);background: linear-gradient(to bottom, #cfe7fa 0%,#6393c1 100%);filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#cfe7fa', endColorstr='#6393c1',GradientType=0 );border-bottom-width: 5px;border-bottom-style: solid;border-color:#FFFFFF;}
+td.subheadline, th, div.footer, #mainmenu, #nav{
+color:#FFFFFF;
+text-shadow: black 0.2em 0.2em 0.2em;
+background: #cfe7fa;
+background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2NmZTdmYSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM2MzkzYzEiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
+background: -moz-linear-gradient(top, #cfe7fa 0%, #6393c1 100%);
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#cfe7fa), color-stop(100%,#6393c1));
+background: -webkit-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);
+background: -o-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);
+background: -ms-linear-gradient(top, #cfe7fa 0%,#6393c1 100%);
+background: linear-gradient(to bottom, #cfe7fa 0%,#6393c1 100%);
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#cfe7fa', endColorstr='#6393c1',GradientType=0 );
+border-color:#FFFFFF;}
+
+
+
+
+
 li.menu a,li.configmenu a{color:#FFFFFF;}
 li.menu:hover a,li.menu_selected a,li.configmenu:hover a,li.configmenu_selected a{background-color:#FFFFFF;border-color:#FFFFFF;color:#FFFFFF;}
 div.footer p{color:#FFFFFF;}
