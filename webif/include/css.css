@@ -115,6 +115,10 @@ span.span_notifier {
 	margin-left: -10px;
 }
 
+table#dataTable.stats.upspace,table.cacheex{width:70%}
+table#dataTable.stats.upspace{margin-top: 0px;}
+table.cacheex{margin-top: 30px;}
+
 /* 2. BASIC SETTINGS 
 ------------------------------------------------------------------------------------*/
 BODY {background-color:white;font-family:Arial;font-size:11px;text-align:center}
