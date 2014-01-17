@@ -1635,6 +1635,7 @@ struct s_config
 	int8_t          http_hide_idle_clients;
 	char            *http_hide_type;
 	int8_t          http_showpicons;
+	int8_t          http_picon_size;
 	int8_t          http_showmeminfo;
 	int8_t          http_showuserinfo;
 	int8_t          http_showcacheexinfo;
