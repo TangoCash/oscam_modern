@@ -218,7 +218,7 @@ void __cs_pthread_cond_init(pthread_cond_t *cond)
 	pthread_condattr_init(&attr); // init condattr with defaults
 #if 0
 #if defined(HAVE_pthread_condattr_setclock)
-	enum clock_type ctype = cs_getclocktype(NULL);
+	enum clock_type ctype = cs_getclocktype();
 	pthread_condattr_setclock(&attr, (ctype == CLOCK_TYPE_MONOTONIC) ? CLOCK_MONOTONIC : CLOCK_REALTIME);
 #endif
 #endif
@@ -240,7 +240,7 @@ void cs_pthread_cond_init(pthread_mutex_t *mutex, pthread_cond_t *cond)
 	__cs_pthread_cond_init(cond);
 }
 
-enum clock_type cs_getclocktype(struct timeb *UNUSED(now)) {
+enum clock_type cs_getclocktype(void) {
 	if (clock_type == CLOCK_TYPE_UNKNOWN) {
 		struct timespec ts;
 		cs_gettime(&ts); // init clock type
@@ -261,6 +261,14 @@ time_t cs_walltime(struct timeb *tp)
 	gettimeofday(&tv, NULL);
 	int64_t skew = tv.tv_sec - ts.tv_sec;
 	return(tp->time + skew);
+}
+
+/* Return real time clock value calculated based on cs_gettime(). Use this instead of time() */
+time_t cs_time(void)
+{
+	struct timeb tb;
+	cs_ftime(&tb);
+	return cs_walltime(&tb);
 }
 
 #ifdef __MACH__

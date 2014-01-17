@@ -291,7 +291,6 @@ static void parse_cmdline_params(int argc, char **argv)
 
 static void write_versionfile(bool use_stdout)
 {
-	struct timeb now;
 	FILE *fp = stdout;
 	if(!use_stdout)
 	{
@@ -303,9 +302,9 @@ static void write_versionfile(bool use_stdout)
 			return;
 		}
 		struct tm st;
-		time_t walltime = cs_walltime(&now);
+		time_t walltime = cs_time();
 		localtime_r(&walltime, &st);
-		fprintf(fp, "Unix starttime: %ld\n", (long)walltime);
+		fprintf(fp, "Unix starttime: %ld\n", walltime);
 		fprintf(fp, "Starttime:      %02d.%02d.%04d %02d:%02d:%02d\n",
 				st.tm_mday, st.tm_mon + 1, st.tm_year + 1900,
 				st.tm_hour, st.tm_min, st.tm_sec);
@@ -335,7 +334,7 @@ static void write_versionfile(bool use_stdout)
 	write_conf(LCDSUPPORT, "LCD support");
 	write_conf(LEDSUPPORT, "LED support");
 	write_conf(IPV6SUPPORT, "IPv6 support");
-	switch (cs_getclocktype(&now)) {
+	switch (cs_getclocktype()) {
 		case CLOCK_TYPE_UNKNOWN  : write_conf(CLOCKFIX, "Clockfix with UNKNOWN clock"); break;
 		case CLOCK_TYPE_REALTIME : write_conf(CLOCKFIX, "Clockfix with realtime clock"); break;
 		case CLOCK_TYPE_MONOTONIC: write_conf(CLOCKFIX, "Clockfix with monotonic clock"); break;
