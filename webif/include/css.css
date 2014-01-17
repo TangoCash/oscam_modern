@@ -92,16 +92,15 @@ div#newreader.newuser form table.users tbody tr th,
 div#searchTable table.users tbody tr th{
 	padding-right: 10%;
 }
-
-
-
-
-
-
-
-
-
-
+div.mlogo,div.mlogo:hover {
+	margin:0;
+	position:absolute;
+	top: 0px;
+	height:40px;
+	text-decoration:none;
+	z-index:1060;
+	padding-top: 8px;
+}
 /* 2. FOOTER
 ------------------------------------------------------------------------------------*/
 div.footer{padding-bottom:5px;padding-top:5px;margin-bottom:0px;}
