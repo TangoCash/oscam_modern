@@ -1033,9 +1033,6 @@ struct s_client
 
 #ifdef MODULE_GBOX
 	void            *gbox;
-	uint8_t         gbox_cw_id[2];
-	uint8_t         gbox_peer_id[2];
-	uint8_t         gbox_ver;
 #endif
 
 #ifdef MODULE_GHTTP
@@ -1393,7 +1390,6 @@ struct s_reader                                     //contains device info, read
 	int8_t          gbox_maxdist;
 	int8_t          gbox_maxecmsend;
 	int8_t          gbox_reshare;
-	uint16_t        gbox_peer_id;
 #endif
 
 #ifdef MODULE_PANDORA
