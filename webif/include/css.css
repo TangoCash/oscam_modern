@@ -1,11 +1,16 @@
 /* 0. RESET
 ------------------------------------------------------------------------------------*/
-/*HTML,DIV,TABLE,TBODY,TFOOT,THEAD,TR,TH,TD,UL,LI {margin:0;padding:0;border:0}*/
-
 *{
 margin: 0;
 padding: 0;
 }
+
+td#in.centered img,
+td#out.centered img{margin-bottom: -2px; margin-right: 10px; margin-left: 10px;}
+
+
+div#content table.ECM_totals,
+div#content table.user_totals{width:50%}
 
 /* 1. MENU
 ------------------------------------------------------------------------------------*/
