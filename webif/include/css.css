@@ -9,7 +9,7 @@ div#newreader.newuser,div#searchtable{margin-top:10px;padding-left:0}div#otherdr
 div#subnav ul#nav{padding-left:0;padding-top:3px}div.cccamentitlementtotals,div.cccamentitlementcontrols{margin-top:14px}
 div.debugmenu,div.logmenu{line-height:20px}div.div_notifier{border-radius:12px;background:red;float:right;height:14px;margin-left:4px;text-align:center;width:14px}
 div.filterform{margin:10px}div.footer{margin-bottom:0;padding-bottom:5px;padding-top:5px}div.footer p{color:#FFF;margin:2px}
-div.groups{cursor:default;overflow:hidden;text-align:center;white-space:nowrap;width:40px}div.info{margin:20px auto;max-width:1300px}
+div.groups{cursor:default;overflow:hidden;margin:0 auto;text-align:center;word-wrap:none;position:relative;width:40px}div.info{margin:20px auto;max-width:1300px}
 div.log{background:#CCC;border:1px dotted #AAA;color:#000;font-family:"Lucida Console",Monaco,monospace;margin:20px 0;padding:10px;text-align:left}
 div.logo{left:5px;position:absolute;top:5px}div.message{font-size:12px;font-weight:700;margin:5px 0}div.mlogo,div.mlogo:hover{height:40px;margin:0;position:absolute;text-decoration:none;top:0;z-index:1060}
 div.newuser,.hidden,th#exp,td#exp.usercol20,th#cwc,td#cwc.usercol13,th#acasc,td#acasc.usercol19,td#acasc.usercol20{display:none}
