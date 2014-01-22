@@ -125,7 +125,8 @@ table.users,table#dataTable.readers,table#dataTable.users{width: 99%}
 table#dataTable.users{margin-top:0}
 textarea.editor{width:95%;padding:10px;border-radius:5px}
 textarea.editor{background:#FAFAFA;color:#000;font-family:"Courier New", monospace;font-size:11px;height:500px}
-table.config tbody tr td{text-align:left}
+table.configreader.upspace tbody tr td,table.config tbody tr td{text-align:left}
+table.configreader.upspace tbody tr td table.invisible tr td,
 table.config tbody tr td table.invisible tbody tr td{border:none}
 table.visible{width:60%;margin-bottom:5px;text-align:center}
 tr.disabledreader td a img.icon{background:#080}
@@ -137,10 +138,13 @@ table#dataTable.stats.upspace tbody tr:hover td{background:#AAA}
 td.subheadline p{text-align:left}
 td.subheadline p input{margin-right: 20px;}
 p#text_totalecm{color:#000000;margin-bottom:10px;margin-top:10px;text-align: center;font-weight:700}
-table.statsbalance,table.cacheex{margin-top:5px}
+table.configreader.upspace,table.statsbalance,table.cacheex{margin-top:5px}
 div.message,div.warning,div.debugmenu,div#content form,div#footer.footer,div#otherdropdown,
-table.status tbody tr td,table.ECM_totals tbody tr td,table.user_totals tbody tr td,table#dataTable.users tbody tr td,
-table#dataTable.readers tbody tr td,table#cachexstats.upspace tbody tr td,table#dataTable.stats.upspace tbody tr td{text-align:center}
+th.withservices,th.notservices,th.lbservices,table.status tbody tr td,table.ECM_totals tbody tr td,table.user_totals tbody tr td,
+table#dataTable.users tbody tr td,table#dataTable.readers tbody tr td,table#cachexstats.upspace tbody tr td,table#dataTable.stats.upspace tbody tr td{text-align:center}
+th.withservices a,th.notservices a,th.lbservices a{color:#FFFFFF;text-decoration:none;font-weight:700}
+table.invisibleser,table.invisiblelb{width:100%}
+
 
 
 
