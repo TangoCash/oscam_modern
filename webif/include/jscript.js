@@ -1,5 +1,5 @@
 var oReloadTimer=null;var oCounterTimer=null;
-function reloadDocument(){window.location.reload();};
+function reloadDocument(){history.pushState('', document.title, window.location.pathname);window.location.reload();};
 function cdpause(){clearTimeout(oReloadTimer);};
 function addreader(){cdpause();document.getElementById("searchTable").style.display="none";document.getElementById("newreader").style.display="block";};
 function adduser(){cdpause();document.getElementById("searchTable").style.display="none";document.getElementById("newuser").style.display="block";};
