@@ -83,6 +83,7 @@ static struct pstat p_stat_old;
 #define MNU_CFG_DVBAPI 11
 #define MNU_CFG_WEBIF 12
 #define MNU_CFG_LCD 13
+#define MNU_CFG_GBOX 14
 
 #define MNU_CFG_FVERSION 12
 #define MNU_CFG_FCONF 13
@@ -717,6 +718,20 @@ static char *send_oscam_config_newcamd(struct templatevars *vars, struct uripara
 }
 #endif
 
+#ifdef MODULE_GBOX
+static char *send_oscam_config_gbox(struct templatevars *vars, struct uriparams *params)
+{
+	setActiveSubMenu(vars, MNU_CFG_GBOX);
+	webif_save_config("gbox", vars, params);
+
+	tpl_addVar(vars, TPLADD, "HOSTNAME", xml_encode(vars, cfg.gbox_hostname));
+	tpl_printf(vars, TPLADD, "PORT", "%d", cfg.gbox_port);
+	tpl_addVar(vars, TPLADD, "MYPASSWORD", xml_encode(vars, cfg.gbox_my_password));
+
+	return tpl_getTpl(vars, "CONFIGGBOX");
+}
+#endif
+
 #ifdef MODULE_RADEGAST
 static char *send_oscam_config_radegast(struct templatevars *vars, struct uriparams *params)
 {
@@ -1099,6 +1114,9 @@ static char *send_oscam_config(struct templatevars *vars, struct uriparams *para
 #endif
 #ifdef MODULE_CCCAM
 	else if(!strcmp(part, "cccam")) { return send_oscam_config_cccam(vars, params); }
+#endif
+#ifdef MODULE_GBOX
+	else if(!strcmp(part, "gbox")) { return send_oscam_config_gbox(vars, params); }
 #endif
 #ifdef HAVE_DVBAPI
 	else if(!strcmp(part, "dvbapi")) { return send_oscam_config_dvbapi(vars, params); }
@@ -1948,6 +1966,12 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 		{ tpl_addVar(vars, TPLADD, "KEEPALIVECHECKED", "checked"); }
 #endif
 
+#ifdef MODULE_GBOX
+	tpl_printf(vars, TPLADD, "GBOXMAXDISTANCE",   "%d", rdr->gbox_maxdist);
+	tpl_printf(vars, TPLADD, "GBOXMAXECMSEND",   "%d", rdr->gbox_maxecmsend);
+	tpl_printf(vars, TPLADD, "GBOXRESHARE",   "%d", rdr->gbox_reshare);
+#endif
+
 	tpl_addVar(vars, TPLADD, "PROTOCOL", reader_get_type_desc(rdr, 0));
 
 	// Show only parameters which needed for the reader
@@ -1976,6 +2000,9 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 		break;
 	case R_GHTTP:
 		tpl_addVar(vars, TPLAPPEND, "READERDEPENDINGCONFIG", tpl_getTpl(vars, "READERCONFIGGHTTPBIT"));
+		break;
+	case R_GBOX:
+		tpl_addVar(vars, TPLAPPEND, "READERDEPENDINGCONFIG", tpl_getTpl(vars, "READERCONFIGGBOXBIT"));
 		break;
 	case R_NEWCAMD:
 		if(rdr->ncd_proto == NCD_525)
@@ -4939,39 +4966,64 @@ static char *send_oscam_shutdown(struct templatevars * vars, FILE * f, struct ur
 	}
 }
 
-static char *send_oscam_script(struct templatevars * vars)
+static char *send_oscam_script(struct templatevars * vars, struct uriparams * params)
 {
 	setActiveMenu(vars, MNU_SCRIPT);
-	char *result = "not found";
-	int32_t rc = 0;
-	if(!cfg.http_readonly)
+	tpl_printf(vars, TPLADD, "SCRIPTOPTIONS", "<option value=\"\">----select script----</option>\n");
+
+	if(!cfg.http_readonly && cfg.http_script)
 	{
-		if(cfg.http_script)
+		DIR *hdir;
+		struct dirent entry;
+		struct dirent *scriptresult;
+		if((hdir = opendir(cfg.http_script)) != NULL)
 		{
-			tpl_addVar(vars, TPLADD, "SCRIPTNAME", cfg.http_script);
-			rc = system(cfg.http_script);
-			if(rc == -1)
+			while(cs_readdir_r(hdir, &entry, &scriptresult) == 0 && scriptresult != NULL)
 			{
-				result = "done";
+				if(is_ext(entry.d_name, ".script") || is_ext(entry.d_name, ".sh"))
+				{
+					tpl_printf(vars, TPLAPPEND, "SCRIPTOPTIONS", "<option value=\"script.html?scriptname=%s\">%s</option>\n",entry.d_name,entry.d_name);
+				}
 			}
-			else
+			closedir(hdir);
+		}
+
+		char *scriptname = getParam(params, "scriptname");
+		char *result = "not executable";
+		char system_str[256];
+		struct stat s;
+		snprintf(system_str, 256, "%s/%s", cfg.http_script, scriptname);
+
+		if(!stat(system_str,&s))
+		{
+			if(s.st_mode & S_IFREG)
 			{
-				result = "failed";
+				if(s.st_mode & S_IXUSR)
+				{
+					int32_t rc = 0;
+					rc = system(system_str);
+					if(rc == 0){
+						result = "done";}
+					else{
+						result = "failed";}
+					tpl_printf(vars, TPLAPPEND, "CODE", "returncode: %d", rc);
+					tpl_printf(vars, TPLADD, "SCRIPTNAME", "scriptname: %s", scriptname);
+					tpl_printf(vars, TPLADD, "SCRIPTRESULT", "scriptresult: %s", result);
+					}
+				else
+				{
+					tpl_printf(vars, TPLADD, "SCRIPTRESULT", "scriptresult: %s", result);
+				}
 			}
 		}
 		else
 		{
-			tpl_addVar(vars, TPLADD, "SCRIPTNAME", "no script defined");
+			result = "not found";
+			tpl_printf(vars, TPLADD, "SCRIPTRESULT", "scriptresult: %s", result);
 		}
-		tpl_addVar(vars, TPLADD, "SCRIPTRESULT", result);
-		tpl_printf(vars, TPLADD, "CODE", "%d", rc);
-	}
-	else
-	{
-		tpl_addMsg(vars, "Sorry, Webif is in readonly mode. No script execution possible!");
+		
 	}
 	return tpl_getTpl(vars, "SCRIPT");
-
 }
 
 static char *send_oscam_scanusb(struct templatevars * vars)
@@ -6784,7 +6836,7 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 				result = send_oscam_shutdown(vars, f, &params, 0, keepalive, extraheader);
 				break;
 			case 12:
-				result = send_oscam_script(vars);
+				result = send_oscam_script(vars, &params);
 				break;
 			case 13:
 				result = send_oscam_scanusb(vars);
