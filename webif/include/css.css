@@ -118,7 +118,7 @@ tr.enabledreader:hover td{background:#AAA;color:#000}
 tr.enabledreader td a:hover img.icon{background:red}
 tr.disabledreader:hover td{background:#FAA;color:#000}
 tr.disabledreader td a:hover img.icon,tr.disabled td a:hover img.icon{background:#0A0}
-div.message,div.warning,div.debugmenu,div#content form,div#footer.footer,div#otherdropdown,th.withservices,th.notservices,th.lbservices,table.status tbody tr td,table.ECM_totals tbody tr td,table.user_totals tbody tr td,table#dataTable.users tbody tr td,table#dataTable.readers tbody tr td,table#cachexstats.upspace tbody tr td,table#dataTable.stats.upspace tbody tr td{text-align:center}
+div.message,div.warning,div.debugmenu,div#content form,div#footer.footer,div#otherdropdown,th.withservices,th.notservices,th.lbservices,table.status tbody tr td,table.ECM_totals tbody tr td,table.user_totals tbody tr td,table#dataTable.users tbody tr td,table#dataTable.readers tbody tr td,table#cachexstats.upspace tbody tr td,table#dataTable.stats.upspace tbody tr td,div.logmenu{text-align:center}
 table.invisibleser,table.invisiblelb{width:100%}
 table.visible{width:60%;margin-bottom:5px;text-align:center}
 table.newservice,table#servicesedit.stats.upspace{width:35%;text-align:center}
