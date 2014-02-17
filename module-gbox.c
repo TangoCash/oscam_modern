@@ -28,10 +28,17 @@
 #include "oscam-reader.h"
 #include "oscam-garbage.h"
 
+#if defined(__CYGWIN__) 
+#define FILE_GBOX_VERSION       "C:/tmp/gbx.ver"
+#define FILE_SHARED_CARDS_INFO  "C:/tmp/gbx_card.info"
+#define FILE_ATTACK_INFO        "C:/tmp/gbx_attack.txt"
+#define FILE_GBOX_PEER_ONL  	"C:/tmp/gbx_peer.onl"
+#else
 #define FILE_GBOX_VERSION       "/tmp/gbx.ver"
 #define FILE_SHARED_CARDS_INFO  "/tmp/gbx_card.info"
 #define FILE_ATTACK_INFO        "/tmp/gbx_attack.txt"
 #define FILE_GBOX_PEER_ONL  	"/tmp/gbx_peer.onl"
+#endif
 
 #define GBOX_STAT_HELLOL	0
 #define GBOX_STAT_HELLOS	1
@@ -40,6 +47,8 @@
 #define GBOX_STAT_HELLO4	4
 
 #define RECEIVE_BUFFER_SIZE	1024
+#define MIN_GBOX_MESSAGE_LENGTH	10 //CMD + pw + pw. TODO: Check if is really min
+#define MIN_ECM_LENGTH		8
 
 #define LOCAL_GBOX_MAJOR_VERSION	0x02
 #define LOCAL_GBOX_MINOR_VERSION	0x25
@@ -626,6 +635,12 @@ int32_t gbox_cmd_hello(struct s_client *cli, uchar *data, int32_t n)
 	return 0;
 }
 
+static int8_t is_blocked_peer(uint16_t peer)
+{
+	if (peer == NO_GBOX_ID) { return 1; }
+	else { return 0; }
+} 
+
 static int8_t gbox_incoming_ecm(struct s_client *cli, uchar *data, int32_t n)
 {
 	struct gbox_peer *peer;
@@ -636,11 +651,20 @@ static int8_t gbox_incoming_ecm(struct s_client *cli, uchar *data, int32_t n)
 	if (!peer || !peer->my_user) { return -1; }
 	cl = peer->my_user;
 
-	// No ECMs with length < 8 expected
-	if ((((data[19] & 0x0f) << 8) | data[20]) < 8) { return -1; }
+	// No ECMs with length < MIN_LENGTH expected
+	if ((((data[19] & 0x0f) << 8) | data[20]) < MIN_ECM_LENGTH) { return -1; }
 
 	// GBOX_MAX_HOPS not violated
 	if (data[n - 15] + 1 > GBOX_MAXHOPS) { return -1; }
+
+	//Check for blocked peers
+	uint16_t requesting_peer = data[(((data[19] & 0x0f) << 8) | data[20]) + 21] << 8 | 
+				   data[(((data[19] & 0x0f) << 8) | data[20]) + 22];
+	if (is_blocked_peer(requesting_peer)) 
+	{ 
+		cs_debug_mask(D_READER, "ECM from peer %04X blocked", requesting_peer);
+		return -1;		
+	}			   
 
 	ECM_REQUEST *er;
 	if(!(er = get_ecmtask())) { return -1; }
@@ -668,11 +692,10 @@ static int8_t gbox_incoming_ecm(struct s_client *cli, uchar *data, int32_t n)
 	er->pid = data[10] << 8 | data[11];
 	er->srvid = data[12] << 8 | data[13];
 
-	int32_t adr_caid_1 = (((data[19] & 0x0f) << 8) | data[20]) + 26;
-	if(data[adr_caid_1] == 0x05)
-		{ er->caid = (data[adr_caid_1] << 8); }
+	if(ecm[er->ecmlen + 5] == 0x05)
+		{ er->caid = (ecm[er->ecmlen + 5] << 8); }
 	else
-		{ er->caid = (data[adr_caid_1] << 8 | data[adr_caid_1 + 1]); }
+		{ er->caid = (ecm[er->ecmlen + 5] << 8 | ecm[er->ecmlen + 6]); }
 
 //	ei->extra = data[14] << 8 | data[15];
 	memcpy(er->ecm, data + 18, er->ecmlen);
@@ -723,6 +746,7 @@ int32_t gbox_cmd_switch(struct s_client *cli, uchar *data, int32_t n)
 	case MSG_GOODBYE:
 		//needfix what to do after Goodbye?
 		//suspect: we get goodbye as signal of SID not found
+		cs_debug_mask(D_READER, "gbox: received goodbye message from %s\n",username(cli));	
 		break;
 	case MSG_HELLO1:
 	case MSG_HELLO:
@@ -820,8 +844,11 @@ static int8_t gbox_check_header(struct s_client *cli, uchar *data, int32_t l)
 			}
 		} else 
 		{
+			uint8_t id_offset = 39;
+			if (peer && (peer->gbox.minor_version == 0x30))	//mbox CW message is corrupt
+				{ id_offset++; }
 			// if my pass ok verify CW | pass to peer
-			if((data[39] != ((local_gbox.id >> 8) & 0xff)) || (data[40] != (local_gbox.id & 0xff)))
+			if((data[id_offset] != ((local_gbox.id >> 8) & 0xff)) || (data[id_offset+1] != (local_gbox.id & 0xff)))
 			{
 				cs_log("gbox peer: %04X sends CW for other than my id: %04X", cli->gbox_peer_id, local_gbox.id);
 				return -1;
@@ -831,8 +858,8 @@ static int8_t gbox_check_header(struct s_client *cli, uchar *data, int32_t l)
 	}  // error my pass
 	else
 	{
-		cs_log("gbox: ATTACK ALERT: proxy %s:%d", cs_inet_ntoa(cli->ip), cli->reader->r_port);
-		cs_log("received data, peer : %04x   data: %s", cli->gbox_peer_id, cs_hexdump(0, data, n, tmp, sizeof(tmp)));
+		cs_log("gbox: ATTACK ALERT from IP %s", cs_inet_ntoa(cli->ip));
+		cs_log("received data, data: %s", cs_hexdump(0, data, n, tmp, sizeof(tmp)));
 		return -1;
 		//continue; // next client
 	}
@@ -1156,19 +1183,21 @@ static int32_t gbox_recv(struct s_client *cli, uchar *buf, int32_t l)
 	uchar data[RECEIVE_BUFFER_SIZE];
 	int32_t n = l;
 
-	if(!cli->udp_fd || n > RECEIVE_BUFFER_SIZE) { return -1; }
-	if(cli->is_udp && cli->typ == 'c')
+	if(cli->udp_fd && cli->is_udp && cli->typ == 'c')
 	{
-		n = recv_from_udpipe(buf);
-		memcpy(&data[0], buf, n);
+		n = recv_from_udpipe(buf);		
+		if (n > MIN_GBOX_MESSAGE_LENGTH && n < RECEIVE_BUFFER_SIZE) //protect against too short or too long messages
+		{
+			memcpy(&data[0], buf, n);
+			gbox_check_header(cli, &data[0], n);
 
-		gbox_check_header(cli, &data[0], n);
-
-		//clients may timeout - dettach from peer's gbox/reader
-		cli->gbox = NULL;
-		cli->reader = NULL;
+			//clients may timeout - dettach from peer's gbox/reader
+			cli->gbox = NULL;
+			cli->reader = NULL;
+			return 0;	
+		}	
 	}
-	return 0;
+	return -1;
 }
 
 static void gbox_send_dcw(struct s_client *cl, ECM_REQUEST *er)
