@@ -1157,6 +1157,34 @@ static bool picon_exists(char *name)
 	return strlen(tpl_getTplPath(picon_name, cfg.http_tpl, path, sizeof(path) - 1)) && file_exists(path);
 }
 
+static void clear_rdr_stats(struct s_reader *rdr)
+{
+	int i;
+	for(i = 0; i < 4; i++)
+	{
+		rdr->emmerror[i] = 0;
+		rdr->emmwritten[i] = 0;
+		rdr->emmskipped[i] = 0;
+		rdr->emmblocked[i] = 0;
+	}
+	rdr->ecmsok = 0;
+	rdr->ecmsnok = 0;
+	rdr->ecmshealthok = 0;
+	rdr->ecmshealthnok = 0;
+	rdr->ecmsfilteredhead = 0;
+	rdr->ecmsfilteredlen = 0;
+}
+
+static void clear_all_rdr_stats(void)
+{
+	struct s_reader *rdr;
+	LL_ITER itr = ll_iter_create(configured_readers);
+	while((rdr = ll_iter_next(&itr)))
+	{
+		clear_rdr_stats(rdr);
+	}
+}
+
 static char *send_oscam_reader(struct templatevars *vars, struct uriparams *params, int32_t apicall)
 {
 	struct s_reader *rdr;
@@ -1174,6 +1202,10 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 		if(cfg.http_picon_size > 0)
 		{
 			tpl_printf(vars, TPLADD, "HTTPPICONSIZE", "img.readericon,img.protoicon {height:%dpx !important;}", cfg.http_picon_size);
+		}
+		if(strcmp(getParam(params, "action"), "resetallrdrstats") == 0)
+		{
+			clear_all_rdr_stats();
 		}
 	}
 	if((strcmp(getParam(params, "action"), "disable") == 0) || (strcmp(getParam(params, "action"), "enable") == 0))
@@ -2785,6 +2817,25 @@ static void clear_all_account_stats(void)
 	}
 }
 
+#ifdef CS_CACHEEX
+static void cacheex_clear_all_stats(void)
+{
+	struct s_auth *account = cfg.account;
+	while(account)
+	{
+		cacheex_clear_account_stats(account);
+		account = account->next;
+	}
+	struct s_client *cl;
+	for(cl = first_client->next; cl ; cl = cl->next)
+	{
+		cacheex_clear_client_stats(cl);
+		ll_clear_data(cl->ll_cacheex_stats);
+	}
+	cacheex_clear_client_stats(first_client);
+}
+#endif
+
 static void clear_system_stats(void)
 {
 	first_client->cwfound = 0;
@@ -4024,7 +4075,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 
 					if(!apicall)
 					{
-						if(cl->typ == 'c' && !cfg.http_readonly)
+						if(cl->typ == 'c')
 						{
 							tpl_addVar(vars, TPLADD, "TARGET", "User");
 							tpl_addVar(vars, TPLADD, "LBL", xml_encode(vars, usr));
@@ -4032,7 +4083,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							tpl_addVar(vars, TPLADD, "HIDEIDX", tpl_getTpl(vars, "STATUSHBUTTON"));
 							tpl_addVar(vars, TPLADD, "CSIDX", tpl_getTpl(vars, "STATUSKBUTTON"));
 						}
-						else if(cl->typ == 'p' && !cfg.http_readonly)
+						else if(cl->typ == 'p')
 						{
 							tpl_addVar(vars, TPLADD, "TARGET", "Proxy");
 							tpl_addVar(vars, TPLADD, "LBL", xml_encode(vars, usr));
@@ -4041,7 +4092,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							tpl_addVar(vars, TPLADD, "HIDEIDX", tpl_getTpl(vars, "STATUSHBUTTON"));
 							tpl_addVar(vars, TPLADD, "CSIDX", tpl_getTpl(vars, "STATUSRBUTTON"));
 						}
-						else if(cl->typ == 'r' && !cfg.http_readonly)
+						else if(cl->typ == 'r')
 						{
 							tpl_addVar(vars, TPLADD, "TARGET", "Reader");
 							tpl_addVar(vars, TPLADD, "LBL", xml_encode(vars, usr));
@@ -4050,7 +4101,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							tpl_addVar(vars, TPLADD, "HIDEIDX", tpl_getTpl(vars, "STATUSHBUTTON"));
 							tpl_addVar(vars, TPLADD, "CSIDX", tpl_getTpl(vars, "STATUSRBUTTON"));
 						}
-						else if ((cl->typ == 'h' || cl->typ == 's' || cl->typ == 'm') && !cfg.http_readonly)
+						else if (cl->typ == 'h' || cl->typ == 's' || cl->typ == 'm')
 						{
 							tpl_addVar(vars, TPLADD, "TARGET", "Reader");
 							tpl_addVar(vars, TPLADD, "LBL", xml_encode(vars, usr));
@@ -4537,45 +4588,28 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 #endif
 	//User info
 	struct s_auth *account;
-	int8_t isactive;
 	int32_t total_users = 0;
 	int32_t disabled_users = 0;
 	int32_t expired_users = 0;
-	int32_t active_users = 0;
 	for(account = cfg.account; (account); account = account->next)
 	{
 		total_users++;
-		isactive = 1;
 		if(account->expirationdate && account->expirationdate < now)
 		{
 			expired_users++;
-			isactive = 0;
 		}
 		if(account->disabled != 0)
 		{
 			disabled_users++;
-			isactive = 0;
-		}
-		if(isactive)
-		{
-			active_users++;
 		}
 	}
 	tpl_printf(vars, TPLADD, "TOTAL_USERS", "%d", total_users);
-	tpl_printf(vars, TPLADD, "TOTAL_ACTIVE", "%d", user_count_all);
+	tpl_printf(vars, TPLADD, "TOTAL_ACTIVE", "%d", total_users - expired_users - disabled_users);
 	tpl_printf(vars, TPLADD, "TOTAL_EXPIRED", "%d", expired_users);
 	tpl_printf(vars, TPLADD, "TOTAL_DISABLED", "%d", disabled_users);
+	tpl_printf(vars, TPLADD, "TOTAL_ONLINE", "%d", cfg.http_hide_idle_clients ? user_count_shown : user_count_active);
+	tpl_printf(vars, TPLADD, "TOTAL_CONNECTED", "%d", user_count_all);
 
-	if(cfg.http_hide_idle_clients == 1 || cfg.hideclient_to < 1)
-	{
-		tpl_printf(vars, TPLADD, "TOTAL_ONLINE", "%d", user_count_shown);
-		tpl_printf(vars, TPLADD, "TOTAL_CONNECTED", "%d", (user_count_all - user_count_shown));
-	}
-	else
-	{
-		tpl_printf(vars, TPLADD, "TOTAL_ONLINE", "%d", user_count_active);
-		tpl_printf(vars, TPLADD, "TOTAL_CONNECTED", "%d", (user_count_all - user_count_active));
-	}
 	//CW info
 	float ecmsum = first_client->cwfound + first_client->cwnot + first_client->cwtout + first_client->cwcache; //dont count TUN its included
 	if(ecmsum < 1){ecmsum = 1;}
@@ -6004,6 +6038,14 @@ static char *send_oscam_cacheex(struct templatevars * vars, struct uriparams * p
 	int16_t i, written = 0;
 	struct s_client *cl;
 	time_t now = time((time_t *)0);
+
+	if(!apicall)
+	{
+		if(strcmp(getParam(params, "action"), "resetallcacheexstats") == 0)
+		{
+			cacheex_clear_all_stats();
+		}
+	}
 
 	tpl_printf(vars, TPLADD, "OWN_CACHEEX_NODEID", "%" PRIu64 "X", cacheex_node_id(cacheex_peer_id));
 
