@@ -52,7 +52,7 @@ li.menu a{color:#fff;text-decoration:none}
 li.menu_selected:hover a,li.menu:hover a,li.menu_selected a{border-top-left-radius:3px;border-top-right-radius:3px;margin-left:-4px;margin-right:-4px;text-shadow:1px 1px 0 #FFF;color:#000;text-decoration:none;background:linear-gradient(to bottom,#F6F6F6 25%,#EBEBEB 49%,#D9D9D9 50%,#FFFFFF 100%) repeat scroll 0 0 rgba(0,0,0,0);padding:3px 4px 9px}
 li.configmenu_selected a,li.configmenu:hover a{text-shadow:2px 2px 1px #AAA}
 p#text_totalecm{color:#000;margin-bottom:10px;margin-top:10px;text-align:center;font-weight:700}
-p#filename{color:#000;font-size:14px;font-weight:700;margin-bottom:5px;margin-top:-10px;text-align:center}
+p#filename{color:#000;font-size:14px;font-weight:700;margin-bottom:5px;text-align:center}
 p,li.menu a{color:#FFF}
 p.blinking{color:red;font-size:large;font-weight:700}
 span.e_valid{background:#e6febf}
