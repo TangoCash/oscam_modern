@@ -1,15 +1,32 @@
-##TPLHEADER##
+##TPLHEADERSHORT##
+	<script type="text/javascript">
+	
+	var page = 'status';
+	var jsonurl = 'oscamapi.json';
+	var parameters = '?part=status';
+	var stoppoll = 0;
+	var pollintervall = 0;
+	var httprefresh = '##REFRESHTIME##';
+
+	</script>
+##TPLBODY##
 ##TPLMENU##
+<div id = "chart">
+	<div id = "charthead" ></div>
+	<div id = "graph" ></div>
+</div>
 <DIV ID="subnav">
 	<UL ID="nav">
-		<LI><B>Oscam r9569</B></LI>
+		<LI><B>Oscam r9583</B></LI>
 		<LI CLASS="configmenu"><A HREF="http://www.streamboard.tv/oscam-addons/timeline" TARGET="_blank">Timeline r##CS_SVN_VERSION##</A></LI>
 		<LI CLASS="configmenu"><A HREF="#statusfooter">Status</A></LI>
+		<LI ID="poll" CLASS="pollselect" style="display: none;">Pollintervall:<input type="text" name="pintervall" class="pintervall" value="" readonly/>sec.<button id="dec">&ndash;</button><button id="inc">+</button></LI>
+		<LI ID="nopoll" CLASS="pollselect" style="display: none;">httprefresh no set - polling disabled</LI>
 	</UL>
 </DIV>
 <TABLE CLASS="status">
 	<TR>
-		<TH COLSPAN="2" CLASS="statuscol0">hide/reset</TH>
+		<TH COLSPAN="2" CLASS="statuscol0">Hide/Reset</TH>
 		<TH CLASS="statuscol4">Label</TH>
 		<TH CLASS="statuscol5">AU</TH>
 		<TH CLASS="statuscol7">Address</TH>
@@ -29,13 +46,10 @@
 ##CLIENTHEADLINE##
 ##CLIENTSTATUS##
 </TABLE>
-<DIV CLASS="log">
-##LOGHISTORY##
-</DIV>
-##SDEBUG##
 <DIV CLASS="info ##DISPLAYINFO##">
 ##SYSTEM_INFO##
 ##USER_INFO##
 ##CACHEEX_INFO##
 </DIV>
+<DIV id="picolor"></DIV>
 ##TPLFOOTER##
