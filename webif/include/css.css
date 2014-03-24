@@ -165,6 +165,7 @@ input.pintervall {padding-top:0px;font-size:14px;font-weight:700;width:18px;heig
 #inc,#dec {padding:0 3px;margin: -3px 3px;border:none;background-color:#0066CC;color:#FFFFFF;border-radius:4px;font-size:14px;font-weight:700;width: 18px;height: 18px;}
 #inc:hover,#dec:hover {background-color:red;}
 a.debugl:link{margin:0 1px;background-color:#0066CC;color:#FFF;padding:0px 1px 1px;border-radius:3px;}
+a.debugl:hover{background-color:#A00}
 a.debugls:link{background-color:#A00;color:#FFFFFF;padding:0px 1px 1px;border-radius:3px;}
 a.debugls:visited{background-color:#A00;color:#FFFFFF;border-radius:3px;}
 a#savelog{text-decoration:none}
