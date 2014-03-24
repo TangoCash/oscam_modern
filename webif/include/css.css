@@ -7,7 +7,7 @@ h4{color:#aaa;font-size:18px;line-height:9px;margin-bottom:20px;margin-top:20px}
 #footer{bottom:0;position:absolute;width:100%}
 #content{padding:1em 1em 2.5em}
 div#main{height:40px}
-div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat scroll 0 0 rgba(0,0,0,0);border-bottom:1px solid #AAA;font-family:arial;margin-bottom:5px;height:19px}
+div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat scroll 0 0 rgba(0,0,0,0);border-bottom:1px solid #AAA;font-family:arial;margin-bottom:5px;height:19px;padding-bottom: 2px;}
 #main,#nav{font-family:Verdana,Geneva,sans-serif,Arial;text-align:center}
 #main li{font-size:18px;font-weight:700}
 #nav li{font-size:14px;padding-bottom:0;padding-top:0}
@@ -138,10 +138,14 @@ td.subheadline p input{margin-right:5px}
 td.subheadline a{color:#FFF}
 td.subheadline form{margin-top:-1px;margin-bottom:-2px;height:16px}
 td.subheadline form select{width:100px;text-align:center;font-size:10px;font-weight:500;color:#FFF;background:#666}
+#chart {position:absolute;width: 150px;height: 90px;padding:3px;color:#FFFFFF}
+#charthead {width:100%;height:5px;font-size:3}
+#graph {width:98%;bottom:0;position:absolute;}
+div.bar {width: 5px;margin: 2px;display: inline-block;position: relative;background-color: #aeaeae;vertical-align: baseline;}
 textarea.editor{background:#fafafa;color:#000;height:480px;width:95%;padding:10px;border-radius:5px;font:11px "Courier New",monospace}
 textarea,form select{border:1px;border-style:inset;border-color:#000}
-th,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{background:#b5bdc8;background:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2I1YmRjOCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjM0JSIgc3RvcC1jb2xvcj0iIzUzNTY1ZSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyODM0M2IiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);background:-moz-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-webkit-gradient(linear,left top,left bottom,color-stop(0%,#b5bdc8),color-stop(34%,#53565e),color-stop(100%,#28343b));background:-webkit-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-o-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-ms-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:linear-gradient(to bottom,#b5bdc8 0%,#53565e 34%,#28343b 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#b5bdc8",endColorstr="#28343b",GradientType=0);color:#fff}
-#livelog {height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;background-color:#CCCCCC;padding:10px;color:#000000;font-family: "Courier New",monospace}
+th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{background:#b5bdc8;background:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2I1YmRjOCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjM0JSIgc3RvcC1jb2xvcj0iIzUzNTY1ZSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyODM0M2IiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);background:-moz-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-webkit-gradient(linear,left top,left bottom,color-stop(0%,#b5bdc8),color-stop(34%,#53565e),color-stop(100%,#28343b));background:-webkit-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-o-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-ms-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:linear-gradient(to bottom,#b5bdc8 0%,#53565e 34%,#28343b 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#b5bdc8",endColorstr="#28343b",GradientType=0);color:#fff}
+#livelog {height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;background-color:#CCCCCC;padding:10px;color:#000000;font-family: "Courier New",monospace;border-radius:4px}
 #livelogdata {list-style:none;}
 li.regex {list-style-type:none;}
 input.regexinput {cursor:text;padding:2px;margin: 3px 15px 1px 3px;width:400px;}
@@ -153,7 +157,7 @@ div.colorPicker_hexWrap {width: 100%; float:left }
 div.colorPicker_hexWrap label {font-size: 95%; color: #2F2F2F; margin: 5px 2px; width: 25%}
 div.colorPicker_hexWrap input {margin: 5px 2px; padding: 0; font-size: 95%; border: 1px solid #000; width: 65%; }
 div.colorPicker-swatch {height: 12px;width: 12px;border: 1px solid #000;margin: 2px;float: left;cursor: pointer;line-height: 12px;}
-#showhidesettings{margin-left: 45%;margin-top:10px;margin-bottom:10px;padding-bottom: 3px;}
+#showhidesettings{}
 #regexdata{width:60%;margin:auto;margin-top: 20px}
 #regexdata p{width:25%;margin:auto;margin-bottom: 20px;margin-top:10px}
 li.pollselect {display:inline;list-style:none;position:absolute;right:5px;top:35px;}
@@ -163,10 +167,6 @@ input.pintervall {padding-top:0px;font-size:14px;font-weight:700;width:18px;heig
 a.debugl:link{margin:0 1px;background-color:#0066CC;color:#FFF;padding:0px 1px 1px;border-radius:3px;}
 a.debugls:link{background-color:#A00;color:#FFFFFF;padding:0px 1px 1px;border-radius:3px;}
 a.debugls:visited{background-color:#A00;color:#FFFFFF;border-radius:3px;}
-
-
-
-
-
-
+a#savelog{text-decoration:none}
+div#regex{margin-bottom: 5px}
 
