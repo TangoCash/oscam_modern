@@ -15,7 +15,6 @@ div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat
 #sortable:hover{cursor:pointer}
 a.tooltip{cursor:default;position:relative;text-decoration:none}
 a.tooltip span,a.tooltip1 span{display:none;z-index:99}
-a.tooltip1{color:red;cursor:default;position:relative;text-decoration:none}
 a:hover{color:#ff9e5f}
 a:hover img.icon{background:red}
 a:hover span{background:#FFD;border:1px solid #666;color:#350;display:block;font-weight:400;padding:10px;position:absolute;right:1em;top:2em}
@@ -170,6 +169,7 @@ a.debugl:link{margin:0 1px;background-color:#0066CC;color:#FFF;padding:0px 1px 1
 a.debugl:hover{background-color:#A00}
 a.debugls:link{background-color:#A00;color:#FFFFFF;padding:0px 1px 1px;border-radius:3px;}
 a.debugls:visited{background-color:#A00;color:#FFFFFF;border-radius:3px;}
+a.tooltip1{color:red;cursor:default;position:relative;text-decoration:none}
 a#savelog{text-decoration:none}
 div#regex{margin-bottom: 5px}
 p.styleauthor:after {content:"Gorgone"}
