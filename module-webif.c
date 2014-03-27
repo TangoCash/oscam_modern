@@ -625,6 +625,8 @@ static char *send_oscam_config_cache(struct templatevars *vars, struct uriparams
 
 	tpl_addVar(vars, TPLADD, "CACHEEXSTATSSELECTED", (cfg.cacheex_enable_stats == 1) ? "checked" : "");
 
+	tpl_addVar(vars, TPLADD, "WTTCHECKED", (cfg.wait_until_ctimeout == 1) ? "checked" : "");
+
 	if(cfg.csp_port)
 		{ tpl_printf(vars, TPLADD, "PORT", "%d", cfg.csp_port); }
 
@@ -3910,9 +3912,16 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 
 static char *send_oscam_logpoll(struct templatevars * vars, struct uriparams * params)
 {
+
+	int full_log = 0;
+
 	if(strcmp(getParam(params, "lasttime"), "start") == 0){
 		setActiveMenu(vars, MNU_LIVELOG); 
 		return tpl_getTpl(vars, "LOGPAGE");
+	}
+	else
+	{
+		full_log = atoi(getParam(params, "lasttime"));
 	}
 
 	int dot = 0; //Delimiter
@@ -3947,7 +3956,7 @@ static char *send_oscam_logpoll(struct templatevars * vars, struct uriparams * p
 	tpl_printf(vars, TPLAPPEND, "DATA", "%s\"lines\":[", dot?",":"");
 
 	int i;
-	dot=0;
+	dot = 0;
 	for(ptr1 = t_loghistptr + l1, i = 0; i < 200; i++, ptr1 = ptr1 + l1)
 	{
 		l1 = strlen(ptr1) + 1;
@@ -3967,27 +3976,18 @@ static char *send_oscam_logpoll(struct templatevars * vars, struct uriparams * p
 		cs_strncpy(p_usr, ptr1 , pos1 > sizeof(p_usr) ? sizeof(p_usr) : pos1);
 		
 		char *p_txt = ptr1 + pos1;
-				
-		int year;
-		int month;
-		struct tm lt;
-		sscanf(p_txt, "%04d/%02d/%02d  %02d:%02d:%02d", &year, &month, &lt.tm_mday, &lt.tm_hour, &lt.tm_min, &lt.tm_sec);
-		lt.tm_year = year - 1900;
-		lt.tm_mon = month - 1;
-		time_t logtime = mktime(&lt);
-		long lasttime = atol(getParam(params, "lasttime"));
 
 		pos1 = strcspn(p_txt, "\n") + 1;
 		char str_out[pos1];
-		cs_strncpy(str_out, p_txt , pos1);
+		cs_strncpy(str_out, p_txt, pos1);
 
-		if(p_txt[0] && logtime > lasttime){
-			tpl_printf(vars, TPLAPPEND, "DATA","%s{\"ts\":\"%ld\",\"usr\":\"%s\",\"line\":\"%s\"}",
+		if(p_txt[0] && (p_txt[0] == '0' || full_log)){
+			tpl_printf(vars, TPLAPPEND, "DATA","%s{\"usr\":\"%s\",\"line\":\"%s\"}",
 									dot?",":"",
-									logtime,
 									xml_encode(vars, p_usr),
-									xml_encode(vars, str_out));
-			dot=1; // next in Array with leading delimiter
+									xml_encode(vars, str_out + 1));
+			dot = 1; // next in Array with leading delimiter
+			p_txt[0] = '1'; // mark as delivered
 		}
 	}
 	tpl_addVar(vars, TPLAPPEND, "DATA", "]");
@@ -4010,16 +4010,6 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 		{
 			tpl_printf(vars, TPLADD, "HTTPPICONSIZE", "img.readericon,img.protoicon,img.statususericon {height:%dpx !important;}", cfg.http_picon_size);
 		}
-	}
-	char picon_name[32];
-	snprintf(picon_name, sizeof(picon_name) / sizeof(char) - 1, "LOGO");
-	if(picon_exists(picon_name))
-	{
-		tpl_addVar(vars, TPLADD, "LOGO", tpl_getTpl(vars, "LOGOBIT"));
-	}
-	else
-	{
-		tpl_addVar(vars, TPLADD, "LOGO", "");
 	}
 	if(strcmp(getParam(params, "action"), "kill") == 0)
 	{
@@ -4322,14 +4312,17 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					if (cl->typ == 'c') {
 						tpl_addVar(vars, TPLADD, "USERNAME", xml_encode(vars, usr));
 						tpl_addVar(vars, TPLADD, "USERENC", urlencode(vars, usr));
+						tpl_addVar(vars, TPLADD, "READERNAME","");
 					} else if (cl->typ == 'p' || cl->typ == 'r') {
 						tpl_addVar(vars, TPLADD, "READERNAME", xml_encode(vars, usr));
 						tpl_addVar(vars, TPLADD, "READERNAMEENC", urlencode(vars, usr));
+						tpl_addVar(vars, TPLADD, "USERNAME", "");
 					}
 
 					bool picon_shown = false;
 					const char *status_user_icon_tpl = NULL;
 
+					char picon_name[32];
 					if(cfg.http_showpicons)
 					{
 						if(picon_exists(xml_encode(vars, usr)))
@@ -4716,7 +4709,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 	cs_readunlock(&clientlist_lock);
 	cs_readunlock(&readerlist_lock);
 
-	if(apicall==1 && strcmp(getParam(params, "appendlog"), "1") == 0)
+	if(!apicall || (apicall == 1 && strcmp(getParam(params, "appendlog"), "1") == 0))
 	{
 		if(cfg.loghistorysize)
 		{
@@ -4745,7 +4738,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 
 				char *p_txt = ptr1 + pos1;
 
-				tpl_addVar(vars, TPLAPPEND, "LOGHISTORY", p_txt);
+				tpl_addVar(vars, TPLAPPEND, "LOGHISTORY", p_txt +1);
 			}
 		}
 		else
@@ -6983,6 +6976,17 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 				tpl_addVar(vars, TPLADD, "REFRESH", tpl_getTpl(vars, "REFRESH"));
 			}
 
+			char picon_name[32];
+			snprintf(picon_name, sizeof(picon_name) / sizeof(char) - 1, "LOGO");
+			if(picon_exists(picon_name))
+			{
+				tpl_addVar(vars, TPLADD, "LOGO", tpl_getTpl(vars, "LOGOBIT"));
+			}
+			else
+			{
+				tpl_addVar(vars, TPLADD, "LOGO", "");
+			}
+			
 			tpl_printf(vars, TPLADD, "CURDATE", "%02d.%02d.%02d", lt.tm_mday, lt.tm_mon + 1, lt.tm_year % 100);
 			tpl_printf(vars, TPLADD, "CURTIME", "%02d:%02d:%02d", lt.tm_hour, lt.tm_min, lt.tm_sec);
 			localtime_r(&first_client->login, &st);

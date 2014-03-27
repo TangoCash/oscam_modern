@@ -1,15 +1,14 @@
 ##TPLHEADERSHORT##
 	<script type="text/javascript">
-
 	// beginn parameters
-	var maxloglines = 200;
+	var maxloglines = 1000;
 	var pollintervall = 1000;
 	var aniduration = 10;
 	// end parameters - do not change things below
 
 	var page = 'livelog';
 	var jsonurl = 'logpoll.html';
-	var parameters = "?lasttime=0";
+	var parameters = "?lasttime=1";
 	var lastdebuglevel = 0;
 	var stoppoll = 0;
 
@@ -33,10 +32,10 @@
 		<LI class="regex">Search5: <input type="text" name="regex5" class="regexinput" ID="regex5" value=""> Found only: <input type="checkbox" id="whitelisted5"> Hide: <input type="checkbox" id="hidden5"> Back Color: <input size="7" maxlength="7" type="text" name="color5" class="colorinput" ID="color5" value=""> Color: <input size="7" maxlength="7" type="text" name="fcolor5" class="colorinput" ID="fcolor5" value=""></LI>
 		<P><input ID="regexreset" type="submit" value="Reset all" title="Reset all"><input ID="regexok" type="submit" value="Save" title="Save"></P>
 	</UL>
+</DIV>
 ##TPLMESSAGE##
 	<DIV ID="livelog">
 		<UL ID="livelogdata" title="Scroll stopped, because mouse stands over log-window !!!"></UL>
 	</DIV>
 ##LOG_DEBUGMENU##
-</DIV>
 ##TPLFOOTER##

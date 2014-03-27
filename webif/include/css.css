@@ -7,7 +7,7 @@ h4{color:#aaa;font-size:18px;line-height:9px;margin-bottom:20px;margin-top:20px}
 #footer{bottom:0;position:absolute;width:100%}
 #content{padding:1em 1em 2.5em}
 div#main{height:40px}
-div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat scroll 0 0 rgba(0,0,0,0);border-bottom:1px solid #AAA;font-family:arial;margin-bottom:5px;height:19px;padding-bottom: 2px;}
+div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat scroll 0 0 rgba(0,0,0,0);border-bottom:1px solid #AAA;font-family:arial;margin-bottom:0px;margin-top:0px;height:19px;padding-top:1px;padding-bottom: 2px;}
 #main,#nav{font-family:Verdana,Geneva,sans-serif,Arial;text-align:center}
 #main li{font-size:18px;font-weight:700}
 #nav li{font-size:14px;padding-bottom:0;padding-top:0}
@@ -81,6 +81,7 @@ input[type=submit]{background:#06c;font:700 11px Arial,Helvetica,sans-serif;text
 input[type=submit]:hover{background:#c00}
 input[type=submit]:active{background:red}
 input[type=text],input[type=text]:hover,input[type=text]:active{border:.5px solid #000;cursor:text;padding:2px}
+input#savelog,input#showhidesettings{padding: 2px; margin-left: 0px; margin-bottom: 0px;}
 tr.r:hover td,tr.r:hover td span,tr.r:hover td span a,tr.p:hover td,tr.p:hover td span,tr.p:hover td span a,tr.c:hover td,tr.c:hover td span,tr.c:hover td span a{background:#AAA;color:#FFF}
 tr.r img.icon,tr.r a:hover img.icon{background:#06C}
 tr.p img.icon,tr.p a:hover img.icon{background:#06C}
@@ -157,12 +158,13 @@ div.colorPicker_hexWrap {width: 100%; float:left }
 div.colorPicker_hexWrap label {font-size: 95%; color: #2F2F2F; margin: 5px 2px; width: 25%}
 div.colorPicker_hexWrap input {margin: 5px 2px; padding: 0; font-size: 95%; border: 1px solid #000; width: 65%; }
 div.colorPicker-swatch {height: 12px;width: 12px;border: 1px solid #000;margin: 2px;float: left;cursor: pointer;line-height: 12px;}
+div#debugmenu.debugmenu,table.ECM_totals.smallmargintop,table#dataTable.readers{margin-bottom: 10px;}
 #showhidesettings{}
 #regexdata{width:60%;margin:auto;margin-top: 20px}
 #regexdata p{width:25%;margin:auto;margin-bottom: 20px;margin-top:10px}
 li.pollselect {display:inline;list-style:none;position:absolute;right:5px;top:35px;}
 input.pintervall {padding-top:0px;font-size:14px;font-weight:700;width:18px;height:18px;color:#000;background-color:transparent;border:none;border-radius:4px;text-align:right;margin: 0 4px;}
-#inc,#dec {padding:0 3px;margin: -3px 3px;border:none;background-color:#0066CC;color:#FFFFFF;border-radius:4px;font-size:14px;font-weight:700;width: 18px;height: 18px;}
+#inc,#dec {border:none;background-color:#0066CC;color:#FFFFFF;border-radius:4px;font-size:14px;font-weight:700;width: 16px;height: 16px;margin-top: 2px; margin-right: 0px; margin-left: 5px;}
 #inc:hover,#dec:hover {background-color:red;}
 a.debugl:link{margin:0 1px;background-color:#0066CC;color:#FFF;padding:0px 1px 1px;border-radius:3px;}
 a.debugl:hover{background-color:#A00}
@@ -170,4 +172,4 @@ a.debugls:link{background-color:#A00;color:#FFFFFF;padding:0px 1px 1px;border-ra
 a.debugls:visited{background-color:#A00;color:#FFFFFF;border-radius:3px;}
 a#savelog{text-decoration:none}
 div#regex{margin-bottom: 5px}
-
+p.styleauthor:after {content:"Gorgone"}
