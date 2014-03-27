@@ -12,8 +12,10 @@ div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat
 #main li{font-size:18px;font-weight:700}
 #nav li{font-size:14px;padding-bottom:0;padding-top:0}
 #main li,#nav li{display:inline;padding:5px 3px 3px}
+#sortable:hover{cursor:pointer}
 a.tooltip{cursor:default;position:relative;text-decoration:none}
 a.tooltip span,a.tooltip1 span{display:none;z-index:99}
+a.tooltip1{color:red;cursor:default;position:relative;text-decoration:none}
 a:hover{color:#ff9e5f}
 a:hover img.icon{background:red}
 a:hover span{background:#FFD;border:1px solid #666;color:#350;display:block;font-weight:400;padding:10px;position:absolute;right:1em;top:2em}
@@ -128,7 +130,6 @@ table.configreader.upspace,table.statsbalance,table.cacheex{margin-top:5px}
 table.configreader tbody tr td table.invisible tr td,table.config tbody tr td table.invisible tbody tr td{border:none}
 table.configreader tbody tr td{text-align:left}
 table.subservicetable{width:100%}
-th#sortable{cursor:pointer}
 th.withservices a,th.notservices a,th.lbservices a{color:#fff;text-decoration:none;font-weight:700}
 tr th:first-child,tr td:first-child{border-left:1px solid #000}
 tr th:last-child,tr td:last-child{border-right:1px solid #000}
@@ -169,7 +170,6 @@ a.debugl:link{margin:0 1px;background-color:#0066CC;color:#FFF;padding:0px 1px 1
 a.debugl:hover{background-color:#A00}
 a.debugls:link{background-color:#A00;color:#FFFFFF;padding:0px 1px 1px;border-radius:3px;}
 a.debugls:visited{background-color:#A00;color:#FFFFFF;border-radius:3px;}
-a.tooltip1{color:red;cursor:default;position:relative;text-decoration:none}
 a#savelog{text-decoration:none}
 div#regex{margin-bottom: 5px}
 p.styleauthor:after {content:"Gorgone"}

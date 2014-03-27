@@ -14,19 +14,19 @@
 	<TABLE ID="dataTable" CLASS="stats">
 		<THEAD>
 			<TR><TH COLSPAN="12">CacheEX Stats for ##OWN_CACHEEX_NODEID##</TH></TR>
-			<TR>
-				<TH>Direction</TH>
-				<TH>Type</TH>
-				<TH>Name</TH>
-				<TH>IP</TH>
-				<TH>NODE</TH>
-				<TH>Cache EX Mode</TH>
-				<TH>Push</TH>
-				<TH>Got</TH>
-				<TH>CWC Info</TH>
-				<TH>Hit</TH>
-				<TH>Err</TH>
-				<TH>CW Diff</TH>
+			<TR onClick="cdpause()"> <!--  Resolve  -->
+				<TH CLASS="nosort">Direction</TH>
+				<TH ID="sortable">Type</TH>
+				<TH ID="sortable">Name</TH>
+				<TH ID="sortable">IP</TH>
+				<TH ID="sortable">NODE</TH>
+				<TH ID="sortable">Cache EX Mode</TH>
+				<TH ID="sortable">Push</TH>
+				<TH ID="sortable">Got</TH>
+				<TH ID="sortable">CWC Info</TH>
+				<TH ID="sortable">Hit</TH>
+				<TH ID="sortable">Err</TH>
+				<TH ID="sortable">CW Diff</TH>
 			</TR>
 		</THEAD>
 		<TBODY>
@@ -34,6 +34,15 @@
 ##TABLEREADERROWS##
 		</TBODY>
 	</TABLE>
+	<script type="text/javascript">
+		var sorter = new TINY.table.sorter('sorter','dataTable',{
+		headclass: 'head', // Header Class //
+		ascclass: 'asc', // Ascending Class //
+		descclass: 'desc', // Descending Class //
+		sortdir: 1, // Sort Direction (1 or -1) //
+		init: true// Init Now? (true or false) //
+		});
+	</script>
 	<TABLE ID="cachexstats" CLASS="margintop">
 		<TR>
 			<TH COLSPAN="5">Cache Statistics</TH>
