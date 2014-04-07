@@ -178,8 +178,8 @@ p.styleauthor:after {content:"Gorgone"}
 
 ul#regexdatainput.logfilter.l1 li.regex{padding:2px}
 ul#regexdatainput.logfilter.l2 li.regex,
-ul#regexdatainput.logfilter.l3 li.regex,
+ul#regexdatainput.logfilter.l3 li.regex{padding:6px}
 ul#regexdatainput.logfilter.l4 li.regex,
-ul#regexdatainput.logfilter.l5 li.regex{padding:4px}
+ul#regexdatainput.logfilter.l5 li.regex{padding:5.5px}
 
 sortable
