@@ -8,14 +8,14 @@
 	</DIV>
 	<DIV ID="searchTable">
 		<TABLE CLASS="cacheex">
-			<TR><TH>Filter: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="initDoc()" /></TH></TR>
+			<TR><TH>Filter: <input type="text" id="searchTerm" class="search_box" onkeyup="doSearch()" onClick="cdpause()" onBlur="initDoc()"></TH></TR>
 		</TABLE>
 	</DIV>
 	<TABLE ID="dataTable" CLASS="stats">
 		<THEAD>
 			<TR><TH COLSPAN="12">CacheEX Stats for ##OWN_CACHEEX_NODEID##</TH></TR>
-			<TR onClick="cdpause()"> <!--  Resolve  -->
-				<TH CLASS="nosort">Direction</TH>
+			<TR>
+				<TH ID="sortable">Direction</TH>
 				<TH ID="sortable">Type</TH>
 				<TH ID="sortable">Name</TH>
 				<TH ID="sortable">IP</TH>

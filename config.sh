@@ -1,6 +1,6 @@
 #!/bin/sh
 
-addons="WEBIF TOUCH HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX CW_CYCLE_CHECK LCDSUPPORT LEDSUPPORT IPV6SUPPORT CLOCKFIX"
+addons="WEBIF TOUCH HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_SSL WITH_LB CS_CACHEEX CW_CYCLE_CHECK LCDSUPPORT LEDSUPPORT IPV6SUPPORT CLOCKFIX WEBIF_LIVELOG WEBIF_JQUERY DVBAPI_SAMYGO"
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_CCCSHARE MODULE_GBOX MODULE_RADEGAST MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA MODULE_GHTTP"
 readers="READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_BULCRYPT READER_GRIFFIN READER_DGCRYPT"
 card_readers="CARDREADER_PHOENIX CARDREADER_INTERNAL CARDREADER_SC8IN1 CARDREADER_MP35 CARDREADER_SMARGO CARDREADER_DB2COM CARDREADER_STAPI CARDREADER_STINGER"
@@ -9,6 +9,7 @@ defconfig="
 CONFIG_WEBIF=y
 CONFIG_TOUCH=y
 CONFIG_HAVE_DVBAPI=y
+CONFIG_DVBAPI_SAMYGO=n
 CONFIG_IRDETO_GUESSING=y
 CONFIG_CS_ANTICASC=y
 CONFIG_WITH_DEBUG=y
@@ -21,6 +22,8 @@ CONFIG_CW_CYCLE_CHECK=y
 # CONFIG_LEDSUPPORT=n
 # CONFIG_IPV6SUPPORT=n
 CONFIG_CLOCKFIX=y
+CONFIG_WEBIF_LIVELOG=y
+CONFIG_WEBIF_JQUERY=y
 # CONFIG_MODULE_CAMD33=n
 CONFIG_MODULE_CAMD35=y
 CONFIG_MODULE_CAMD35_TCP=y
@@ -273,6 +276,8 @@ update_deps() {
 	# Calculate dependencies
 	enabled_any $(get_opts readers) $(get_opts card_readers) && enable_opt WITH_CARDREADER >/dev/null
 	disabled_all $(get_opts readers) $(get_opts card_readers) && disable_opt WITH_CARDREADER >/dev/null
+	disabled WEBIF && disable_opt WEBIF_LIVELOG >/dev/null
+	disabled WEBIF && disable_opt WEBIF_JQUERY >/dev/null
 	enabled MODULE_CCCSHARE && enable_opt MODULE_CCCAM >/dev/null
 	enabled_any CARDREADER_DB2COM CARDREADER_MP35 CARDREADER_SC8IN1 CARDREADER_STINGER && enable_opt CARDREADER_PHOENIX >/dev/null
 }
@@ -408,21 +413,24 @@ print_components() {
 
 menu_addons() {
 	${DIALOG} --checklist "\nChoose add-ons:\n " $height $width $listheight \
-		WEBIF				"Web Interface"				$(check_test "WEBIF") \
+		WEBIF				"Web Interface"					$(check_test "WEBIF") \
+		WEBIF_LIVELOG			"LiveLog"					$(check_test "WEBIF_LIVELOG") \
+		WEBIF_JQUERY			"Jquery onboard (if disabled -> webload)"	$(check_test "WEBIF_JQUERY") \
 		TOUCH				"Touch Web Interface"				$(check_test "TOUCH") \
 		HAVE_DVBAPI			"DVB API"					$(check_test "HAVE_DVBAPI") \
-		IRDETO_GUESSING		"Irdeto guessing"			$(check_test "IRDETO_GUESSING") \
-		CS_ANTICASC			"Anti cascading"			$(check_test "CS_ANTICASC") \
-		WITH_DEBUG			"Debug messages"			$(check_test "WITH_DEBUG") \
-		MODULE_MONITOR		"Monitor"					$(check_test "MODULE_MONITOR") \
-		WITH_SSL			"OpenSSL support"			$(check_test "WITH_SSL") \
-		WITH_LB				"Loadbalancing"				$(check_test "WITH_LB") \
-		CS_CACHEEX			"Cache exchange"			$(check_test "CS_CACHEEX") \
-		CW_CYCLE_CHECK			"CW Cycle Check"			$(check_test "CW_CYCLE_CHECK") \
-		LCDSUPPORT			"LCD support"				$(check_test "LCDSUPPORT") \
-		LEDSUPPORT			"LED support"				$(check_test "LEDSUPPORT") \
-		IPV6SUPPORT			"IPv6 support (experimental)"		$(check_test "IPV6SUPPORT") \
+		DVBAPI_SAMYGO			"with SAMSUNG TV support"			$(check_test "DVBAPI_SAMYGO") \
+		IRDETO_GUESSING			"Irdeto guessing"				$(check_test "IRDETO_GUESSING") \
+		CS_ANTICASC			"Anti cascading"				$(check_test "CS_ANTICASC") \
+		WITH_DEBUG			"Debug messages"				$(check_test "WITH_DEBUG") \
+		MODULE_MONITOR			"Monitor"					$(check_test "MODULE_MONITOR") \
+		WITH_SSL			"OpenSSL support"				$(check_test "WITH_SSL") \
+		WITH_LB				"Loadbalancing"					$(check_test "WITH_LB") \
+		CS_CACHEEX			"Cache exchange"				$(check_test "CS_CACHEEX") \
+		CW_CYCLE_CHECK			"CW Cycle Check"				$(check_test "CW_CYCLE_CHECK") \
+		LCDSUPPORT			"LCD support"					$(check_test "LCDSUPPORT") \
+		LEDSUPPORT			"LED support"					$(check_test "LEDSUPPORT") \
 		CLOCKFIX			"Clockfix (disable on old systems!)"		$(check_test "CLOCKFIX") \
+		IPV6SUPPORT			"IPv6 support (experimental)"			$(check_test "IPV6SUPPORT") \
 		2> ${tempfile}
 
 	opt=${?}
@@ -435,15 +443,15 @@ menu_addons() {
 menu_protocols() {
 	${DIALOG} --checklist "\nChoose protocols:\n " $height $width $listheight \
 		MODULE_CAMD33		"camd 3.3"		$(check_test "MODULE_CAMD33") \
-		MODULE_CAMD35		"camd 3.5 UDP"	        $(check_test "MODULE_CAMD35") \
-		MODULE_CAMD35_TCP	"camd 3.5 TCP"	        $(check_test "MODULE_CAMD35_TCP") \
+		MODULE_CAMD35		"camd 3.5 UDP"		$(check_test "MODULE_CAMD35") \
+		MODULE_CAMD35_TCP	"camd 3.5 TCP"		$(check_test "MODULE_CAMD35_TCP") \
 		MODULE_NEWCAMD		"newcamd"		$(check_test "MODULE_NEWCAMD") \
 		MODULE_CCCAM		"CCcam"			$(check_test "MODULE_CCCAM") \
-		MODULE_CCCSHARE		"CCcam share"	$(check_test "MODULE_CCCSHARE") \
-		MODULE_GBOX		"gbox"  		$(check_test "MODULE_GBOX") \
+		MODULE_CCCSHARE		"CCcam share"		$(check_test "MODULE_CCCSHARE") \
+		MODULE_GBOX		"gbox"			$(check_test "MODULE_GBOX") \
 		MODULE_RADEGAST		"radegast"		$(check_test "MODULE_RADEGAST") \
 		MODULE_SERIAL		"Serial"		$(check_test "MODULE_SERIAL") \
-		MODULE_CONSTCW		"constant CW"	        $(check_test "MODULE_CONSTCW") \
+		MODULE_CONSTCW		"constant CW"		$(check_test "MODULE_CONSTCW") \
 		MODULE_PANDORA		"Pandora"		$(check_test "MODULE_PANDORA") \
 		MODULE_GHTTP		"Ghttp"			$(check_test "MODULE_GHTTP") \
 		2> ${tempfile}
@@ -458,17 +466,17 @@ menu_protocols() {
 menu_readers() {
 	${DIALOG} --checklist "\nChoose readers (CA systems):\n " $height $width $listheight \
 		READER_NAGRA		"Nagravision"		$(check_test "READER_NAGRA") \
-		READER_IRDETO		"Irdeto"			$(check_test "READER_IRDETO") \
-		READER_CONAX		"Conax"				$(check_test "READER_CONAX") \
+		READER_IRDETO		"Irdeto"		$(check_test "READER_IRDETO") \
+		READER_CONAX		"Conax"			$(check_test "READER_CONAX") \
 		READER_CRYPTOWORKS	"Cryptoworks"		$(check_test "READER_CRYPTOWORKS") \
-		READER_SECA			"Seca"				$(check_test "READER_SECA") \
-		READER_VIACCESS		"Viaccess"			$(check_test "READER_VIACCESS") \
+		READER_SECA		"Seca"			$(check_test "READER_SECA") \
+		READER_VIACCESS		"Viaccess"		$(check_test "READER_VIACCESS") \
 		READER_VIDEOGUARD	"NDS Videoguard"	$(check_test "READER_VIDEOGUARD") \
-		READER_DRE			"DRE Crypt"			$(check_test "READER_DRE") \
-		READER_TONGFANG		"Tongfang"			$(check_test "READER_TONGFANG") \
-		READER_BULCRYPT		"Bulcrypt"			$(check_test "READER_BULCRYPT") \
-		READER_GRIFFIN		"Griffin"			$(check_test "READER_GRIFFIN") \
-		READER_DGCRYPT		"DGCrypt"			$(check_test "READER_DGCRYPT") \
+		READER_DRE		"DRE Crypt"		$(check_test "READER_DRE") \
+		READER_TONGFANG		"Tongfang"		$(check_test "READER_TONGFANG") \
+		READER_BULCRYPT		"Bulcrypt"		$(check_test "READER_BULCRYPT") \
+		READER_GRIFFIN		"Griffin"		$(check_test "READER_GRIFFIN") \
+		READER_DGCRYPT		"DGCrypt"		$(check_test "READER_DGCRYPT") \
 		2> ${tempfile}
 
 	opt=${?}
@@ -480,14 +488,14 @@ menu_readers() {
 
 menu_card_readers() {
 	${DIALOG} --checklist "\nChoose card reader drivers:\n " $height $width $listheight \
-		CARDREADER_PHOENIX	"Phoenix/mouse"				$(check_test "CARDREADER_PHOENIX") \
+		CARDREADER_PHOENIX	"Phoenix/mouse"			$(check_test "CARDREADER_PHOENIX") \
 		CARDREADER_INTERNAL	"Internal (Sci,Azbox,Cool)"	$(check_test "CARDREADER_INTERNAL") \
-		CARDREADER_SC8IN1	"SC8in1"					$(check_test "CARDREADER_SC8IN1") \
-		CARDREADER_MP35		"AD-Teknik MP 3.6/USB Phoenix"						$(check_test "CARDREADER_MP35") \
-		CARDREADER_SMARGO	"Argolis Smargo Smartreader"					$(check_test "CARDREADER_SMARGO") \
-		CARDREADER_DB2COM	"dbox2"						$(check_test "CARDREADER_DB2COM") \
-		CARDREADER_STAPI	"STAPI"						$(check_test "CARDREADER_STAPI") \
-		CARDREADER_STINGER	"STINGER"					$(check_test "CARDREADER_STINGER") \
+		CARDREADER_SC8IN1	"SC8in1"			$(check_test "CARDREADER_SC8IN1") \
+		CARDREADER_MP35		"AD-Teknik MP 3.6/USB Phoenix"	$(check_test "CARDREADER_MP35") \
+		CARDREADER_SMARGO	"Argolis Smargo Smartreader"	$(check_test "CARDREADER_SMARGO") \
+		CARDREADER_DB2COM	"dbox2"				$(check_test "CARDREADER_DB2COM") \
+		CARDREADER_STAPI	"STAPI"				$(check_test "CARDREADER_STAPI") \
+		CARDREADER_STINGER	"STINGER"			$(check_test "CARDREADER_STINGER") \
 	2> ${tempfile}
 
 	opt=${?}

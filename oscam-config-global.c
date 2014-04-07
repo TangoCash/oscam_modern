@@ -498,7 +498,11 @@ static const struct config_list webif_opts[] =
 	DEF_OPT_FUNC("httpdyndns"               , OFS(http_dyndns),             http_dyndns_fn),
 	DEF_OPT_INT32("aulow"                   , OFS(aulow),                   30),
 	DEF_OPT_INT32("hideclient_to"           , OFS(hideclient_to),           25),
-	DEF_OPT_STR("httposcamlabel"            , OFS(http_oscam_label),        "Oscam"),
+	DEF_OPT_STR("httposcamlabel"            , OFS(http_oscam_label),        "OSCam"),
+	DEF_OPT_INT8("http_status_log"          , OFS(http_status_log),         0),
+#ifndef WEBIF_JQUERY
+	DEF_OPT_STR("http_extern_jquery"        , OFS(http_extern_jquery),      "http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"),
+#endif
 	DEF_LAST_OPT
 };
 #else
@@ -773,17 +777,37 @@ static const struct config_list serial_opts[] = { DEF_LAST_OPT };
 #endif
 
 #ifdef MODULE_GBOX
+static void gbox_port_fn(const char *token, char *value, void *UNUSED(setting), FILE *f)
+{
+	if(value)
+	{
+		int i;
+		char *ptr, *saveptr1 = NULL;
+		memset(cfg.gbx_port, 0, sizeof(cfg.gbx_port));
+		for(i = 0, ptr = strtok_r(value, ",", &saveptr1); ptr && i < CS_MAXPORTS; ptr = strtok_r(NULL, ",", &saveptr1))
+		{
+			cfg.gbx_port[i] = strtoul(ptr, NULL, 10);
+			if(cfg.gbx_port[i])
+				{ i++; }
+		}
+		return;
+	}
+	value = mk_t_gbox_port();
+	fprintf_conf(f, token, "%s\n", value);
+	free_mk_t(value);
+}
+
 static bool gbox_should_save_fn(void *UNUSED(var))
 {
-	return cfg.gbox_hostname;
+	return cfg.gbx_port[0];
 }
 
 static const struct config_list gbox_opts[] =
 {
 	DEF_OPT_SAVE_FUNC(gbox_should_save_fn),
+	DEF_OPT_FUNC("port"             , OFS(gbx_port),		gbox_port_fn),
 	DEF_OPT_STR("hostname"		,OFS(gbox_hostname),		NULL),
 	DEF_OPT_INT32("gbox_reconnect"	, OFS(gbox_reconnect),		DEFAULT_GBOX_RECONNECT),
-	DEF_OPT_INT32("port"		, OFS(gbox_port),		0),
 	DEF_OPT_SSTR("my_password"	, OFS(gbox_my_password),	"", SIZEOF(gbox_my_password)),
 	DEF_LAST_OPT
 };

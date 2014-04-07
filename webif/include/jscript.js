@@ -276,6 +276,20 @@ $(function(){
 			waitForMsg();
 		}
 	});
+
+	$("#onlineidle").click(function(){
+		if (!httprefresh) return;
+		if($("#onlineidle").text() == 'Login*') {
+			$("#onlineidle")
+				.text('Online & Idle*')
+				.attr('title', 'Login info (click to switch)');
+		} else {
+			$("#onlineidle")
+				.text('Login*')
+				.attr('title', 'Online & Idle info (click to switch)');
+		}
+		if(!nostorage) localStorage.loi = $("#onlineidle").text();
+	});
 });
 
 /*
@@ -322,23 +336,37 @@ function updateUserpage(data) {
 
 			// channel icon
 			$( uid + " td.usercol6").attr( 'title', item.user.lastchanneltitle );
+
 			if(item.user.lca.length > 0){
-				var image;
-				if($( uid + " td.usercol6").html().length == 0 ) {
-					image = $('<img class="usericon" src="image?i=IC_' + item.user.lca + '" />');
-					image.hide();
-					$( uid + " td.usercol6" ).prepend(image);
-					image.fadeIn('slow');
-				} else {
-					image = $( uid + " td.usercol6 img.usericon");
-					if(image.attr('src') != ('image?i=IC_' + item.user.lca)) {
-						image.fadeOut('fast', function () {
-							image.attr('src', 'image?i=IC_' + item.user.lca );
-							image.fadeIn('slow');
-						});
-						image.attr('alt', item.user.lcb );
+				// if we already have a picon within link
+				if($( uid + " > td.usercol6 > img.usericon" ).length){
+					// we compare the picon name and switch if different
+					var image = $( uid + " > td.usercol6 > img.usericon");
+					if( image.attr('src') != 'image?i=IC_' + item.user.lca){
+						// set title of link as tooltip
+						image.hide();
+						image.attr('src', 'image?i=IC_' + item.user.lca);
+						image.fadeIn('slow');
+						image.attr('alt', item.user.lastchanneltitle );
 						image.attr('title', item.user.lastchanneltitle );
 					}
+				} else {
+					// we have no image so we have to create one
+
+					// if we have picon clear text
+					$( uid + " > td.usercol6").text('');
+
+					// just to be sure that class of image is set
+					if($( uid + " > td.usercol6 > img" ).length){
+						$( uid + " > td.usercol6 > img" ).attr( 'class', 'usericon' );
+					}
+
+					newimage = $('<img class="usericon" src="image?i=IC_' + item.user.lca +'">');
+					newimage.hide();
+					$( uid + " > td.usercol6").append(newimage);
+					newimage.fadeIn('slow');
+					newimage.attr('alt', item.user.lastchanneltitle );
+					newimage.attr('title', item.user.lastchanneltitle );
 				}
 			} else {
 				$( uid + " td.usercol6").html(item.user.lastchannel );
@@ -452,7 +480,7 @@ function updateUserpage(data) {
 	$( "#tot_cwcache" ).html( data.oscam.totals.cwcache + " (" + data.oscam.totals.cwcache_rel + "%)");
 	$( "#tot_cwnok" ).html( data.oscam.totals.cwnok + " (" + data.oscam.totals.cwnok_rel + "%)");
 	$( "#tot_cwtout" ).html( data.oscam.totals.cwtimeout + " (" + data.oscam.totals.cwtimeout_rel + "%)");
-	$( "#tot_cwign" ).html( data.oscam.totals.cwignore + " (" + data.oscam.totals.cwignore_rel + "%)");
+	$( "#tot_cwign" ).html( data.oscam.totals.cwignore );
 	$( "#tot_ecmmin" ).html( data.oscam.totals.ecm_min );
 	$( "#tot_cw" ).html( data.oscam.totals.tot_cw );
 	var cwpos = parseInt(data.oscam.totals.cwok) + parseInt(data.oscam.totals.cwcache);
@@ -583,6 +611,8 @@ function isWhitelisted(text){
  */
 function updateLogpage(data) {
 
+	lockpoll = 1;
+	
 	if(data.oscam.debug){
 		setDebuglevel(data.oscam.debug, data.oscam.maxdebug);
 	}
@@ -624,12 +654,13 @@ function updateLogpage(data) {
 				}
 			}
 		}
+		parameters = "?lastid=" + item.id; 
 	});
-
-	parameters = "?lasttime=0";
 	
 	// update footer
 	updateFooter(data);
+	
+	lockpoll = 0;
 
 }
 
@@ -715,7 +746,7 @@ function updateTotals(data){
 	$( "#total_cwtout" ).text( data.oscam.status.totals.total_cwtout );
 	$( "#rel_cwtout" ).text( data.oscam.status.totals.rel_cwtout );
 	$( "#total_cwign" ).text( data.oscam.status.totals.total_cwign );
-	$( "#rel_cwign" ).text( data.oscam.status.totals.rel_cwign );
+	//$( "#rel_cwign" ).text( data.oscam.status.totals.rel_cwign );
 	$( "#total_ecm_min" ).text( data.oscam.status.totals.total_ecm_min );
 	$( "#total_cw" ).text( data.oscam.status.totals.total_cw );
 	$( "#total_cwpos" ).text( data.oscam.status.totals.total_cwpos );
@@ -819,13 +850,13 @@ function updateStatuspage(data){
 
 		switch (item.au) {
 			case '0':
-				$( uid + " > td.statuscol5").text('OFF');
+				$( uid + " > td.statuscol5").text('OFF').attr('class', 'statuscol5 statuscol5OFF');
 			break;
 			case '-1':
-				$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ON<span>' + item.aufmt + '</span></a>');
+				$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ON<span>' + item.aufmt + '</span></a>').attr('class', 'statuscol5 statuscol5ON');
 			break;
 			default:
-				$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ACTIVE<span>' + item.aufmt + '</span></a>');
+				$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ACTIVE<span>' + item.aufmt + '</span></a>').attr('class', 'statuscol5 statuscol5ACTIVE');
 			break;
 		}
 
@@ -899,9 +930,15 @@ function updateStatuspage(data){
 			}
 		}
 
-		$( uid + " > td.statuscol15")
-			.text(item.times.loginfmt)
-			.attr('title', 'Online: ' + item.times.online.toHHMMSS() + ' IDLE: ' + item.times.idle.toHHMMSS());
+		if($("#onlineidle").text() != 'Login*') {
+			$( uid + " > td.statuscol15")
+				.html(item.times.online.toHHMMSS() + '<br>' + item.times.idle.toHHMMSS())
+				.attr('title', 'Login: ' + item.times.loginfmt);
+		} else {
+			$( uid + " > td.statuscol15")
+				.html(item.times.loginfmt.substring(0,8) + '<br>' + item.times.loginfmt.substring(10,18))
+				.attr('title', 'Online: ' + item.times.online.toHHMMSS() + '\nIDLE: ' + item.times.idle.toHHMMSS());
+		}
 
 		// read entitlements and cccam-cards
 		var $html = $( uid + " > td.statuscol16").toHtmlString();
@@ -973,6 +1010,10 @@ function updatePage(data){
 	case 'livelog':	updateLogpage(data); 		break;
 	default: 					break;
 	}
+
+	if ( typeof afterpoll == 'function' ) { 
+		afterpoll();
+	}
 }
 
 function setPollerr(error){
@@ -986,7 +1027,16 @@ function setPollerr(error){
 /*
  * General Polling
  */
+var lockpoll = 0;
 function waitForMsg(){
+	
+	if(lockpoll > 0){
+		/* assumed that previous poll is not finnished yet we not
+		   call new data and just set the next intervall */
+		setTimeout("waitForMsg()", pollintervall);
+		return;
+	}
+	
 	$.ajax({
 		type: "GET",
 		url: jsonurl + parameters,
@@ -1037,10 +1087,11 @@ $(document).ready(function() {
 		$('#regex').remove();
 	}
 
-	if(typeof page != 'undefined') {
+	// Title
+	var pagename = (typeof page != 'undefined'? page : $(location).attr('pathname').replace(/.*\/|\.[^.]*$/g, ''));
+	$(document).attr('title', $(document).attr('title') + ' (' + pagename[0].toUpperCase() + pagename.slice(1) +')');
 
-		var title = $(document).attr('title');
-		$(document).attr('title', title + ' (' + page +')');
+	if(typeof page != 'undefined') {
 
 		switch(page){
 
@@ -1064,7 +1115,20 @@ $(document).ready(function() {
 
 			break;
 		default:
-			if (page == 'status') $( "#chart" ).hide();
+			if (page == 'status') {
+				$( "#chart" ).hide();
+				if(!nostorage && httprefresh) {
+					if (localStorage.loi == 'Login*') {
+						$("#onlineidle")
+							.text('Login*')
+							.attr('title', 'Online & Idle info (click to switch)');
+					} else {
+						$("#onlineidle")
+							.text('Online & Idle*')
+							.attr('title', 'Login info (click to switch)');
+					}
+				}
+			}
 
 			// if httprefresh set to 0 hide pollselector
 			setPollrefresh();

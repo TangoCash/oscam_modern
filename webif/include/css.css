@@ -12,7 +12,7 @@ div#subnav{background:linear-gradient(to bottom,#FFFFFF 20%,#F3F3F3 100%) repeat
 #main li{font-size:18px;font-weight:700}
 #nav li{font-size:14px;padding-bottom:0;padding-top:0}
 #main li,#nav li{display:inline;padding:5px 3px 3px}
-#sortable:hover{cursor:pointer}
+#head:hover,#sortable:hover{cursor:pointer}
 a.tooltip{cursor:default;position:relative;text-decoration:none}
 a.tooltip span,a.tooltip1 span{display:none;z-index:99}
 a:hover{color:#ff9e5f}
@@ -81,7 +81,7 @@ input[type=submit]{background:#06c;font:700 11px Arial,Helvetica,sans-serif;text
 input[type=submit]:hover{background:#c00}
 input[type=submit]:active{background:red}
 input[type=text],input[type=text]:hover,input[type=text]:active{border:.5px solid #000;cursor:text;padding:2px}
-input#savelog,input#showhidesettings{padding: 2px; margin-left: 0px; margin-bottom: 0px;}
+input#savelog,input#showhidesettings{padding: 2px; padding-bottom: 1px; margin-left: 0px; margin-bottom: 0px;}
 tr.r:hover td,tr.r:hover td span,tr.r:hover td span a,tr.p:hover td,tr.p:hover td span,tr.p:hover td span a,tr.c:hover td,tr.c:hover td span,tr.c:hover td span a{background:#AAA;color:#FFF}
 tr.r img.icon,tr.r a:hover img.icon{background:#06C}
 tr.p img.icon,tr.p a:hover img.icon{background:#06C}
@@ -173,3 +173,13 @@ a.tooltip1{color:red;cursor:default;position:relative;text-decoration:none}
 a#savelog{text-decoration:none}
 div#regex{margin-bottom: 5px}
 p.styleauthor:after {content:"Gorgone"}
+.logfilter{float:left;clear:right;padding:5px;}
+.l2,.l3,.l4,.l5{text-align:center;}
+
+ul#regexdatainput.logfilter.l1 li.regex{padding:2px}
+ul#regexdatainput.logfilter.l2 li.regex,
+ul#regexdatainput.logfilter.l3 li.regex,
+ul#regexdatainput.logfilter.l4 li.regex,
+ul#regexdatainput.logfilter.l5 li.regex{padding:4px}
+
+sortable

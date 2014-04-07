@@ -317,6 +317,8 @@ static void write_versionfile(bool use_stdout)
 	fprintf(fp, "ConfigDir:      %s\n", cs_confdir);
 	fprintf(fp, "\n");
 	write_conf(WEBIF, "Web interface support");
+	write_conf(WEBIF_LIVELOG, "LiveLog support");
+	write_conf(WEBIF_JQUERY, "jQuery support intern");
 	write_conf(TOUCH, "Touch interface support");
 	write_conf(WITH_SSL, "SSL support");
 	write_conf(HAVE_DVBAPI, "DVB API support");
@@ -326,6 +328,7 @@ static void write_versionfile(bool use_stdout)
 		write_conf(WITH_MCA, "DVB API with MCA support");
 		write_conf(WITH_COOLAPI, "DVB API with COOLAPI support");
 		write_conf(WITH_STAPI, "DVB API with STAPI support");
+		write_conf(DVBAPI_SAMYGO, "DVB API with Samsung TV support");
 	}
 	write_conf(CS_ANTICASC, "Anti-cascading support");
 	write_conf(IRDETO_GUESSING, "Irdeto guessing");

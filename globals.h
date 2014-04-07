@@ -1627,11 +1627,15 @@ struct s_config
 	char            *http_jscript;
 	char            *http_tpl;
 	char            *http_script;
+#ifndef WEBIF_JQUERY
+	char            *http_extern_jquery;
+#endif
 	int32_t         http_refresh;
 	int8_t          http_hide_idle_clients;
 	char            *http_hide_type;
 	int8_t          http_showpicons;
 	int8_t          http_picon_size;
+	int8_t          http_status_log;
 	int8_t          http_showmeminfo;
 	int8_t          http_showecminfo;
 	int8_t          http_showloadinfo;
@@ -1699,9 +1703,9 @@ struct s_config
 	uint32_t        cc_recv_timeout;                // The poll() timeout parameter in ms. Default: DEFAULT_CC_RECV_TIMEOUT (2000 ms).
 #endif
 #ifdef MODULE_GBOX
+	uint32_t        gbx_port[CS_MAXPORTS];
 	char            *gbox_hostname;
 	int32_t         gbox_reconnect;
-	int32_t         gbox_port;
 	char            gbox_my_password[9];
 #endif
 #ifdef MODULE_SERIAL

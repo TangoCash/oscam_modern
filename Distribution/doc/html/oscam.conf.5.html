@@ -175,7 +175,6 @@ define file saving NDS Videoguard mail messages from provider, default:none
 
 <B>enableled</B> = <B>0</B>|<B>1</B>|<B>2</B>
 <DL COMPACT><DT><DD>
-<P>
 <BR>&nbsp;<B>0</B>&nbsp;=&nbsp;LED&nbsp;support&nbsp;disabled&nbsp;(default)
 <BR>&nbsp;<B>1</B>&nbsp;=&nbsp;LED&nbsp;support&nbsp;enabled&nbsp;for&nbsp;routers
 <BR>&nbsp;<B>2</B>&nbsp;=&nbsp;LED&nbsp;support&nbsp;enabled&nbsp;for&nbsp;Qbox&nbsp;HD
@@ -199,7 +198,11 @@ additional delay in milli-seconds after waiting for local SCs on startup before 
 
 <B>preferlocalcards</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
-1 = try decoding on local cards first, default:0
+SC decoding behavior: 
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;local&nbsp;SCs&nbsp;used&nbsp;like&nbsp;a&nbsp;remote&nbsp;reader
+<BR>&nbsp;<B>1</B>&nbsp;=&nbsp;prefer&nbsp;cache&nbsp;exchange&nbsp;based&nbsp;SCs&nbsp;(default)
+<BR>&nbsp;<B>2</B>&nbsp;=&nbsp;prefer&nbsp;local&nbsp;SCs
 </DL>
 
 <P>
@@ -739,6 +742,13 @@ set right language for wiki entry point, default:en
 <A NAME="lbAH">&nbsp;</A>
 <H3>The [lcd] section</H3>
 
+
+<P>
+
+<B>httposcamlabel</B> = <B>text</B>
+<DL COMPACT><DT><DD>
+set individual label in web interface header, default:OSCam
+</DL>
 
 <P>
 
@@ -1283,7 +1293,7 @@ set hostname or IP address for gbox protocol, default:none
 
 <P>
 
-<B>port</B> = <B>port</B>
+<B>port</B> = <B>port</B>[,<B>port</B>]...
 <DL COMPACT><DT><DD>
 UDP port for gbox server, default:0
 </DL>
@@ -1312,6 +1322,13 @@ send message to peers in seconds, default:300
 1 = DVB API enabled, default:0
 <P>
 Create file /tmp/.pauseoscam to pause DVB API, e.g. if STB goes into standby and OSCam remains as SC server only.
+</DL>
+
+<P>
+
+<B>listen_port</B> = <B>0</B>|<B>port</B>
+<DL COMPACT><DT><DD>
+TCP/IP port for SAT IP clients, filtering has to be done on client site, 0 = disabled, default:0
 </DL>
 
 <P>
@@ -1390,15 +1407,6 @@ ipbox-pmt can be used on any DGS based images (with or without camd.socket suppo
 verified on HD models only
 <P>
 pc is for generic pc support (currently supported on VDR with vdr-plugin-dvbapi)
-</DL>
-
-<P>
-
-<B>listen_port</B> = <B>0</B>|<B>port</B>
-<DL COMPACT><DT><DD>
-TCP port to listen instead of camd.socket, 0 = disabled, default:0
-<P>
-Enables filtering and obtaining data over network, demux is not opened and the ECM/CAT/EMM filtering is done on client.
 </DL>
 
 <P>

@@ -130,7 +130,6 @@ define file saving NDS Videoguard mail messages from provider, default:none
 .PP
 \fBenableled\fP = \fB0\fP|\fB1\fP|\fB2\fP
 .RS 3n
-
  \fB0\fP = LED support disabled (default)
  \fB1\fP = LED support enabled for routers
  \fB2\fP = LED support enabled for Qbox HD
@@ -148,7 +147,11 @@ additional delay in milli-seconds after waiting for local SCs on startup before 
 .PP
 \fBpreferlocalcards\fP = \fB0\fP|\fB1\fP
 .RS 3n
-1 = try decoding on local cards first, default:0
+SC decoding behavior: 
+
+ \fB0\fP = local SCs used like a remote reader
+ \fB1\fP = prefer cache exchange based SCs (default)
+ \fB2\fP = prefer local SCs
 .RE
 .PP
 \fBreaderrestartseconds\fP = \fBseconds\fP
@@ -556,6 +559,11 @@ set right language for wiki entry point, default:en
 .SS "The [lcd] section"
 .RE
 .PP
+\fBhttposcamlabel\fP = \fBtext\fP
+.RS 3n
+set individual label in web interface header, default:OSCam
+.RE
+.PP
 \fBenablelcd\fP = \fB0\fP|\fB1\fP
 .RS 3n
 1 =enable LCD output, default:0
@@ -960,7 +968,7 @@ set CCcam node ID in hex, default:none
 set hostname or IP address for gbox protocol, default:none
 .RE
 .PP
-\fBport\fP = \fBport\fP
+\fBport\fP = \fBport\fP[,\fBport\fP]...
 .RS 3n
 UDP port for gbox server, default:0
 .RE
@@ -981,6 +989,11 @@ send message to peers in seconds, default:300
 1 = DVB API enabled, default:0
 
 Create file /tmp/.pauseoscam to pause DVB API, e.g. if STB goes into standby and OSCam remains as SC server only.
+.RE
+.PP
+\fBlisten_port\fP = \fB0\fP|\fBport\fP
+.RS 3n
+TCP/IP port for SAT IP clients, filtering has to be done on client site, 0 = disabled, default:0
 .RE
 .PP
 \fBuser\fP = \fBusername\fP
@@ -1043,13 +1056,6 @@ ipbox-pmt can be used on any DGS based images (with or without camd.socket suppo
 verified on HD models only
 
 pc is for generic pc support (currently supported on VDR with vdr-plugin-dvbapi)
-.RE
-.PP
-\fBlisten_port\fP = \fB0\fP|\fBport\fP
-.RS 3n
-TCP port to listen instead of camd.socket, 0 = disabled, default:0
-
-Enables filtering and obtaining data over network, demux is not opened and the ECM/CAT/EMM filtering is done on client.
 .RE
 .PP
 \fBcw_delay\fP = \fBmilli-seconds\fP
