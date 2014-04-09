@@ -115,17 +115,16 @@ static int32_t videoguard1_card_init(struct s_reader *reader, ATR *newatr)
 
 	/* set information on the card stored in reader-videoguard-common.c */
 	set_known_card_info(reader, atr, &atr_size);
-/*
+
 	if((reader->ndsversion != NDS1) && ((csystem_data->card_system_version != NDS1) || (reader->ndsversion != NDSAUTO)))
 	{
 		//   known ATR and not NDS1
 		//   or unknown ATR and not forced to NDS1
 		//   or known NDS1 ATR and forced to another NDS version
 		//   ... probably not NDS1 
-	rdr_log(reader, "Unknown ATR or not forced to NDS1");
 	return ERROR;
 	}
-	*/
+	
 	rdr_log(reader, "type: %s, baseyear: %i", csystem_data->card_desc, csystem_data->card_baseyear);
 	if(reader->ndsversion == NDS1)
 	{

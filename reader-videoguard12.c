@@ -117,7 +117,7 @@ static int32_t videoguard12_card_init(struct s_reader *reader, ATR *newatr)
 	/* set information on the card stored in reader-videoguard-common.c */
 	set_known_card_info(reader, atr, &atr_size);
 
-	/*
+	
 	if((reader->ndsversion != NDS12) && ((csystem_data->card_system_version != NDS12) || (reader->ndsversion != NDSAUTO)))
 	{
 		// known ATR and not NDS12
@@ -128,7 +128,7 @@ static int32_t videoguard12_card_init(struct s_reader *reader, ATR *newatr)
 		rdr_log(reader, "Unknown ATR or not forced to NDS12");
 		return ERROR;
 	}
-*/
+
 	rdr_log(reader, "type: %s, baseyear: %i", csystem_data->card_desc, csystem_data->card_baseyear);
 	if(reader->ndsversion == NDS12)
 	{
@@ -365,13 +365,13 @@ static int32_t videoguard12_do_ecm(struct s_reader *reader, const ECM_REQUEST *e
 		l = vg12_do_cmd(reader, ins54, NULL, rbuff, cta_res);
 		if(l > 0 && status_ok(cta_res + l))
 		{
-/*	
-	if(!cw_is_valid(rbuff + 5))   //sky cards report 90 00 = ok but send cw = 00 when channel not subscribed
+	
+			if(!cw_is_valid(rbuff + 5) && ((reader->caid == 0x09CD) || (reader->caid == 0x093B) || (reader->caid == 0x0919)))  //sky cards report 90 00 = ok but send cw = 00 when channel not subscribed
 			{
 				rdr_log(reader, "class4B ins54 status 90 00 but cw=00 -> channel not subscribed");
 				return ERROR;
 			}
-*/
+
 			if(er->ecm[0] & 1)
 			{
 				memset(ea->cw + 0, 0, 8);
