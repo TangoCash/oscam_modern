@@ -15,16 +15,17 @@
 	</script>
 ##TPLBODY##
 ##TPLMENU##
-<DIV ID="subnav">
-	<UL ID="nav">
-		<LI><a href="#" download="log.txt" id="savelog">
-			<input ID="savelog" type="submit" value="Save Log" title="Save Log">
-		</a></LI>
-		<LI><input ID="showhidesettings" type="submit" value="Show Settings" title="Show/Hide Settings"></LI>
-		<LI><input ID="stoplog" type="submit" value="Stop Log" title="Stop/Start Log"></LI>
-	</UL>
+<DIV ID="subnav" style="display:none">
+	<UL ID="nav"><LI></LI></UL>
 </DIV>
 
+<DIV style="margin:-30px 0 10px 0;">
+	<A HREF="#" download="log.txt" ID="savelog">
+		<input ID="savelog" type="submit" value="Save Log" title="Save Log">
+	</A>
+	<input ID="showhidesettings" type="submit" value="Show Settings" title="Show/Hide Settings">
+	<input ID="stoplog" type="submit" value="Stop Log" title="Stop/Start Log">
+</DIV>
 <DIV ID="regexdata" style="display:none;">
 
 	<UL ID="regexdatainput" class="logfilter l1">
