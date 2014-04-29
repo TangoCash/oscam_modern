@@ -24,37 +24,37 @@
 ##TPLUNLOCKPARENTAL##
 			<TR><TD>##TPLHELPPREFIX##conf#block_same_ip##TPLHELPSUFFIX##Simple block:</A></TD>
 				<TD>
-					<input name="block_same_ip" type="hidden" value="0"><input name="block_same_ip" type="checkbox" value="1" ##BLOCKSAMEIPCHECKED##>&nbsp;same IP&nbsp;&nbsp;&nbsp;
-					<input name="block_same_name" type="hidden" value="0"><input name="block_same_name" type="checkbox" value="1" ##BLOCKSAMENAMECHECKED##>&nbsp;same Name
+					<input name="block_same_ip" type="hidden" value="0"><input name="block_same_ip" type="checkbox" value="1" ##BLOCKSAMEIPCHECKED##><label>&nbsp;same IP&nbsp;&nbsp;&nbsp;</label>
+					<input name="block_same_name" type="hidden" value="0"><input name="block_same_name" type="checkbox" value="1" ##BLOCKSAMENAMECHECKED##><label>&nbsp;same Name</label>
 				</TD>
 			</TR>
 			<TR><TD>##TPLHELPPREFIX##conf#dropdups##TPLHELPSUFFIX##Drop duplicate users:</A></TD>
 				<TD>
-					<input name="dropdups" value="0" type="hidden"><input name="dropdups" value="1" type="checkbox" ##DROPDUPSCHECKED##>
+					<input name="dropdups" value="0" type="hidden"><input name="dropdups" value="1" type="checkbox" ##DROPDUPSCHECKED##><label></label>
 				</TD>
 			</TR>
 			<TR><TH COLSPAN="2">Logging</TH></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#disableuserfile##TPLHELPSUFFIX##Usr file:</A></TD>
 				<TD>
 					<input name="usrfile" type="text" size="55" maxlength="128" value="##USERFILE##">&nbsp;
-					<input name="disableuserfile" type="hidden" value="1"><input name="disableuserfile" type="checkbox" value="0" ##DISABLEUSERFILECHECKED##>&nbsp;enabled&nbsp;
+					<input name="disableuserfile" type="hidden" value="1"><input name="disableuserfile" type="checkbox" value="0" ##DISABLEUSERFILECHECKED##><label>&nbsp;enabled&nbsp;</label>
 					<select name="usrfileflag"><option VALUE="0">0 - just join/leave</option><option VALUE="1" ##USERFILEFLAGCHECKED##>1 - each zap</option></select>
 				</TD>
 			</TR>
 			<TR><TD>##TPLHELPPREFIX##conf#disablemail##TPLHELPSUFFIX##Mail file:</A></TD>
 				<TD>
 					<input name="mailfile" type="text" size="55" maxlength="128" value="##MAILFILE##">&nbsp;
-					<input name="disablemail" type="hidden" value="1"><input name="disablemail" type="checkbox" value="0" ##DISABLEMAILCHECKED##>&nbsp;enabled&nbsp;
+					<input name="disablemail" type="hidden" value="1"><input name="disablemail" type="checkbox" value="0" ##DISABLEMAILCHECKED##><label>&nbsp;enabled&nbsp;</label>
 				</TD>
 			</TR>
 			<TR><TD>##TPLHELPPREFIX##conf#logfile##TPLHELPSUFFIX##Log file / max size:</A></TD>
 				<TD>
 					<input name="logfile" type="text" size="55" maxlength="128" value="##LOGFILE##">&nbsp;
-					<input name="disablelog" type="hidden" value="1"><input name="disablelog" type="checkbox" value="0" ##DISABLELOGCHECKED##>&nbsp;enabled&nbsp;
+					<input name="disablelog" type="hidden" value="1"><input name="disablelog" type="checkbox" value="0" ##DISABLELOGCHECKED##><label>&nbsp;enabled&nbsp;</label>
 					<input name="maxlogsize" type="text" size="5" maxlength="5" value="##MAXLOGSIZE##">kB
 				</TD>
 			</TR>
-			<TR><TD>##TPLHELPPREFIX##conf#logduplicatelines##TPLHELPSUFFIX##Log duplicated lines:</A></TD><TD><input name="logduplicatelines" value="0" type="hidden"><input name="logduplicatelines" value="1" type="checkbox" ##LOGDUPSCHECKED##></TD></TR>
+			<TR><TD>##TPLHELPPREFIX##conf#logduplicatelines##TPLHELPSUFFIX##Log duplicated lines:</A></TD><TD><input name="logduplicatelines" value="0" type="hidden"><input name="logduplicatelines" value="1" type="checkbox" ##LOGDUPSCHECKED##><label></label></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#pidfile##TPLHELPSUFFIX##Pid file:</A></TD><TD><input name="pidfile" type="text" size="55" maxlength="128" value="##PIDFILE##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#cwlogdir##TPLHELPSUFFIX##CW log dir:</A></TD><TD><input name="cwlogdir" type="text" size="55" maxlength="128" value="##CWLOGDIR##"></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#emmlogdir##TPLHELPSUFFIX##EMM log dir:</A></TD><TD><input name="emmlogdir" type="text" size="55" maxlength="128" value="##EMMLOGDIR##"></TD></TR>
@@ -71,7 +71,7 @@
 			<TR><TD>##TPLHELPPREFIX##conf#sleep##TPLHELPSUFFIX##Global sleep:</A></TD><TD><input name="sleep" type="text" size="5" maxlength="5" value="##SLEEP##"> min to switch a client in sleepmode</TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#readerrestartseconds##TPLHELPSUFFIX##Reader restart seconds:</A></TD><TD><input name="readerrestartseconds" type="text" size="5" maxlength="5" value="##READERRESTARTSECONDS##"> s waittime to restart a reader</TD></TR>
 			<TR><TH COLSPAN="2">Doublecheck</TH></TR>
-			<TR><TD>##TPLHELPPREFIX##conf#double_check##TPLHELPSUFFIX##ECM Doublecheck:</A></TD><TD><input name="double_check" value="0" type="hidden"><input name="double_check" value="1" type="checkbox" ##DCHECKCSELECTED##></TD></TR>
+			<TR><TD>##TPLHELPPREFIX##conf#double_check##TPLHELPSUFFIX##ECM Doublecheck:</A></TD><TD><input name="double_check" value="0" type="hidden"><input name="double_check" value="1" type="checkbox" ##DCHECKCSELECTED##><label></label></TD></TR>
 			<TR><TD>##TPLHELPPREFIX##conf#double_check_caid##TPLHELPSUFFIX##Doublecheck caids:</A></TD><TD><input name="double_check_caid" type="text" size="55" maxlength="160" value="##DOUBLECHECKCAID##"></TD></TR>
 ##TPLSUPPRESSCMD08##
 ##TPLENABLELEDBIT##

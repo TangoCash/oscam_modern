@@ -6,128 +6,18 @@ function initDoc(){if(oReloadTimer)window.clearInterval(oReloadTimer);oReloadTim
 function gotosite(Action){window.location.href=Action;}
 
 /* Function for add new reader in readers.html */
-function addreader(){cdpause();document.getElementById("searchTable").style.display="none";document.getElementById("newreader").style.display="block";};
+function addreader(){
+	cdpause();
+	$("#searchTable").fadeOut('slow');
+	$("#newreader").fadeIn('slow');
+}
 
 /* Function for add new user in userconfig.html */
-function adduser(){cdpause();document.getElementById("searchTable").style.display="none";document.getElementById("newuser").style.display="block";};
-
-/* Function for searching in table - uncompressed */
-function doSearch() {
-	var searchText = document.getElementById('searchTerm').value;
-	var targetTable = document.getElementById('dataTable');
-	var targetTableColCount;
-
-	//Loop through table rows
-	for (var rowIndex = 0; rowIndex < targetTable.rows.length; rowIndex++) {
-		var rowData = '';
-		//Get column count from header row
-		if (rowIndex == 0 || rowIndex==1) {
-			targetTableColCount = targetTable.rows.item(rowIndex).cells.length;
-			continue; //do not execute further code for header row.
-		}
-
-		//Process data rows. (rowIndex >= 1)
-		for (var colIndex = 0; colIndex < targetTableColCount; colIndex++) {
-			var cellText = '';
-			if (navigator.appName == 'Microsoft Internet Explorer')
-				cellText = targetTable.rows.item(rowIndex).cells.item(colIndex).innerText;
-			else
-			cellText = targetTable.rows.item(rowIndex).cells.item(colIndex).textContent;
-
-			rowData += cellText;
-		}
-
-		// Make search case insensitive.
-		rowData = rowData.toLowerCase();
-		searchText = searchText.toLowerCase();
-
-		//If search term is not found in row data
-		//then hide the row, else show
-		if (rowData.indexOf(searchText) == -1)
-			targetTable.rows.item(rowIndex).style.display = 'none';
-		else
-			targetTable.rows.item(rowIndex).style.display = 'table-row';
-		}
-	}
-
-/* Functions for sorting in table - uncompressed
- * Original script on http://1.s3.envato.com/files/53734448/index.html
- */
-var TINY={};
-
-function T$(i){return document.getElementById(i)}
-function T$$(e,p){return p.getElementsByTagName(e)}
-
-TINY.table=function(){
-	function sorter(n,t,p){this.n=n; this.id=t; this.p=p; if(this.p.init){this.init()}}
-	sorter.prototype.init=function(){
-		this.set(); var t=this.t, i=d=0; t.h=T$$('tr',t)[1];
-		t.l=t.r.length; t.w=t.r[0].cells.length; t.a=[]; t.c=[];
-		if(this.p.colddid){
-			d=T$(this.p.colddid);
-			var o = document.createElement('option');
-			o.value = -1;
-			o.innerHTML = 'All Columns';
-			d.appendChild(o)
-		}
-		for(i;i<t.w;i++){
-			var c=t.h.cells[i]; t.c[i]={};
-			if(c.className!='nosort'){
-				c.className = this.p.headclass;
-				c.onclick=new Function(this.n+'.sort('+i+')');
-				c.onmousedown=function(){return false};
-			}
-			if(this.p.columns){
-				var l=this.p.columns.length, x=0;
-				for(x;x<l;x++){
-					if(this.p.columns[x].index==i){
-						var g=this.p.columns[x];
-						t.c[i].format=g.format==null?1:g.format; t.c[i].decimals=g.decimals==null?2:g.decimals
-					}
-				}
-			}
-			if(d){
-				var o = document.createElement('option');
-				o.value = i; o.innerHTML = T$$('h3', c)[0].innerHTML;
-				d.appendChild(o)
-			}
-		}
-		this.reset()
-	};
-	sorter.prototype.reset=function(){
-		var t=this.t; t.t=t.l;
-		for(var i=0;i<t.l;i++){t.a[i]={}; t.a[i].s=1}
-		if(this.p.sortcolumn!=undefined){
-			this.sort(this.p.sortcolumn,1,this.p.is)
-		}
-	};
-	sorter.prototype.sort=function(x,f,z){
-		var t=this.t; t.y=x; var x=t.h.cells[t.y], i=0, n=document.createElement('tbody');
-		for(i;i<t.l;i++){
-			t.a[i].o=i; var v=t.r[i].cells[t.y]; t.r[i].style.display='';
-			while(v.hasChildNodes()){v=v.firstChild}
-			t.a[i].v=v.nodeValue?v.nodeValue:''
-		}
-		for(i=0;i<t.w;i++){var c=t.h.cells[i]; if(c.className!='nosort'){c.className=this.p.headclass}}
-		if(t.p==t.y&&!f){t.a.reverse(); x.className=t.d?this.p.ascclass:this.p.descclass; t.d=t.d?0:1}
-		else{t.p=t.y; f&&this.p.sortdir==-1?t.a.sort(cp).reverse():t.a.sort(cp); t.d=0; x.className=this.p.ascclass}
-		for(i=0;i<t.l;i++){var r=t.r[t.a[i].o].cloneNode(true); n.appendChild(r)}
-		t.replaceChild(n,t.b); this.set();
-	};
-	sorter.prototype.set=function(){
-		var t=T$(this.id); t.b=T$$('tbody',t)[0]; t.r=t.b.rows; this.t=t
-	};
-	function decimals(n,d){return Math.round(n*Math.pow(10,d))/Math.pow(10,d)};
-	function cp(f,c){
-		var g,h; f=g=f.v.toLowerCase(); c=h=c.v.toLowerCase();
-		var i=parseFloat(f.replace(/(\$|\,)/g,'')), n=parseFloat(c.replace(/(\$|\,)/g,''));
-		if(!isNaN(i)&&!isNaN(n)){g=i,h=n}
-		i=Date.parse(f); n=Date.parse(c);
-		if(!isNaN(i)&&!isNaN(n)){g=i; h=n}
-		return g>h?1:(g<h?-1:0)
-	};
-	return{sorter:sorter}
-}();
+function adduser(){
+	cdpause();
+	$("#searchTable").fadeOut('slow');
+	$("#newuser").fadeIn('slow');
+};
 
 String.prototype.toHHMMSS = function () {
 	if(this.length < 1){
@@ -151,12 +41,12 @@ String.prototype.toHHMMSS = function () {
 	return time;
 }
 
+
 function runden(value) {
 	var k = (Math.round(value * 100) / 100).toString();
 	k += (k.indexOf('.') == -1)? '.00' : '00';
 	return k.substring(0, k.indexOf('.') + 3);
 }
-
 
 /*
  * General: Eventhandler
@@ -184,10 +74,10 @@ $(function(){
 	$('table.status').on('mouseover', 'tr > td.statuscol14', function(e){
 		var uid = '#' + $( this ).parent().attr('id');
 		if( 'pcr'.indexOf($( uid ).attr('class')) >= 0 ){
-			if($( uid ).attr('data-ref').length){
+			if($( uid ).data('ecmhistory')){
 				$('#charthead').text($( uid + ' > td:nth-child(3) > a:nth-child(1)').text() + ' History');
 				$( "#graph" ).html('');
-				var arry = $( uid ).attr('data-ref').split(",");
+				var arry = $( uid ).data('ecmhistory').split(",");
 				$.each(arry, function( index, value ) {
 					$( "#graph" ).append(generateBar(value));
 				});
@@ -290,6 +180,150 @@ $(function(){
 		}
 		if(!nostorage) localStorage.loi = $("#onlineidle").text();
 	});
+	
+	// switch reader ON/OFF
+	$("a.switchreader").click(function(){
+		var parameters_old = parameters;
+		parameters += '&label=' + $(this).data('reader-name') + '&action=' + $(this).data('next-action');
+		var rowid = '#' + $(this).data('md5');
+		var img = $(this).children("img");
+		waitForMsg();
+		if($(this).data('next-action') == 'enable'){
+			$(this).data('next-action', 'disable').attr('title','Disable this reader');
+			$(rowid).attr('class', 'enabledreader');
+			img.attr('src', 'image?i=ICDIS').attr('alt','Disable this reader');
+		} else {
+			$(this).data('next-action', 'enable').attr('title','Enable this reader');
+			$(rowid).attr('class', 'disabledreader');
+			img.attr('src', 'image?i=ICENA').attr('alt','Enable this reader');
+		}
+		parameters = parameters_old;
+	});
+	
+	// delete reader
+	$("a.deletereader").click(function(){
+		if (confirm("Delete Reader " + $(this).data('reader-name') + "?")) {
+			var parameters_old = parameters;
+			parameters += '&label=' + $(this).data('reader-name') + '&action=' + $(this).data('next-action');
+			waitForMsg();
+			parameters = parameters_old;
+			$('#' + $(this).data('md5')).fadeOut('slow');
+		}
+	});
+	
+	// switch user ON/OFF
+	$("a.switchuser").click(function(){
+		var parameters_old = parameters;
+		parameters += '&user=' + $(this).data('user-name') + '&action=' + $(this).data('next-action');
+		var rowid = '#' + $(this).data('md5');
+		var img = $(this).children("img");
+		waitForMsg();
+		if($(this).data('next-action') == 'enable'){
+			$(this).data('next-action', 'disable').attr('title', 'Disable this user');
+			$(rowid).attr('class', 'offline');
+			$(rowid + ' > td.usercol2').text('offline');
+			img.attr('src', 'image?i=ICDIS').attr('alt', 'Disable this user');
+		} else {
+			$(this).data('next-action', 'enable').attr('title', 'Enable this user');
+			$(rowid).attr('class', 'disabled');
+			$(rowid + ' > td.usercol2').text('offline (disabled)');
+			img.attr('src', 'image?i=ICENA').attr('alt', 'Enable this user');
+		}
+		parameters = parameters_old;
+	});
+	
+	// reset user stats
+	$("a.resetuser").click(function(){
+		if (confirm("Reset Stats for " + $(this).data('user-name') + "?")) {
+			var parameters_old = parameters;
+			parameters += '&user=' + $(this).data('user-name') + '&action=' + $(this).data('next-action');
+			waitForMsg();
+			parameters = parameters_old;
+		}
+	});
+	
+	// delete user
+	$("a.deleteuser").click(function(){
+		if (confirm("Delete User " + $(this).data('user-name') + "?")) {
+			var parameters_old = parameters;
+			parameters += '&user=' + $(this).data('user-name') + '&action=' + $(this).data('next-action');
+			waitForMsg();
+			parameters = parameters_old;
+			$('#' + $(this).data('md5')).fadeOut('slow');
+		}
+	});
+	
+	// search related events
+	$("#searchTerm").keyup(function () {
+		var value = $("#searchTerm").val().toLowerCase().trim();
+		$("#dataTable tr").each(function (index) {
+			if (!index) return;
+			$(this).find("td").each(function () {
+				var id = $(this).text().toLowerCase().trim();
+				var not_found = (id.indexOf(value) == -1);
+				$(this).closest('tr').toggle(!not_found);
+				return not_found;
+			});
+		});
+	});
+	
+	$("#searchTerm").click(function () {
+		cdpause();
+	});
+	
+	$("#searchTerm").blur(function () {
+		initDoc();
+	});
+
+	var moveBlanks = function(a, b) {
+		if ( a < b ){
+			if (a == "") return 1;
+			else return -1;
+		}
+		if ( a > b ){
+			if (b == "") return -1;
+			else return 1;
+		}
+		return 0;
+	};
+	
+	var moveBlanksDesc = function(a, b) {
+		if ( a < b ) return 1;
+		if ( a > b ) return -1;
+		return 0;
+	};
+
+	var ip2int = function(value) {
+		if(value.indexOf('.') < 0) return 1;
+		var d = value.split('.');
+		var sum = 0;
+		for(var i = 0; i < 4; i++) {
+			sum = (sum << 8) + Number(d[i]);
+		}
+		return sum;
+	}
+	
+	var table = $('#dataTable').stupidtable({
+		"ip":function(a,b){
+			aIP = ip2int(a);
+			bIP = ip2int(b);
+			return aIP - bIP;
+		},
+		"moveBlanks": moveBlanks,
+		"moveBlanksDesc": moveBlanksDesc
+	});
+	
+	table.bind('beforetablesort', function (event, data) {
+		lockpoll = 1;
+		table.addClass("disabledtable");
+	});
+	
+	table.bind('aftertablesort', function (event, data) {
+	    // data.column - the index of the column sorted after a click
+	    // data.direction - the sorting direction (either asc or desc)
+		lockpoll = 0;
+		table.removeClass("disabledtable");
+	});
 });
 
 /*
@@ -301,170 +335,224 @@ function updateFooter(data){
 }
 
 /*
+ *  identfy an element within string of elements
+ */
+var poll_excluded; 
+function is_nopoll(value) {
+	return (poll_excluded.indexOf(value) > (-1))? true : false;
+}
+
+/*
  * Userpage Functions: Update Page
  */
 function updateUserpage(data) {
 
-	// show heartbeat
-	var orgstyle = $( "input.pintervall" ).css("background-color");
-	$( "input.pintervall" ).css("background-color",$( "#picolor" ).css("background-color"));
-
 	// update user lines
 	$.each(data.oscam.users, function(i, item) {
 		var uid = "#" + item.user.usermd5;
-
+		poll_excluded = ($( uid ).attr('nopoll') != undefined) ? $( uid ).attr('nopoll') : '';
+		
+		if(!is_nopoll('usercol7')) {$( uid + " td.usercol7").data('sort-value',0);}
+		
 		switch (item.user.classname) {
 			case 'online':
-			$( uid ).attr('class', item.user.classname);
-			$( uid + " td.usercol2")
-				.attr( 'title', 'SLEEP: ' + item.user.stats.expectsleep )
-				.html( "<B>" + item.user.status + "</B><br>" + item.user.ip);
-			$( uid + " td.usercol3").html( item.user.stats.idle + "<br>" + item.user.stats.timeonchannel.toHHMMSS());
-
-			if(item.user.protoicon.length > 0){
-				if($( uid + " td.usercol4").html().length == 0 ) {
-					var protoimage = $('<img class="protoicon" src="image?i=IC_' + item.user.protoicon + '" />');
-					protoimage.hide();
-					$( uid + " td.usercol4" ).prepend(protoimage);
-					protoimage.fadeIn('slow');
+				$( uid ).attr('class', item.user.classname);
+				
+				if(!is_nopoll('usercol2')){
+					$( uid + " td.usercol2")
+						.attr( 'title', 'SLEEP: ' + item.user.stats.expectsleep )
+						.html( "<B>" + item.user.status + "</B><br>" + item.user.ip);
 				}
-			} else {
-				$( uid + " td.usercol4").text( item.user.protocol );
-			}
-
-			$( uid + " td.usercol4").attr( 'title', item.user.prototitle );
-
-			// channel icon
-			$( uid + " td.usercol6").attr( 'title', item.user.lastchanneltitle );
-
-			if(item.user.lca.length > 0){
-				// if we already have a picon within link
-				if($( uid + " > td.usercol6 > img.usericon" ).length){
-					// we compare the picon name and switch if different
-					var image = $( uid + " > td.usercol6 > img.usericon");
-					if( image.attr('src') != 'image?i=IC_' + item.user.lca){
-						// set title of link as tooltip
-						image.hide();
-						image.attr('src', 'image?i=IC_' + item.user.lca);
-						image.fadeIn('slow');
-						image.attr('alt', item.user.lastchanneltitle );
-						image.attr('title', item.user.lastchanneltitle );
-					}
-				} else {
-					// we have no image so we have to create one
-
-					// if we have picon clear text
-					$( uid + " > td.usercol6").text('');
-
-					// just to be sure that class of image is set
-					if($( uid + " > td.usercol6 > img" ).length){
-						$( uid + " > td.usercol6 > img" ).attr( 'class', 'usericon' );
-					}
-
-					newimage = $('<img class="usericon" src="image?i=IC_' + item.user.lca +'">');
-					newimage.hide();
-					$( uid + " > td.usercol6").append(newimage);
-					newimage.fadeIn('slow');
-					newimage.attr('alt', item.user.lastchanneltitle );
-					newimage.attr('title', item.user.lastchanneltitle );
+				
+				if(!is_nopoll('usercol3')){
+					$( uid + " td.usercol3").html( item.user.stats.idle + "<br>" + item.user.stats.timeonchannel.toHHMMSS());
 				}
-			} else {
-				$( uid + " td.usercol6").html(item.user.lastchannel );
-			}
-
-			$( uid + " td.usercol7").text( item.user.stats.cwlastresptime + 'ms');
-			//usercol8 ???
-			$( uid + " td.usercol9").text( item.user.stats.cwok );
-			$( uid + " td.usercol10").text( item.user.stats.cwnok );
-			$( uid + " td.usercol11").text( item.user.stats.cwignore );
-			$( uid + " td.usercol12").text( item.user.stats.cwtimeout );
-			$( uid + " td.usercol13").text( item.user.stats.cwccyclechecked + ' / ' + item.user.stats.cwcycleok + ' / ' + item.user.stats.cwcyclenok + ' / ' + item.user.stats.cwcycleign );
-			$( uid + " td.usercol14").text( item.user.stats.cwcache );
-			$( uid + " td.usercol15").text( item.user.stats.cwtun );
-			$( uid + " td.usercol16").text( item.user.stats.cwcache );
-			$( uid + " td.usercol17").text( item.user.stats.emmok );
-			$( uid + " td.usercol18").text( item.user.stats.emmnok );
-			$( uid + " td.usercol19").text( item.user.stats.cwrate + item.user.stats.cwrate2 );
-			$( uid + " td.usercol22").text( item.user.stats.cascusercomb );
-			$( uid + " td.usercol21").text( item.user.stats.n_requ_m );
-			$( uid + " td.usercol20")
-				.attr( 'title', item.user.expview )
-				.text( item.user.stats.expdate );
-			break;
+				
+				if(!is_nopoll('usercol4')){
+					if(item.user.protoicon.length > 0){
+						if($( uid + " td.usercol4").html().length == 0 ) {
+							var protoimage = $('<img class="protoicon" src="image?i=IC_' + item.user.protoicon + '" />');
+							protoimage.hide();
+							$( uid + " td.usercol4" ).prepend(protoimage);
+							protoimage.fadeIn('slow');
+						}
+					} else {
+						$( uid + " td.usercol4").text( item.user.protocol );
+					}
+	
+					$( uid + " td.usercol4").attr( 'title', item.user.prototitle );
+				}
+	
+				// channel icon
+				if(!is_nopoll('usercol6')){
+					$( uid + " td.usercol6")
+								.attr( 'title', item.user.lastchanneltitle )
+								.data('sort-value', item.user.lastchanneltitle);
+	
+					if(item.user.lca.length > 0){
+						// if we already have a picon within link
+						if($( uid + " > td.usercol6 > img.usericon" ).length){
+							// we compare the picon name and switch if different
+							var image = $( uid + " > td.usercol6 > img.usericon");
+							if( image.attr('src') != 'image?i=IC_' + item.user.lca){
+								// set title of link as tooltip
+								image.hide();
+								image.attr('src', 'image?i=IC_' + item.user.lca);
+								image.fadeIn('slow');
+								image.attr('alt', item.user.lastchanneltitle );
+								image.attr('title', item.user.lastchanneltitle );
+							}
+						} else {
+							// we have no image so we have to create one
+	
+							// if we have picon clear text
+							$( uid + " > td.usercol6").text('');
+	
+							// just to be sure that class of image is set
+							if($( uid + " > td.usercol6 > img" ).length){
+								$( uid + " > td.usercol6 > img" ).attr( 'class', 'usericon' );
+							}
+	
+							newimage = $('<img class="usericon" src="image?i=IC_' + item.user.lca +'">');
+							newimage.hide();
+							$( uid + " > td.usercol6").append(newimage);
+							newimage.fadeIn('slow');
+							newimage.attr('alt', item.user.lastchanneltitle );
+							newimage.attr('title', item.user.lastchanneltitle );
+						}
+					} else {
+						$( uid + " td.usercol6").html(item.user.lastchannel );
+					}
+				}
+				
+				if(!is_nopoll('usercol7')) {$( uid + " td.usercol7")
+									.text( item.user.stats.cwlastresptime + 'ms')
+									.data('sort-value', item.user.stats.cwlastresptime);}
+				//usercol8 ???
+				if(!is_nopoll('usercol9')) {$( uid + " td.usercol9").text( item.user.stats.cwok );}
+				if(!is_nopoll('usercol10')) {$( uid + " td.usercol10").text( item.user.stats.cwnok );}
+				if(!is_nopoll('usercol11')) {$( uid + " td.usercol11").text( item.user.stats.cwignore );}
+				if(!is_nopoll('usercol12')) {$( uid + " td.usercol12").text( item.user.stats.cwtimeout );}
+				if(!is_nopoll('usercol13')) {$( uid + " td.usercol13").text( item.user.stats.cwccyclechecked + ' / ' + item.user.stats.cwcycleok + ' / ' + item.user.stats.cwcyclenok + ' / ' + item.user.stats.cwcycleign );}
+				if(!is_nopoll('usercol14')) {$( uid + " td.usercol14").text( item.user.stats.cwcache );}
+				if(!is_nopoll('usercol15')) {$( uid + " td.usercol15").text( item.user.stats.cwtun );}
+				if(!is_nopoll('usercol16')) {$( uid + " td.usercol16").text( item.user.stats.cwcache );}
+				if(!is_nopoll('usercol17')) {$( uid + " td.usercol17").text( item.user.stats.emmok );}
+				if(!is_nopoll('usercol18')) {$( uid + " td.usercol18").text( item.user.stats.emmnok );}
+				if(!is_nopoll('usercol19')) {$( uid + " td.usercol19").text( item.user.stats.cwrate + item.user.stats.cwrate2 );}
+				if(!is_nopoll('usercol22')) {$( uid + " td.usercol22").text( item.user.stats.cascusercomb );}
+				if(!is_nopoll('usercol21')) {$( uid + " td.usercol21").text( item.user.stats.n_requ_m );}
+				if(!is_nopoll('usercol20')) {
+					$( uid + " td.usercol20")
+						.attr( 'title', item.user.expview )
+						.text( item.user.stats.expdate );
+				}	
+				break;
 
 			case 'connected':
-			$( uid ).attr('class', item.user.classname);
-			$( uid + " td.usercol2")
-				.attr( 'title', 'SLEEP: ' )
-				.html( "<B>" + item.user.status + "</B><br>" + item.user.ip);
-			$( uid + " td.usercol3").html( item.user.stats.idle + "<br>" + item.user.stats.timeonchannel.toHHMMSS());
-
-			if(item.user.protoicon.length > 0){
-				if($( uid + " td.usercol4").html().length == 0 ) {
-					var protoimage = $('<img class="protoicon" src="image?i=IC_' + item.user.protoicon + '" />');
-					protoimage.hide();
-					$( uid + " td.usercol4" ).prepend(protoimage);
-					protoimage.fadeIn('slow');
+				$( uid ).attr('class', item.user.classname);
+				
+				if(!is_nopoll('usercol2')) {
+					$( uid + " td.usercol2")
+						.attr( 'title', 'SLEEP: ' )
+						.html( "<B>" + item.user.status + "</B><br>" + item.user.ip);
+				}	
+				
+				if(!is_nopoll('usercol3')) {$( uid + " td.usercol3").html( item.user.stats.idle + "<br>" + item.user.stats.timeonchannel.toHHMMSS());}
+	
+				if(!is_nopoll('usercol4')) {
+					if(item.user.protoicon.length > 0){
+						if($( uid + " td.usercol4").html().length == 0 ) {
+							var protoimage = $('<img class="protoicon" src="image?i=IC_' + item.user.protoicon + '" />');
+							protoimage.hide();
+							$( uid + " td.usercol4" ).prepend(protoimage);
+							protoimage.fadeIn('slow');
+						}
+					} else {
+						$( uid + " td.usercol4").text( item.user.protocol );
+					}
+					$( uid + " td.usercol4").attr( 'title', item.user.prototitle );
 				}
-			} else {
-				$( uid + " td.usercol4").text( item.user.protocol );
-			}
-
-			$( uid + " td.usercol4").attr( 'title', item.user.prototitle );
-
-			// channel icon
-			$( uid + " td.usercol6").attr( 'title', item.user.lastchanneltitle );
-			if(item.user.lca.length > 0){
-				var image;
-				if($( uid + " td.usercol6").html().length == 0 ) {
-					image = $('<img class="usericon" src="image?i=IC_' + item.user.lca + '" />');
-					image.hide();
-					$( uid + " td.usercol6" ).prepend(image);
-					image.fadeIn('slow');
-				} else {
-					image = $( uid + " td.usercol6 img.usericon");
-					if(image.attr('src') != ('image?i=IC_' + item.user.lca)) {
-						image.fadeOut('fast', function () {
-							image.attr('src', 'image?i=IC_' + item.user.lca );
+				
+				if(!is_nopoll('usercol6')) {
+					// channel icon
+					$( uid + " td.usercol6")
+							.attr( 'title', item.user.lastchanneltitle )
+							.data('sort-value', item.user.lastchanneltitle);
+					
+					if(item.user.lca.length > 0){
+						var image;
+						if($( uid + " td.usercol6").html().length == 0 ) {
+							image = $('<img class="usericon" src="image?i=IC_' + item.user.lca + '" />');
+							image.hide();
+							$( uid + " td.usercol6" ).prepend(image);
 							image.fadeIn('slow');
-						});
-						image.attr('alt', item.user.lcb );
-						image.attr('title', item.user.lastchanneltitle );
+						} else {
+							image = $( uid + " td.usercol6 img.usericon");
+							if(image.attr('src') != ('image?i=IC_' + item.user.lca)) {
+								image.fadeOut('fast', function () {
+									image.attr('src', 'image?i=IC_' + item.user.lca );
+									image.fadeIn('slow');
+								});
+								image.attr('alt', item.user.lcb );
+								image.attr('title', item.user.lastchanneltitle );
+							}
+						}
+					} else {
+						$( uid + " td.usercol6").html(item.user.lastchannel );
 					}
 				}
-			} else {
-				$( uid + " td.usercol6").html(item.user.lastchannel );
-			}
-			break;
+				
+				if(!is_nopoll('usercol7')) {$( uid + " td.usercol7")
+															.text( '' )
+															.data('sort-value',0);}
+				break;
 
 			default:
-			if($( uid ).attr('class') == 'online' || $( uid ).attr('class') == 'connected'){
-				// last status was online so cleanup offline
-				$( uid ).attr('class', item.user.classname);
-				$( uid + " td.usercol2")
-					.attr( 'title', 'SLEEP: ')
-					.html( item.user.status );
-				$( uid + " td.usercol3").text( '' );
-				$( uid + " td.usercol7").text( '0' );
-				$( uid + " td.usercol4")
-					.text( '' )
-					.attr( 'title', '' );
-				var protoimage = $( uid + " td.usercol4 img.protoicon");
-				if(image){
-					protoimage.fadeOut('slow');
-					protoimage.remove();
+				//check the last status
+				if('online,connected'.indexOf($( uid ).attr('class')) > (-1)){
+					// last status was online so cleanup offline
+					$( uid ).attr('class', item.user.classname);
+					if(!is_nopoll('usercol2')) {
+						$( uid + " td.usercol2")
+							.attr( 'title', 'SLEEP: ')
+							.html( item.user.status );
+					}
+					if(!is_nopoll('usercol3')) {$( uid + " td.usercol3").text( '' );}
+					if(!is_nopoll('usercol4')) {
+						$( uid + " td.usercol4")
+							.text( '' )
+							.attr( 'title', '' );
+						var protoimage = $( uid + " td.usercol4 img.protoicon");
+						if(image){
+							protoimage.fadeOut('slow');
+							protoimage.remove();
+						}
+					}
+					
+					//channelicon
+					if(!is_nopoll('usercol6')) {
+						$( uid + " td.usercol6")
+									.text( '' )
+									.data('sort-value', '');
+						
+						var image = $( uid + " td.usercol6 img.usericon");
+						if(image){
+							image.fadeOut('slow');
+							image.remove();
+						}
+					}
+					if(!is_nopoll('usercol7')) {$( uid + " td.usercol7")
+																	.text( '' )
+																	.data('sort-value',0);}
 				}
-
-				//channelicon
-				$( uid + " td.usercol6").text( '' );
-				var image = $( uid + " td.usercol6 img.usericon");
-				if(image){
-					image.fadeOut('slow');
-					image.remove();
-				}
-			}
-			break;
+				break;
 		}
+		
+		if ( typeof custompoll == 'function' ) { 
+			custompoll(item);
+		}
+		
 	});
 
 	// update user totals
@@ -492,9 +580,6 @@ function updateUserpage(data) {
 
 	// update footer
 	updateFooter(data);
-
-	// hide heartbeat
-	setTimeout(function (){$( "input.pintervall" ).css("background-color",orgstyle);}, 300);
 }
 
 /*
@@ -502,32 +587,32 @@ function updateUserpage(data) {
  */
 function updateReaderpage(data) {
 
-	// show heartbeat
-	var orgstyle = $( "input.pintervall" ).css("background-color");
-	$( "input.pintervall" ).css("background-color",$( "#picolor" ).css("background-color"));
-
 	// update reader lines
 	$.each(data.oscam.readers, function(i, item) {
 		var uid = "#" + item.labelmd5;
+		poll_excluded = ($( uid ).attr('nopoll') != undefined) ? $( uid ).attr('nopoll') : '';
 
 		$( uid ).attr('class', item.classname);
 
-		$( uid + " td.readercol4").text(item.stats.ecmsok);
-		$( uid + " td.readercol5").text(item.stats.ecmsnok);
-		$( uid + " td.readercol6").text(item.stats.ecmsfiltered);
-		$( uid + " td.readercol7").text(item.stats.emmerror);
-		$( uid + " td.readercol8").text(item.stats.emmwritten);
-		$( uid + " td.readercol9").text(item.stats.emmskipped);
-		$( uid + " td.readercol10").text(item.stats.emmblocked);
-		$( uid + " td.readercol11").text(item.stats.lbweight);
+		if(!is_nopoll('readercol4')) {$( uid + " td.readercol4").text(item.stats.ecmsok + item.stats.ecmsokrel)
+																.data('sort-value', item.stats.ecmsok);}
+		if(!is_nopoll('readercol5')) {$( uid + " td.readercol5").text(item.stats.ecmsnok + item.stats.ecmsnokrel)
+																.data('sort-value', item.stats.ecmsnok);}
+		if(!is_nopoll('readercol6')) {$( uid + " td.readercol6").text(item.stats.ecmsfiltered);}
+		if(!is_nopoll('readercol7')) {$( uid + " td.readercol7").text(item.stats.emmerror);}
+		if(!is_nopoll('readercol8')) {$( uid + " td.readercol8").text(item.stats.emmwritten);}
+		if(!is_nopoll('readercol9')) {$( uid + " td.readercol9").text(item.stats.emmskipped);}
+		if(!is_nopoll('readercol10')) {$( uid + " td.readercol10").text(item.stats.emmblocked);}
+		if(!is_nopoll('readercol11')) {$( uid + " td.readercol11").text(item.stats.lbweight);}
 
+		if ( typeof custompoll == 'function' ) { 
+			custompoll(item);
+		}
 	});
 
 	// update footer
 	updateFooter(data);
 
-	// hide heartbeat
-	setTimeout(function (){$( "input.pintervall" ).css("background-color",orgstyle);}, 300);
 }
 
 /*
@@ -667,7 +752,7 @@ function updateLogpage(data) {
 /*
  * Statuspage Functions: JQuery Extensions
  */
-jQuery.fn.toHtmlString = function () {
+$.fn.toHtmlString = function () {
 	return $('<td></td>').html($(this).clone()).html();
 };
 
@@ -688,30 +773,36 @@ function generateBar(value){
 }
 
 /*
- *  Statuspage Functions: Add/Remove Subhedline
+ *  Statuspage Functions: Add/Remove Subheadline
  */
-function addremoveSubheadline(remove, data) {
+function addremoveSubheadline(remove, data, container, subheadline, type) {
 
-	if(remove == 1 && $("#clientsubheadline").length) {
-		$("#clientsubheadline")
+	if(remove == 1 && $("#" + subheadline).length) {
+		$("#" + subheadline)
 			.fadeOut('slow')
 			.remove();
 	}
 
-	if(remove == 0 && ! $("#clientsubheadline").length){
-		var strheadline = '<TR id="clientsubheadline"><TD CLASS="subheadline" COLSPAN="11">';
-		if (data.oscam.status.ucac == '0') { //hide idle clients
-			strheadline += '<P>Clients <span id="ucs">' + data.oscam.status.ucs + '</span>/<span id="uca">' + data.oscam.status.uca + '</span></P></TD>'
-		} else {
-			strheadline += '<P>Clients <span id="ucs">' + data.oscam.status.ucs + '</span>/<span id="uca">' + data.oscam.status.uca + '</span> (<span id="ucac">' + data.oscam.status.ucac + '</span> with ECM within last <span id="cfgh">' + data.oscam.status.cfgh + '</span> seconds)</P></TD>'
+	if(remove == 0 && ! $("#" + subheadline).length){
+		var strheadline = '<TR id="'+ subheadline +'"><TD CLASS="subheadline" COLSPAN="11">';
+		if(type == 'c'){
+			if (data.oscam.status.ucac != '') { //hide idle clients
+				strheadline += '<P id="chead">Clients <span id="ucs">' + data.oscam.status.ucs + '</span>/<span id="uca">' + data.oscam.status.uca + '</span> (<span id="ucac">' + data.oscam.status.ucac + '</span> with ECM within last <span id="cfgh">' + data.oscam.status.cfgh + '</span> seconds)</P></TD>'
+			} else {
+				strheadline += '<P id="chead">Clients <span id="ucs">' + data.oscam.status.ucs + '</span>/<span id="uca">' + data.oscam.status.uca + '</span></P></TD>'
+			}
+			strheadline += '<TD CLASS="subheadline"><form name="gotoform" method="post" action=""><select size="1" onChange="gotosite(this.value)">';
+			strheadline += '<option value="">-- select Action --</option><option value="status.html?hideidle=5">Show Hidden User</option>';
+			strheadline += '<option value="status.html?hideidle=0">Show Idle User</option><option value="status.html?hideidle=1">Hide Idle User</option>';
+		} else if(type == 'm') {
+			strheadline += '<P id="shead">Server <span id="scs">' + data.oscam.status.scs + '</span>/<span id="sca">' + data.oscam.status.sca + '</span> & Monitors <span id="mcs">' + data.oscam.status.mcs + '</span>/<span id="mca">' + data.oscam.status.mca + '</span></P></TD>'
+			strheadline += '<TD CLASS="subheadline"><form name="gotoform" method="post" action=""><select size="1" onChange="gotosite(this.value)">';
+			strheadline += '<option value="">-- select Action --</option><option value="status.html?hideidle=2">Show Hidden Server & Monitors</option>';
 		}
-		strheadline += '<TD CLASS="subheadline"><form name="gotoform" method="post" action=""><select size="1" onChange="gotosite(this.value)">';
-		strheadline += '<option value="">-- select Action --</option><option value="status.html?hideidle=5">Show Hidden User</option>';
-		strheadline += '<option value="status.html?hideidle=0">Show Idle User</option><option value="status.html?hideidle=1">Hide Idle User</option>';
 		strheadline += '</select></form></TD></TR>';
 		var headline = $(strheadline);
 		headline.hide();
-		$('table.status').append(headline);
+		$(container).append(headline);
 		headline.fadeIn('slow');
 	}
 }
@@ -783,10 +874,6 @@ function updateSysinfo(data){
  */
 function updateStatuspage(data){
 
-	// show heartbeat
-	var orgstyle = $( "input.pintervall" ).css("background-color");
-	$( "input.pintervall" ).css("background-color",$( "#picolor" ).css("background-color"));
-
 	var updatedclients="";
 	var cardokreader = 0;
 	var connectedproxys = 0;
@@ -795,14 +882,14 @@ function updateStatuspage(data){
 		if (item.connection.status == 'CARDOK') cardokreader++;
 		if (item.connection.status == 'CONNECTED') connectedproxys++;
 		var newrow;
-		if(item.type == "c") {
-			updatedclients += item.thid + ",";
-		}
+		
+		//add ID's for type c and m to list of existing elements. We need this to delete all not longer existing
+		updatedclients += item.thid + ",";
 
 		var uid = "#" + item.thid;
-		//console.log(updatedclients);
+		poll_excluded = ($( uid ).attr('nopoll') != undefined) ? $( uid ).attr('nopoll') : '';
 
-		if( ! $( uid ).length && item.type == "c") {
+		if( ! $( uid ).length && 'rpcxm'.indexOf(item.type) > (-1)) {
 			//build new row
 			var rowcontent = '<TR ID="' + item.thid + '"><TD CLASS="statuscol0"/><TD CLASS="statuscol1"/><TD CLASS="statuscol4"/>';
 			rowcontent += '<TD CLASS="statuscol5"/><TD CLASS="statuscol7"/><TD CLASS="statuscol8"/><TD CLASS="statuscol9"/>';
@@ -811,172 +898,304 @@ function updateStatuspage(data){
 			newrow = $(rowcontent);
 			newrow.hide();
 			// if we have no clients we have to add the headline first
-			if($("tr.c").length == 0){addremoveSubheadline(0, data);}
+			
 			// append new clientrow to table
-			$('table.status').append(newrow);
-			$( uid + " > td.statuscol0").append('<a title="Hide this User" href="status.html?hide=' + item.thid + '"><img class="icon" alt="Hide User" src="image?i=ICHID"></img>');
-			$( uid + " > td.statuscol1").append('<a title="Kill this User ' + item.name + '" href="status.html?action=kill&threadid=' + item.thid + '"><img class="icon" alt="Kill this User ' + item.name + '" src="image?i=ICKIL"></img>');
+			var container = '';
+			if ('hms'.indexOf(item.type) > (-1)){
+				container = '#tbodys';
+				if(item.type == 'm'){
+					if(!$("#Serverheadline").length){addremoveSubheadline(0, data, container, "Serverheadline", item.type);}
+					else if(!$("#mca").length)	{ $("#shead").append(' & Monitors <span id="mcs">' + data.oscam.status.mcs + '</span>/<span id="mca">' + data.oscam.status.mca + '</span>');}
+				}
+			} else if ('px'.indexOf(item.type) > (-1)){
+				container = '#tbodyp';
+			} else {
+				container = '#tbody' + item.type;
+				if(!$("#Userheadline").length && item.type == 'c'){addremoveSubheadline(0, data, container, "Userheadline", item.type);}
+			}
+			$(container).append(newrow);
+			
+			var name1, name2, kill1, kill2, kill3, edit1;
+			switch (item.type) {
+			case 'c': case 'm':
+				name1 = 'User';
+				name2 = item.name_enc;
+				kill1 = '" href="status.html?action=kill&threadid=' + item.thid.substring(3,item.thid.length);
+				kill2 = 'Kill the '
+				kill3 = 'ICKIL';
+				edit1 = 'user_edit.html?user=';
+			break;
+			case 'r': case 'p': case 'x':
+				name1 = (item.type == 'r') ? 'Reader' : 'Proxy';
+				name2 = item.rname_enc;
+				kill1 = '" href="status.html?action=restart&label=' + item.name;
+				kill2 = 'Restart the ';
+				kill3 = 'ICRES';
+				edit1 = 'readerconfig.html?label=';
+			break;
+			}
 
-			if(data.oscam.piconenabled == "1" && item.protoicon){
-				$( uid + " > td.statuscol9").append('<img class="protoicon" title="'+item.protocolext+'" alt="'+item.protocolext+'" src="image?i=IC_' + item.protoicon + '"></img>');
-			} else {
-				$( uid + " > td.statuscol9").text(item.protocol);
+			if(!is_nopoll('statuscol0')) {
+				$( uid + " > td.statuscol0").append('<a title="Hide the ' + 
+														name1  + ' ' + item.name+ '" href="status.html?hide=' + 
+														item.thid.substring(3,item.thid.length) +
+														'"><img class="icon" alt="Hide the' + 
+														name1 + ' ' + item.name+'" src="image?i=ICHID"></img>');
 			}
-			if (data.oscam.piconenabled == "1" && !item.upicmissing){
-				$( uid + " > td.statuscol4").append('<a href="user_edit.html?user=' + item.name_enc + '"><img class="statususericon" title="Edit User: ' + item.name + item.desc + '" src="image?i=IC_' + item.name_enc + '"></img></a>');
-			} else {
-				$( uid + " > td.statuscol4").append('<a href="user_edit.html?user=' + item.name_enc + '" title="Edit User: ' + item.name + item.desc + item.upicmissing + '">' + item.name + '</a>');
+			
+			if(!is_nopoll('statuscol1')) {
+				$( uid + " > td.statuscol1").append('<a title="' + kill2 + 
+														name1 + ' ' + item.name + kill1 + '"><img class="icon" alt="' + 
+														kill2 + name1 + ' ' + item.name+'" src="image?i='+kill3+'"></img>');
 			}
-			$( uid + " > td.statuscol13").append('<A HREF="files.html?file=oscam.srvid" TITLE="' + item.request + '"/>');
+			
+			if(!is_nopoll('statuscol4')) {
+				if (data.oscam.piconenabled == "1" && !item.upicmissing){
+					$( uid + " > td.statuscol4").append('<a href="' + edit1 + name2 + '"><img class="statususericon" title="Edit ' + 
+														name1 + ': ' + item.name + item.desc + '" src="image?i=IC_' + name2 + '"></img></a>');
+				} else {
+					$( uid + " > td.statuscol4").append('<a href="' + edit1 + name2 + '" title="Edit ' + name1 + ': ' + 
+														item.name + item.desc + item.upicmissing + '">' + item.name + '</a>');
+				}
+			}
+			
+			if(!is_nopoll('statuscol13')) {
+				$( uid + " > td.statuscol13").append('<A HREF="files.html?file=oscam.srvid" TITLE="'+item.request+'"/>');
+			}
+
+			if(!is_nopoll('statuscol9')) {
+				if(data.oscam.piconenabled == "1" && item.protoicon){
+					$( uid + " > td.statuscol9").append('<img class="protoicon" title="' + item.protocolext + '" alt="' + 
+														item.protocolext + '" src="image?i=IC_' + item.protoicon + '"></img>');
+				} else {
+					$( uid + " > td.statuscol9").text(item.protocol);
+				}
+			}
 		}
 
-		$( uid ).attr({	'class': item.type,
-						'data-ref': item.request.ecmhistory })
-						.removeAttr('style');
+		$( uid ).attr('class', item.type).data('ecmhistory', item.request.ecmhistory).removeAttr('style');
 
 		// fix for anonymous newcamd-clients
 		if ($(uid + " > td.statuscol4").text().match('anonymous')) {
-			if(data.oscam.piconenabled == "1" && item.protoicon){
-				$( uid + " > td.statuscol9").html('<img class="protoicon" title="' + item.protocolext + '" alt="' + item.protocolext + '" src="image?i=IC_' + item.protoicon + '"></img>');
-			} else {
-				$( uid + " > td.statuscol9").text(item.protocol);
+			if(!is_nopoll('statuscol9')) {
+				if(data.oscam.piconenabled == "1" && item.protoicon){
+					$( uid + " > td.statuscol9").html('<img class="protoicon" title="' + item.protocolext + '" alt="' + 
+														item.protocolext + '" src="image?i=IC_' + item.protoicon + '"></img>');
+				} else {
+					$( uid + " > td.statuscol9").text(item.protocol);
+				}
 			}
-			if(data.oscam.piconenabled == "1" && !item.upicmissing){
-				$( uid + " > td.statuscol4").html('<a href="user_edit.html?user=' + item.name_enc + '"><img class="statususericon" title="Edit User: ' + item.name + item.desc + '" src="image?i=IC_' + item.name_enc + '"></img></a>');
-			} else {
-				$( uid + " > td.statuscol4").html('<a href="user_edit.html?user=' + item.name_enc + '" title="Edit User: ' + item.name + item.desc + item.upicmissing + '">' + item.name + '</a>');
+			
+			if(!is_nopoll('statuscol4')) {
+				if(data.oscam.piconenabled == "1" && !item.upicmissing){
+					$( uid + " > td.statuscol4").html('<a href="user_edit.html?user=' + item.name_enc + 
+														'"><img class="statususericon" title="Edit User: ' + item.name + item.desc + 
+														'" src="image?i=IC_' + item.name_enc + '"></img></a>');
+				} else {
+					$( uid + " > td.statuscol4").html('<a href="user_edit.html?user=' + item.name_enc + '" title="Edit User: ' + 
+														item.name + item.desc + item.upicmissing + '">' + item.name + '</a>');
+				}
 			}
 		}
 
-		switch (item.au) {
-			case '0':
-				$( uid + " > td.statuscol5").text('OFF').attr('class', 'statuscol5 statuscol5OFF');
-			break;
-			case '-1':
-				$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ON<span>' + item.aufmt + '</span></a>').attr('class', 'statuscol5 statuscol5ON');
-			break;
-			default:
-				$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ACTIVE<span>' + item.aufmt + '</span></a>').attr('class', 'statuscol5 statuscol5ACTIVE');
-			break;
+		if(!is_nopoll('statuscol5')) {
+			switch (item.au) {
+				case '0':
+					$( uid + " > td.statuscol5").text('OFF').attr('class', 'statuscol5 statuscol5OFF');
+				break;
+				case '-1':
+					$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ON<span>' + item.aufmt + '</span></a>').attr('class', 'statuscol5 statuscol5ON');
+				break;
+				default:
+					$( uid + " > td.statuscol5").html('<a class="tooltip" href="#">ACTIVE<span>' + item.aufmt + '</span></a>').attr('class', 'statuscol5 statuscol5ACTIVE');
+				break;
+			}
 		}
+		
+		if(!is_nopoll('statuscol4')) {$( uid + " > td.statuscol4").attr('title', item.name + (item.desc ? '\n' + item.desc.replace('&#013;', ''): ''));}
+		if(!is_nopoll('statuscol7')) {$( uid + " > td.statuscol7").text(item.connection.ip);}
+		if(!is_nopoll('statuscol8')) {$( uid + " > td.statuscol8").text(item.connection.port);}
+		if(!is_nopoll('statuscol9')) {$( uid + " > td.statuscol9").attr('title', item.protocolext);}
+		if(!is_nopoll('statuscol12')) {$( uid + " > td.statuscol12").text(item.request.caid + ':' + item.request.srvid);}
 
-		$( uid + " > td.statuscol4").attr('title', item.name + (item.desc ? '\n' + item.desc.replace('&#013;', ''): ''));
-		$( uid + " > td.statuscol7").text(item.connection.ip);
-		$( uid + " > td.statuscol8").text(item.connection.port);
-		$( uid + " > td.statuscol9").attr('title', item.protocolext);
-		$( uid + " > td.statuscol12").text(item.request.caid + ':' + item.request.srvid);
+		if(!is_nopoll('statuscol13')) {
+			var newimage;
 
-		var newimage;
+			if (data.oscam.piconenabled == '1' && item.request.srvid != '0000' && item.request.picon){
 
-		if (data.oscam.piconenabled == '1' && item.request.srvid != '0000' && item.request.picon){
+				// if we already have a picon within link
+				if($( uid + " > td.statuscol13 > a > img.statususericon" ).length){
+					// we compare the picon name and switch if different
+					var image = $( uid + " > td.statuscol13 > a > img.statususericon");
+					if( image.attr('src') != 'image?i=IC_' + item.request.picon){
+						// set title of link as tooltip
+						$( uid + " > td.statuscol13 > a").attr('title', item.request.chprovider + item.request.chname);
+						image.hide();
+						image.attr('src', 'image?i=IC_' + item.request.picon);
+						image.fadeIn('slow');
+					}
+				} else {
+					// we have no image so we have to create one
 
-			// if we already have a picon within link
-			if($( uid + " > td.statuscol13 > a > img.statususericon" ).length){
-				// we compare the picon name and switch if different
-				var image = $( uid + " > td.statuscol13 > a > img.statususericon");
-				if( image.attr('src') != 'image?i=IC_' + item.request.picon){
+					// if we have picon clear text
+					$( uid + " > td.statuscol13").text('');
+
+					// if we have no link we create one
+					if(!$( uid + " > td.statuscol13 > a").length){
+						$( uid + " > td.statuscol13").append('<a href="files.html?file=oscam.srvid"/>');
+					}
 					// set title of link as tooltip
 					$( uid + " > td.statuscol13 > a").attr('title', item.request.chprovider + item.request.chname);
-					image.hide();
-					image.attr('src', 'image?i=IC_' + item.request.picon);
-					image.fadeIn('slow');
+
+					// just to be sure that class of image is set
+					if($( uid + " > td.statuscol13 > a > img" ).length){
+						$( uid + " > td.statuscol13 > a > img" ).attr( 'class', 'statususericon' );
+					}
+
+					newimage = $('<img class="statususericon" src="image?i=IC_' + item.request.picon +'">');
+					newimage.hide();
+					$( uid + " > td.statuscol13 > a").append(newimage);
+					newimage.fadeIn('slow');
 				}
+
 			} else {
-				// we have no image so we have to create one
-
-				// if we have picon clear text
-				$( uid + " > td.statuscol13").text('');
-
-				// if we have no link we create one
-				if(!$( uid + " > td.statuscol13 > a").length){
-					$( uid + " > td.statuscol13").append('<a href="files.html?file=oscam.srvid"/>');
+				// picon is not delivered in JSON - we set the text of column
+				if(item.request.chprovider && item.request.chname && item.request.srvid != '0000'){
+					$( uid + " > td.statuscol13").html(item.request.chprovider + item.request.chname);
+				} else {
+					$( uid + " > td.statuscol13").html('');
 				}
-				// set title of link as tooltip
-				$( uid + " > td.statuscol13 > a").attr('title', item.request.chprovider + item.request.chname);
-
-				// just to be sure that class of image is set
-				if($( uid + " > td.statuscol13 > a > img" ).length){
-					$( uid + " > td.statuscol13 > a > img" ).attr( 'class', 'statususericon' );
-				}
-
-				newimage = $('<img class="statususericon" src="image?i=IC_' + item.request.picon +'">');
-				newimage.hide();
-				$( uid + " > td.statuscol13 > a").append(newimage);
-				newimage.fadeIn('slow');
-			}
-
-		} else {
-			// picon is not delivered in JSON - we set the text of column
-			if(item.request.chprovider && item.request.chname && item.request.srvid != '0000'){
-				$( uid + " > td.statuscol13").html(item.request.chprovider + item.request.chname);
-			} else {
-				$( uid + " > td.statuscol13").html('');
 			}
 		}
 
-		if(item.type == 'c'){
-			$( uid + " > td.statuscol14").text(item.request.answered?item.request.answered + ' (' + item.request.msvalue + 'ms)':'');
-		} else {
-			if(item.request.lbvalue && item.request.lbvalue !='no data'){
-				//console.log("LB for " +item.name+ " is "+ item.request.lbvalue);
-				if(!$( uid + " > td.statuscol14 > a").length){
-					$( uid + " > td.statuscol14")
-						.text('')
-						.append('<a href="readerstats.html?label="' + item.name + '"&amp;hide=4" TITLE="Show statistics for: ' + item.name + '">');
-				}
-				$( uid + " > td.statuscol14 > a").text(item.request.lbvalue);
+		if(!is_nopoll('statuscol14')) {
+			if(item.type == 'c'){
+				$( uid + " > td.statuscol14").text(item.request.answered?item.request.answered + ' (' + item.request.msvalue + 'ms)':'');
 			} else {
-				$( uid + " > td.statuscol14").text('no data');
+				if(item.request.lbvalue){
+					if(!$( uid + " > td.statuscol14 > a").length){
+						$( uid + " > td.statuscol14")
+							.text('')
+							.append('<a href="readerstats.html?label="' + item.name + '"&amp;hide=4" TITLE="Show statistics for: ' + item.name + '">');
+					}
+					$( uid + " > td.statuscol14 > a").text(item.request.lbvalue);
+				} else {
+					$( uid + " > td.statuscol14").text('no data');
+				}
 			}
 		}
 
-		if($("#onlineidle").text() != 'Login*') {
-			$( uid + " > td.statuscol15")
-				.html(item.times.online.toHHMMSS() + '<br>' + item.times.idle.toHHMMSS())
-				.attr('title', 'Login: ' + item.times.loginfmt);
-		} else {
-			$( uid + " > td.statuscol15")
-				.html(item.times.loginfmt.substring(0,8) + '<br>' + item.times.loginfmt.substring(10,18))
-				.attr('title', 'Online: ' + item.times.online.toHHMMSS() + '\nIDLE: ' + item.times.idle.toHHMMSS());
+		if(!is_nopoll('statuscol15')) {
+			if($("#onlineidle").text() != 'Login*') {
+				$( uid + " > td.statuscol15")
+					.html(item.times.online.toHHMMSS() + '<br>' + item.times.idle.toHHMMSS())
+					.attr('title', 'Login: ' + item.times.loginfmt);
+			} else {
+				$( uid + " > td.statuscol15")
+					.html(item.times.loginfmt.substring(0,8) + '<br>' + item.times.loginfmt.substring(10,18))
+					.attr('title', 'Online: ' + item.times.online.toHHMMSS() + '\nIDLE: ' + item.times.idle.toHHMMSS());
+			}
 		}
 
-		// read entitlements and cccam-cards
-		var $html = $( uid + " > td.statuscol16").toHtmlString();
-		
-		if ( $html != undefined ) {
-			var buffer = $html.substring($html.indexOf('<br>'),$html.indexOf('</a>'));
-		}
-		
-		$( uid + " > td.statuscol16").text(item.connection.status).attr('class', 'statuscol16 statuscol16' + item.connection.status);
-		
-		if ( buffer && item.connection.status != 'OFF' ) {
-			$( uid + " > td.statuscol16").append(buffer + '</a>');
-		}
+		if(!is_nopoll('statuscol16')) {
+			var entitlement = '';
 
+			switch (item.type) {
+			case 'r':
+				// entitlement for native cards
+
+				var activeentitlements = item.connection.entitlements.length;
+				if(activeentitlements > 0) {
+					entitlement += '<br><a href="entitlements.html?label=' + item.rname_enc + '&hideexpired=1" class="tooltip">';
+					entitlement += '(' + activeentitlements + ' entitlement' + ((activeentitlements != 1) ? 's)' : ')');
+					entitlement += '<span>';
+					$.each(item.connection.entitlements, function(i, obj) {
+						entitlement += obj.caid + ':' + obj.provid + '<br>' + obj.exp + '<br><br>';
+					});
+					entitlement = entitlement.substring(0,entitlement.length-4);
+					entitlement += '</span></a>';
+				} else {
+					entitlement += '<br><a href="entitlements.html?label=';
+					entitlement += item.rname_enc + '&hideexpired=1" class="tooltip1">(no entitlements)<span>No active entitlements found</span></a>';
+				}
+				break;
+
+			case 'p':
+				if(item.connection.entitlements.length > 0 && item.protocol.indexOf('cccam') > -1){
+					// cccam
+					var entobj = item.connection.entitlements[0];
+					entitlement += '<br><a href="entitlements.html?label=' + item.rname_enc + '" class="tooltip' + entobj.cccreshare + '">';
+					entitlement += '(' + entobj.locals + ' of ' + entobj.cccount + ' cards)';
+					entitlement += '<span>card_count=' + entobj.cccount + '<br>';
+					entitlement += 'hop1=' + entobj.ccchop1 + '<br>';
+					entitlement += 'hop2=' + entobj.ccchop2 + '<br>';
+					entitlement += 'hopx=' + entobj.ccchopx + '<br>';
+					entitlement += 'currenthops=' + entobj.ccccurr + '<br><br>';
+					entitlement += 'reshare0=' + entobj.cccres0 + '<br>';
+					entitlement += 'reshare1=' + entobj.cccres1 + '<br>';
+					entitlement += 'reshare2=' + entobj.cccres2 + '<br>';
+					entitlement += 'resharex=' + entobj.cccresx + '</span></a>';
+				}
+				if(item.protocol.indexOf('gbox') > -1){
+					// TO DO gbox
+					var $html = $( uid + " > td.statuscol16").toHtmlString();
+					if ( $html != undefined ) {
+						entitlement = $html.substring($html.indexOf('<br>'),$html.indexOf('</a>'));
+						if(entitlement) entitlement += '</a>';
+					}
+				}
+				break;
+			}
+
+			$( uid + " > td.statuscol16").empty().html(item.connection.status + entitlement).attr('class', 'statuscol16 statuscol16' + item.connection.status);
+		}
+		
 		if(newrow){
 			newrow.fadeIn("slow");
+		}
+		
+		if ( typeof custompoll == 'function' ) { 
+			custompoll(item);
 		}
 
 	});
 
-	//remove non existing
-	$("tr.c").each(function() {
+	//remove non existing elements
+	$("tr.c, tr.m, tr.r, tr.p, tr.h").each(function() {
 		if(updatedclients.indexOf($(this).attr('id')) == -1){
 			$(this).fadeOut('slow').remove();
 		}
 	});
 
 	// if we have no clients left we remove the headline
-	if($("tr.c").length == 0 && data.oscam.status.uca == '0'){
-		addremoveSubheadline(1);
+	if(!$("tr.c").length && data.oscam.status.uca == '0'){
+		addremoveSubheadline(1,'','',"Userheadline",'c');
 	}
-
+	// if we have no servers/monitors left we remove the headline
+	if(!$("tr.m").length && data.oscam.status.mca == '0'){
+		if( $("#mca").length){
+			$("#shead").replaceWith('<P id="shead">Server <span id="scs">' + data.oscam.status.scs + '</span>/<span id="sca">' + data.oscam.status.sca + '</span></P>');
+		}
+		if(!$("tr.s").length && !$("tr.h").length && data.oscam.status.sch == '0'){
+			addremoveSubheadline(1,'','',"Serverheadline",'m');
+		}
+ 	}
+ 
 	//update client-headline
 	if(data.oscam.status.uca != '0'){
-		$( "#ucs" ).text( data.oscam.status.ucs );
-		$( "#uca" ).text( data.oscam.status.uca );
-		if (data.oscam.status.ucac != '0') $( "#ucac" ).text( data.oscam.status.ucac );
+	    if(!$("#Userheadline").length){addremoveSubheadline(0, data, "#tbodyc", "Userheadline", "c");}
+	    else{
+			$( "#ucs" ).text( data.oscam.status.ucs );
+			$( "#uca" ).text( data.oscam.status.uca );
+			if (data.oscam.status.ucac != '0') $( "#ucac" ).text( data.oscam.status.ucac );
+		}
 	}
+	//update server/monitor-headline
+	if(data.oscam.status.mca != '0' && $("#mcs")){
+		$( "#mcs" ).text( data.oscam.status.mcs );
+		$( "#mca" ).text( data.oscam.status.mca );
+	}
+
 	//update reader-headline
 	$( "#rcc" ).text( cardokreader );
 
@@ -995,22 +1214,32 @@ function updateStatuspage(data){
 	// cachex
 	if($( "#total_cachexpush" ).length) updateCacheexotals(data);
 
-	// hide heartbeat
-	setTimeout(function (){$( "input.pintervall" ).css("background-color",orgstyle);}, 300);
 }
 
 /*
  *  General fork into page refresh functions
  */
 function updatePage(data){
+	
+	// show heartbeat
+	if($( "input.pintervall" ).length){
+		var orgstyle = $( "input.pintervall" ).css("background-color");
+		$( "input.pintervall" ).css("background-color",$( "#picolor" ).css("background-color"));
+	}
+	
 	switch(page){
-	case 'status': 	updateStatuspage(data); 	break;
-	case 'user': 	updateUserpage(data); 		break;
-	case 'reader': 	updateReaderpage(data); 	break;
-	case 'livelog':	updateLogpage(data); 		break;
-	default: 					break;
+		case 'status': 	updateStatuspage(data); 	break;
+		case 'user': 	updateUserpage(data); 		break;
+		case 'reader': 	updateReaderpage(data); 	break;
+		case 'livelog':	updateLogpage(data); 		break;
+		default: 									break;
 	}
 
+	// hide heartbeat
+	if($( "input.pintervall" ).length){
+		setTimeout(function (){$( "input.pintervall" ).css("background-color",orgstyle);}, 300);
+	}
+	
 	if ( typeof afterpoll == 'function' ) { 
 		afterpoll();
 	}
@@ -1028,12 +1257,14 @@ function setPollerr(error){
  * General Polling
  */
 var lockpoll = 0;
+var timer_ID;
 function waitForMsg(){
 	
 	if(lockpoll > 0){
 		/* assumed that previous poll is not finnished yet we not
 		   call new data and just set the next intervall */
-		setTimeout("waitForMsg()", pollintervall);
+		clearTimeout(timer_ID);
+		timer_ID = setTimeout("waitForMsg()", pollintervall);
 		return;
 	}
 	
@@ -1047,11 +1278,13 @@ function waitForMsg(){
 			setPollerr(0);
 			updatePage(data);
 			if(!stoppoll) {
-				setTimeout("waitForMsg()", pollintervall);
+				clearTimeout(timer_ID);
+				timer_ID = setTimeout("waitForMsg()", pollintervall);
 			}
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
-			setTimeout("waitForMsg()", 15000);
+			clearTimeout(timer_ID);
+			timer_ID = setTimeout("waitForMsg()", 15000);
 			setPollerr(1);
 		}
 	});
@@ -1086,7 +1319,10 @@ $(document).ready(function() {
 		// without saving
 		$('#regex').remove();
 	}
-
+	
+	// set default to nothing excluded
+	poll_excluded = ''; 
+	
 	// Title
 	var pagename = (typeof page != 'undefined'? page : $(location).attr('pathname').replace(/.*\/|\.[^.]*$/g, ''));
 	$(document).attr('title', $(document).attr('title') + ' (' + pagename[0].toUpperCase() + pagename.slice(1) +')');
@@ -1095,6 +1331,11 @@ $(document).ready(function() {
 
 		switch(page){
 
+		case 'cacheex': 
+			//do nothing
+			
+			break;
+			
 		case 'livelog':
 
 			if(!nostorage){
@@ -1171,4 +1412,9 @@ $(document).ready(function() {
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
- */(function(e){var t,n,r=0,i={control:e('<div class="colorPicker-picker">&nbsp;</div>'),palette:e('<div id="colorPicker_palette" class="colorPicker-palette" />'),swatch:e('<div class="colorPicker-swatch">&nbsp;</div>'),hexLabel:e('<label for="colorPicker_hex">Hex</label>'),hexField:e('<input type="text" id="colorPicker_hex" />')},s="transparent",o;e.fn.colorPicker=function(t){return this.each(function(){var n=e(this),o=e.extend({},e.fn.colorPicker.defaults,t),u=e.fn.colorPicker.toHex(n.val().length>0?n.val():o.pickerDefault),a=i.control.clone(),f=i.palette.clone().attr("id","colorPicker_palette-"+r),l=i.hexLabel.clone(),c=i.hexField.clone(),h=f[0].id,p,d;e.each(o.colors,function(t){p=i.swatch.clone();if(o.colors[t]===s){p.addClass(s).text("X");e.fn.colorPicker.bindPalette(c,p,s)}else{p.css("background-color","#"+this);e.fn.colorPicker.bindPalette(c,p)}p.appendTo(f)});l.attr("for","colorPicker_hex-"+r);c.attr({id:"colorPicker_hex-"+r,value:u});c.bind("keydown",function(t){if(t.keyCode===13){var r=e.fn.colorPicker.toHex(e(this).val());e.fn.colorPicker.changeColor(r?r:n.val())}if(t.keyCode===27){e.fn.colorPicker.hidePalette()}});c.bind("keyup",function(t){var r=e.fn.colorPicker.toHex(e(t.target).val());e.fn.colorPicker.previewColor(r?r:n.val())});c.bind("blur",function(t){var r=e.fn.colorPicker.toHex(e(this).val());e.fn.colorPicker.changeColor(r?r:n.val())});e('<div class="colorPicker_hexWrap" />').append(l).appendTo(f);f.find(".colorPicker_hexWrap").append(c);if(o.showHexField===false){c.hide();l.hide()}e("body").append(f);f.hide();a.css("background-color",u);a.bind("click",function(){if(n.is(":not(:disabled)")){e.fn.colorPicker.togglePalette(e("#"+h),e(this))}});if(t&&t.onColorChange){a.data("onColorChange",t.onColorChange)}else{a.data("onColorChange",function(){})}if(d=n.data("text"))a.html(d);n.after(a);n.bind("change",function(){n.next(".colorPicker-picker").css("background-color",e.fn.colorPicker.toHex(e(this).val()))});n.val(u);if(n[0].tagName.toLowerCase()==="input"){try{n.attr("type","hidden")}catch(v){n.css("visibility","hidden").css("position","absolute")}}else{n.hide()}r++})};e.extend(true,e.fn.colorPicker,{toHex:function(e){if(e.match(/[0-9A-F]{6}|[0-9A-F]{3}$/i)){return e.charAt(0)==="#"?e:"#"+e}else if(e.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/)){var t=[parseInt(RegExp.$1,10),parseInt(RegExp.$2,10),parseInt(RegExp.$3,10)],n=function(e){if(e.length<2){for(var t=0,n=2-e.length;t<n;t++){e="0"+e}}return e};if(t.length===3){var r=n(t[0].toString(16)),i=n(t[1].toString(16)),s=n(t[2].toString(16));return"#"+r+i+s}}else{return false}},checkMouse:function(r,i){var s=n,o=e(r.target).parents("#"+s.attr("id")).length;if(r.target===e(s)[0]||r.target===t[0]||o>0){return}e.fn.colorPicker.hidePalette()},hidePalette:function(){e(document).unbind("mousedown",e.fn.colorPicker.checkMouse);e(".colorPicker-palette").hide()},showPalette:function(n){var r=t.prev("input").val();n.css({top:t.offset().top+t.outerHeight(),left:t.offset().left});e("#color_value").val(r);n.show();e(document).bind("mousedown",e.fn.colorPicker.checkMouse)},togglePalette:function(r,i){if(i){t=i}n=r;if(n.is(":visible")){e.fn.colorPicker.hidePalette()}else{e.fn.colorPicker.showPalette(r)}},changeColor:function(n){t.css("background-color",n);t.prev("input").val(n).change();e.fn.colorPicker.hidePalette();t.data("onColorChange").call(t,e(t).prev("input").attr("id"),n)},previewColor:function(e){t.css("background-color",e)},bindPalette:function(n,r,i){i=i?i:e.fn.colorPicker.toHex(r.css("background-color"));r.bind({click:function(t){o=i;e.fn.colorPicker.changeColor(i)},mouseover:function(t){o=n.val();e(this).css("border-color","#598FEF");n.val(i);e.fn.colorPicker.previewColor(i)},mouseout:function(r){e(this).css("border-color","#000");n.val(t.css("background-color"));n.val(o);e.fn.colorPicker.previewColor(o)}})}});e.fn.colorPicker.defaults={pickerDefault:"FFFFFF",colors:["000000","993300","333300","000080","333399","333333","800000","FF6600","808000","008000","008080","0000FF","666699","808080","FF0000","FF9900","99CC00","339966","33CCCC","3366FF","800080","999999","FF00FF","FFCC00","FFFF00","00FF00","00FFFF","00CCFF","993366","C0C0C0","FF99CC","FFCC99","FFFF99","CCFFFF","99CCFF","FFFFFF"],addColors:[],showHexField:true}})(jQuery)
+ */(function(e){var t,n,r=0,i={control:e('<div class="colorPicker-picker">&nbsp;</div>'),palette:e('<div id="colorPicker_palette" class="colorPicker-palette" />'),swatch:e('<div class="colorPicker-swatch">&nbsp;</div>'),hexLabel:e('<label for="colorPicker_hex">Hex</label>'),hexField:e('<input type="text" id="colorPicker_hex" />')},s="transparent",o;e.fn.colorPicker=function(t){return this.each(function(){var n=e(this),o=e.extend({},e.fn.colorPicker.defaults,t),u=e.fn.colorPicker.toHex(n.val().length>0?n.val():o.pickerDefault),a=i.control.clone(),f=i.palette.clone().attr("id","colorPicker_palette-"+r),l=i.hexLabel.clone(),c=i.hexField.clone(),h=f[0].id,p,d;e.each(o.colors,function(t){p=i.swatch.clone();if(o.colors[t]===s){p.addClass(s).text("X");e.fn.colorPicker.bindPalette(c,p,s)}else{p.css("background-color","#"+this);e.fn.colorPicker.bindPalette(c,p)}p.appendTo(f)});l.attr("for","colorPicker_hex-"+r);c.attr({id:"colorPicker_hex-"+r,value:u});c.bind("keydown",function(t){if(t.keyCode===13){var r=e.fn.colorPicker.toHex(e(this).val());e.fn.colorPicker.changeColor(r?r:n.val())}if(t.keyCode===27){e.fn.colorPicker.hidePalette()}});c.bind("keyup",function(t){var r=e.fn.colorPicker.toHex(e(t.target).val());e.fn.colorPicker.previewColor(r?r:n.val())});c.bind("blur",function(t){var r=e.fn.colorPicker.toHex(e(this).val());e.fn.colorPicker.changeColor(r?r:n.val())});e('<div class="colorPicker_hexWrap" />').append(l).appendTo(f);f.find(".colorPicker_hexWrap").append(c);if(o.showHexField===false){c.hide();l.hide()}e("body").append(f);f.hide();a.css("background-color",u);a.bind("click",function(){if(n.is(":not(:disabled)")){e.fn.colorPicker.togglePalette(e("#"+h),e(this))}});if(t&&t.onColorChange){a.data("onColorChange",t.onColorChange)}else{a.data("onColorChange",function(){})}if(d=n.data("text"))a.html(d);n.after(a);n.bind("change",function(){n.next(".colorPicker-picker").css("background-color",e.fn.colorPicker.toHex(e(this).val()))});n.val(u);if(n[0].tagName.toLowerCase()==="input"){try{n.attr("type","hidden")}catch(v){n.css("visibility","hidden").css("position","absolute")}}else{n.hide()}r++})};e.extend(true,e.fn.colorPicker,{toHex:function(e){if(e.match(/[0-9A-F]{6}|[0-9A-F]{3}$/i)){return e.charAt(0)==="#"?e:"#"+e}else if(e.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/)){var t=[parseInt(RegExp.$1,10),parseInt(RegExp.$2,10),parseInt(RegExp.$3,10)],n=function(e){if(e.length<2){for(var t=0,n=2-e.length;t<n;t++){e="0"+e}}return e};if(t.length===3){var r=n(t[0].toString(16)),i=n(t[1].toString(16)),s=n(t[2].toString(16));return"#"+r+i+s}}else{return false}},checkMouse:function(r,i){var s=n,o=e(r.target).parents("#"+s.attr("id")).length;if(r.target===e(s)[0]||r.target===t[0]||o>0){return}e.fn.colorPicker.hidePalette()},hidePalette:function(){e(document).unbind("mousedown",e.fn.colorPicker.checkMouse);e(".colorPicker-palette").hide()},showPalette:function(n){var r=t.prev("input").val();n.css({top:t.offset().top+t.outerHeight(),left:t.offset().left});e("#color_value").val(r);n.show();e(document).bind("mousedown",e.fn.colorPicker.checkMouse)},togglePalette:function(r,i){if(i){t=i}n=r;if(n.is(":visible")){e.fn.colorPicker.hidePalette()}else{e.fn.colorPicker.showPalette(r)}},changeColor:function(n){t.css("background-color",n);t.prev("input").val(n).change();e.fn.colorPicker.hidePalette();t.data("onColorChange").call(t,e(t).prev("input").attr("id"),n)},previewColor:function(e){t.css("background-color",e)},bindPalette:function(n,r,i){i=i?i:e.fn.colorPicker.toHex(r.css("background-color"));r.bind({click:function(t){o=i;e.fn.colorPicker.changeColor(i)},mouseover:function(t){o=n.val();e(this).css("border-color","#598FEF");n.val(i);e.fn.colorPicker.previewColor(i)},mouseout:function(r){e(this).css("border-color","#000");n.val(t.css("background-color"));n.val(o);e.fn.colorPicker.previewColor(o)}})}});e.fn.colorPicker.defaults={pickerDefault:"FFFFFF",colors:["000000","993300","333300","000080","333399","333333","800000","FF6600","808000","008000","008080","0000FF","666699","808080","FF0000","FF9900","99CC00","339966","33CCCC","3366FF","800080","999999","FF00FF","FFCC00","FFFF00","00FF00","00FFFF","00CCFF","993366","C0C0C0","FF99CC","FFCC99","FFFF99","CCFFFF","99CCFF","FFFFFF"],addColors:[],showHexField:true}})(jQuery);
+ /**
+ * Stupid jQuery Table Sort
+ * Copyright (c) 2012 Joseph McCullough
+ * https://github.com/joequery/Stupid-Table-Plugin#readme
+ */(function(e){e.fn.stupidtable=function(t){return this.each(function(){var n=e(this);t=t||{};t=e.extend({},e.fn.stupidtable.default_sort_fns,t);n.on("click.stupidtable","th",function(){var r=e(this);var i=0;var s=e.fn.stupidtable.dir;n.find("#headline > th").slice(0,r.index()).each(function(){var t=e(this).attr("colspan")||1;i+=parseInt(t,10)});var o=r.data("sort-default")||s.ASC;if(r.data("sort-dir"))o=r.data("sort-dir")===s.ASC?s.DESC:s.ASC;var u=r.data("sort")||null;if(u===null){return}n.trigger("beforetablesort",{column:i,direction:o});n.css("display");setTimeout(function(){var a=[];var f=t[u];var l=n.children("tbody").children("tr");l.each(function(t,n){var r=e(n).children().eq(i);var s=r.data("sort-value");var o=typeof s!=="undefined"?s:r.text();a.push([o,n])});a.sort(function(e,t){return f(e[0],t[0])});if(o!=s.ASC)a.reverse();l=e.map(a,function(e){return e[1]});n.children("tbody").append(l);n.find("th.sorting-desc, th.sorting-asc").data("sort-dir",null).removeClass("sorting-desc sorting-asc").addClass("sortable");r.data("sort-dir",o).removeClass("sortable").addClass("sorting-"+o);n.trigger("aftertablesort",{column:i,direction:o});n.css("display")},10)})})};e.fn.stupidtable.dir={ASC:"asc",DESC:"desc"};e.fn.stupidtable.default_sort_fns={"int":function(e,t){return parseInt(e,10)-parseInt(t,10)},"float":function(e,t){return parseFloat(e)-parseFloat(t)},string:function(e,t){if(e<t)return-1;if(e>t)return+1;return 0},"string-ins":function(e,t){e=e.toLowerCase();t=t.toLowerCase();if(e<t)return-1;if(e>t)return+1;return 0}}})(jQuery)

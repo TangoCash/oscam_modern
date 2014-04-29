@@ -1,7 +1,20 @@
 ##TPLHEADER##
+	<script type="text/javascript">
+	
+	var page = 'cacheex';
+	var jsonurl = '';
+	var parameters = '';
+	var stoppoll = 1;
+	var pollintervall = 0;
+	var httprefresh = '##POLLREFRESHTIME##';
+
+	</script>
+
 ##TPLMENU##
 ##TPLMESSAGE##
 	<DIV ID="subnav">
+		<input id="subtoggle" type="checkbox"></input>
+		<label class="subtoggle" onclick="" for="subtoggle"></label>
 		<UL ID="nav">
 			<LI CLASS="configmenu"><A HREF="cacheex.html?action=resetallcacheexstats">Reset CacheEX-Stats</A></LI>
 		</UL>
@@ -14,19 +27,19 @@
 	<TABLE ID="dataTable" CLASS="stats">
 		<THEAD>
 			<TR><TH COLSPAN="12">CacheEX Stats for ##OWN_CACHEEX_NODEID##</TH></TR>
-			<TR>
-				<TH ID="sortable">Direction</TH>
-				<TH ID="sortable">Type</TH>
-				<TH ID="sortable">Name</TH>
-				<TH ID="sortable">IP</TH>
-				<TH ID="sortable">NODE</TH>
-				<TH ID="sortable">Cache EX Mode</TH>
-				<TH ID="sortable">Push</TH>
-				<TH ID="sortable">Got</TH>
-				<TH ID="sortable">CWC Info</TH>
-				<TH ID="sortable">Hit</TH>
-				<TH ID="sortable">Err</TH>
-				<TH ID="sortable">CW Diff</TH>
+			<TR id="headline">
+				<TH>Direction</TH>
+				<TH data-sort="string-ins" class="sortable">Type</TH>
+				<TH data-sort="string-ins" class="sortable">Name</TH>
+				<TH data-sort="string-ins" class="sortable">IP</TH>
+				<TH data-sort="string-ins" class="sortable">NODE</TH>
+				<TH data-sort="string-ins" class="sortable">Cache EX Mode</TH>
+				<TH data-sort="int" class="sortable">Push</TH>
+				<TH data-sort="int" class="sortable">Got</TH>
+				<TH data-sort="int" class="sortable">CWC Info</TH>
+				<TH data-sort="int" class="sortable">Hit</TH>
+				<TH data-sort="int" class="sortable">Err</TH>
+				<TH data-sort="int" class="sortable">CW Diff</TH>
 			</TR>
 		</THEAD>
 		<TBODY>
@@ -34,15 +47,6 @@
 ##TABLEREADERROWS##
 		</TBODY>
 	</TABLE>
-	<script type="text/javascript">
-		var sorter = new TINY.table.sorter('sorter','dataTable',{
-		headclass: 'head', // Header Class //
-		ascclass: 'asc', // Ascending Class //
-		descclass: 'desc', // Descending Class //
-		sortdir: 1, // Sort Direction (1 or -1) //
-		init: true// Init Now? (true or false) //
-		});
-	</script>
 	<TABLE ID="cachexstats" CLASS="margintop">
 		<TR>
 			<TH COLSPAN="5">Cache Statistics</TH>
