@@ -140,7 +140,9 @@ a.tooltip span,
 a.tooltip1 span {
 	display:none;
 	z-index:99;
-	color: red
+}
+a.tooltip1 {
+	color: red;
 }
 a:hover span {
 	display:block;
@@ -1009,10 +1011,15 @@ td#in.centered img {
 
 /* **************** 14. SPAN */
 /* module-webif.c and userconfig_notify.html */
-span.span_notifier {
-	margin-left:2px;
-	padding:1px 4px;
-	color:#FFF;background:red
+span.span_notifier{
+	background: none repeat scroll 0 0 #FF0000;
+	border-radius: 6px;
+	color: #FFFFFF;
+	font-size: 10px;
+	margin-left: -3px;
+	margin-top: -3px;
+	padding: 0 4px 1px 3px;
+	position: absolute;
 }
 /* module-webif.c value for STATUS item ( more info in Changeset 6668 by alno )
  * Class for formating values in statusview column "Idle" 
