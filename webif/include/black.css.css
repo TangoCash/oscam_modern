@@ -1717,3 +1717,4 @@ th.sortable:last-child,tbody tr th:last-child{border-right: 1px solid #000000;}
 div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
 div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
+table.config tbody tr td table.invisible tbody tr td{border:0}
