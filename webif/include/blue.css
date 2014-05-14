@@ -33,7 +33,8 @@
 	# 16. SORTING IN TABLE
 	# 17. POLLING
 	# 18. ECM BAR HISTORY
-	# 19. OTHER SETTINGS
+	# 19. FILE MENU
+	# 20. OTHER SETTINGS
 
 ###### RESPONSIVE DESIGN FOR DESKTOPS AND MOBILE DEVICE
 # DESKTOPS min width 1024px
@@ -69,7 +70,8 @@ body {
 	text-align:center;
 	background-color:#FFF;
 	background-image: url(data:image/png;base64,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);
-	color:#000
+	color:#000;
+	text-decoration:none
 }
 /* pre_shutdown.html */
 h4 {
@@ -94,9 +96,10 @@ p.text-large-red {
 /* readerstats.html for P */
 #text_totalecm {margin-top:10px}
 /* footer.html */
-li.styleauthor:after {content:" | Envi Template - Last update 2014-04-28"}
+li.styleauthor:after {content:" | Envi Template - Last update 2014-05-06"}
 /* other settings for seubheadline */
 td.subheadline p {
+	float: left;
 	text-align:left;
 	font-weight:bold;
 	margin-left:5px
@@ -107,8 +110,12 @@ div.footer p {
 }
 
 /* **************** 4. LINKS */
+a {
+	text-decoration:none;
+	color:#005BB2
+}
 a:link, a:visited, a:active {
-	color:#050840
+	color:#005BB2
 }
 a:hover {
 	color:#FF9E5F
@@ -133,16 +140,16 @@ a.debugls:link, a.debugls:visited {
 a.tooltip,
 a.tooltip1 {
 	position:relative;
-	text-decoration:none;
 	cursor:default
 }
 a.tooltip span,
 a.tooltip1 span {
 	display:none;
 	z-index:99;
+	color: #000
 }
 a.tooltip1 {
-	color: red;
+    color: red
 }
 a:hover span {
 	display:block;
@@ -152,12 +159,12 @@ a:hover span {
 	padding:4px;
 	font-weight:normal;
 	text-align:left;
-	background:#FFC;
+	background-color:#FFC;
 	border:1px solid #000;
 	color:#000
 }
 a:hover img.icon {
-	background:red
+	background-color:red
 }
 /* logpage.html */
 #savelog {
@@ -171,18 +178,15 @@ td.subheadline a {
 	text-decoration:none
 }
 span a {
-	text-align:center;
-	text-decoration:none
+	text-align:center
 }
 td.statuscol4 a,
 td.statuscol9 a,
 td.statuscol13 a {
 	text-align:center;
-	text-decoration:none
 }
 /* module-webif.c class for services.html */
 div.sidlistclose a {
-	text-decoration:none;
 	padding:0 3px;
 	color:#FFF
 }
@@ -230,8 +234,8 @@ div.sidlistclose a {
 }
 #mainmenu li {
 	display:inline;
-	margin-left:5px;
-	margin-right:5px;
+	margin-left:3px;
+	margin-right:3px;
 	padding:5px 3px 3px;
 	font-size:16px;
 	font-weight:400;
@@ -239,9 +243,8 @@ div.sidlistclose a {
 	font-family:Calibri,Arial,Verdana
 }
 li.menu a,li.menu a:hover,
-li.menu_selected a,li.menu_selected a:hover {
-	text-decoration:none;
-}
+li.menu_selected a,li.menu_selected a:hover {}
+
 li.menu a {
 	color:#B3B3B3
 }
@@ -258,7 +261,7 @@ li.menu_selected a {
 	top: 58px;
 	left: 0;
 	right: 0;
-	padding: 5px;
+	padding:6px 0px 4px 0px;
 	z-index:1040;
 	border: 1px solid #e5e5e5;
 
@@ -312,63 +315,6 @@ li.configmenu_selected a, li.configmenu_selected a:hover {
 #nav li.configmenu > a:hover {
 	color: #D80320
 }
-/* For FILEMENU.tpl - change dropdown menu */
-.drop .subcaret {
-	margin-top:7px;
-	margin-left:7px
-}
-
-.subcaret {
-	display:inline-block;
-	width:0;
-	height:0;
-	vertical-align:top;
-	border-top:4px solid #606060;
-	border-right:4px solid transparent;
-	border-left:4px solid transparent;
-	content:"";
-	opacity:1;
-	filter:alpha(opacity=100)
-}
-
-#nav ul.dropdown_nav li {
-	list-style-type:none;
-	display:inline-block;
-	margin:0;
-	padding:0;
-	width:100%
-}
-#nav li ul.dropdown_nav li a {
-	color:#000;
-	padding:3px;
-	display:inline-block;
-	margin:0 5px
-}
-#nav li ul.dropdown_nav li a:hover {
-	color:#F00423;
-	background:none
-}
-#nav li ul.dropdown_nav li.configmenu:hover {
-	background-color:#DDD
-}
-#nav li ul.dropdown_nav li.configmenu_selected a {
-	color:#F00423
-}
-#nav li ul.dropdown_nav li.configmenu_selected:hover {
-	background-color:#DDD
-}
-#nav li ul.dropdown_nav {
-	display:none;
-	position:absolute;
-	top:16px;
-	right:4px;
-	width:auto;
-	background-color:#FFF;
-	border:1px solid #DDD;
-}
-#nav li:hover ul.dropdown_nav {
-	display:block
-}
 #nav li{
 	position:relative
 }
@@ -394,15 +340,17 @@ table.status {
 table.statusmeminfo, table.statususerinfo, 
 table.statuscacheexinfo {
 	width:60%;
-	white-space:no-wrap;
+	white-space:nowrap;
 	margin-top:0px;
 	margin-bottom:0px
 }
 
 /* ------- CONFIG ------- */
 /* for all part in CONFIGURATION item */
+/* include readerconfig.html & user_edit.html */
 table.config {
-	width:60%;
+	width:80%;
+	max-width:800px;
 	margin-bottom:20px
 }
 table.config:nth-child(2) td:first-child{
@@ -416,7 +364,8 @@ table.readers {
 }
 /* readerconfig.html */
 table.configreader {
-	width:850px
+	width:80%;
+	max-width:850px
 }
 /* entitlements_bit.html, entitlements_cccambit.html */
 table.stats {}
@@ -462,7 +411,8 @@ table.user_totals {
 }
 /* user_edit.html */
 table.configuser {
-	width:60%;
+	width:80%;
+	max-width:850px;
 	margin-bottom:20px
 }
 
@@ -472,6 +422,8 @@ table.configuser {
 	width:35%;
 	text-align:center
 }
+/* services_edit.html */
+table.configservices {}
 
 /* ------- FAILBAN ------- */
 /* failban.html */
@@ -484,7 +436,7 @@ table.cacheex, table#dataTable.stats {
 }
 table#cachexstats {
 	width:60%;
-	white-space:no-wrap;
+	white-space:nowrap;
 	margin-bottom:0px
 }
 
@@ -500,7 +452,13 @@ table.invisible tr:hover td {
 /* user_edit.html, readerconfig.html */
 table.subservicetable {
 	width:100%;
-	background:#FFF
+	background-color:#FFF
+}
+/* help link readers/useredit/config.html */ 
+table.config a,
+table.configuser a,
+table.configreader a {
+	cursor:pointer
 }
 
 /* **************** 8. TABLE TR */
@@ -508,9 +466,10 @@ table.subservicetable {
 tr.e_valid td, tr.e_expired td, tr.e_header td {
 	font-family:"Courier New", monospace
 }
+/* rowcolors for cacheex rows in cachex depend on status */
 tr.e_valid td {background-color:#E6FEBF}
 tr.e_expired td {background-color:#FFF3E7}
-/* ????? */
+/* rowcolors for users rows in unserconfig.html depend on status */
 tr.online td {background-color:#BFA}
 tr.offline td {}
 tr.expired td {background-color:#FBA}
@@ -537,6 +496,7 @@ tr.disabledreader td:first-child img.icon {
 	background-image: linear-gradient(to bottom, #009D00 0%, #004D00 100%);
 }
 
+/* colors for status rows in status.html depend on status */
 tr.a td {background-color:#3F0}
 tr.c td {background-color:#F1F5E6}
 tr.s td, tr.l td,
@@ -554,8 +514,7 @@ tr.m:hover td {
 	background-color:#373F46;
 	color:white
 }
-tr.r td, span.e_expired {background-color:#FFF3E7}
-tr.p td, tr.scanusbsubhead td {background-color:#FDFBE1}
+
 /* Solution for hover in table subservicetable in readerconfig.html and user_edit.html */
 table.configreader tr:nth-child(30):hover td,
 table.configuser tr:nth-child(25):hover td {
@@ -585,12 +544,6 @@ th.nameinfo {
 	text-transform:uppercase;
 	text-align:left;
 	background-color:#999
-}
-/* status.html 
- * shorthand notation td[class*='statuscol'] for  td.statuscol0 -  td.statuscol16. 
- */
-td[class*='statuscol'] {
-	text-align:center
 }
 th.statuscol0 {
 	text-align:center;
@@ -630,10 +583,11 @@ td.subheadline {
 	background-color:#CCC;
 	text-align:center
 }
-/* ??? */
+/* default alignment for all rows status.html/userconfig.html/readers.html */
 td.centered,
-td[class*='usercol'], /* shorthand notation td[class*='usercol'] for  td.usercol0 -  td.usercol25 */
-td[class*='readercol'] { /* shorthand notation td[class*='readercol'] for  td.readercol0 -  td.readercol17 */
+td[class*='statuscol'],    /* shorthand notation td[class*='statuscol'] for  td.statuscol0 -  td.statuscol16. */
+td[class*='usercol'],      /* shorthand notation td[class*='usercol'] for  td.usercol0 -  td.usercol25 */
+td[class*='readercol'] {   /* shorthand notation td[class*='readercol'] for  td.readercol0 -  td.readercol17 */
 	text-align:center
 }
 td.statuscol0 {
@@ -647,6 +601,11 @@ td.servicescol1, td.servicescol2, td.servicescol3 {
 	width:30%;
 	border:0;
 	border-spacing:1px
+}
+/* Actionbutton readers.html */
+td.readercol13,td.readercol14,
+td.readercol15 {
+	min-width:22px
 }
 /* ??? */
 table.config td:first-child {
@@ -682,17 +641,16 @@ table.invisible td:first-child {
 }
 /* ??? */
 tr:hover td a {
-	color:#FFCB80
+	color:#FFE180
 }
 tr:hover td a:hover {
 	color:#FFF
 }
-/* looks not right
-table.status tr:last-child td {
-	border-bottom:2px solid #000
+/*table.status #tbodyc tr:last-child td {
+	border-bottom:1px;
+	border-color: #000;
 }
 */
-
 /* **************** 11. DIV */
 /* status.html, entitlements_genericbit.html */
 div.log {
@@ -790,7 +748,8 @@ div.info {
  * logmenu		- file.html
 */
 div.debugmenu, div.logmenu {
-	line-height:20px;
+	font-size:12px;
+	line-height:16px;
 	margin-bottom:8px
 }
 /* entitlements_cccambit.html */
@@ -843,8 +802,11 @@ input[type="text"] {
 input[type="text"]:hover{
 	border:1px solid #000
 }
+input[type="button"], input[type="submit"]{
+	padding:0 3px;
+	margin:0 3px;
+}
 input[type="submit"] {
-	padding:0px 3px;
 	cursor:pointer;
 	color: #FFF;
 	border-color:#BD0000;
@@ -873,10 +835,13 @@ input[type="submit"]:hover {
 	background:#0B1219; 
 	color:#FFF;
 	border:2px solid #000;
-	text-decoration:none; 
 	-webkit-transition: all .01s ease-out; 
 	-moz-transition: all .01s linear; 
 	transition: all .01s linear
+}
+/* all config input they are with units e.g. sec or min in config.html */
+input.withunit{
+	text-align:left;
 }
 /* solution for align vertical checkbox with text */
 input[type=checkbox] {
@@ -923,29 +888,9 @@ input[type=submit]:disabled:hover {
 	text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75)
 	
 }
-/* status_clientheadlinebit.html, status_clientheadlinewith.html
- * status_pheadline.html, status_rheadline.html
- */
-td.subheadline select {
-	text-align:center;
-	font-size:10px
-}
-td.subheadline option {
-    font-size:11px;
-    margin: 5px 0
-}
-td.subheadline option:first-child {
-	display: none
-}
-td.subheadline input:hover {
-	color:#FFF;
-	background-color:#232527
-}
-#otherdropdown select{
-	color:gray
-}
-#otherdropdown option { 
-	color:#000
+/* only save button in config.html/readerconfig.html/services.html */
+td.configcolsave {
+	text-align:center
 }
 /* settings for first option in select 
  * otherdropdown	- in script.html, menu.html
@@ -953,7 +898,28 @@ td.subheadline input:hover {
 #otherdropdown option:first-child {
     display:none
 }
+/* only for statusheadline button in status.html */
+td.subheadline input[type="button"] {
+	float:right;
+	font-size:10px;
+	margin:0 0 0 2px;
+	-webkit-appearance:none;
+	border-radius:3px;
+	border:1px solid #FFF;
+	text-align:center;
+	text-shadow:1px 1px 1px #0000;
+	color:#333;
+	background-color:#F8F8F8;
+	cursor:pointer;
+}
 
+td.subheadline input[type="button"]:hover {
+	background:red;
+	color:#FFF;
+	-webkit-transition: all .01s ease-out; 
+	-moz-transition: all .01s linear; 
+	transition: all .01s linear
+}
 /* **************** 13. IMAGE */
 /* generaly settings for images */
 img {
@@ -1012,16 +978,29 @@ td#in.centered img {
 /* **************** 14. SPAN */
 /* module-webif.c and userconfig_notify.html */
 span.span_notifier{
-	background: none repeat scroll 0 0 #FF0000;
-	border-radius: 6px;
-	color: #FFFFFF;
-	font-size: 10px;
-	margin-left: -3px;
-	margin-top: -3px;
-	padding: 0 4px 1px 3px;
-	position: absolute;
+	background: radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -moz-radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -ms-radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -o-radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -webkit-radial-gradient( center -9px, circle, white 0, red 26px );
+	background-color: red;
+	border: 2px solid white;
+	border-radius: 50%; 
+	box-shadow: 1px 1px 1px black;
+	color: white;
+	font: bold 12px/10px Helvetica, Verdana, Tahoma;
+	height: 12px; /* height + padding-top must equal width */
+	padding-top: 0px; /* height + padding-top must equal width */
+	text-align: center;
+	width: 20px;
+	left: -3px;
+	margin-top: 0;
+	padding-left: 4px;
+	padding-right: 4px;
+	top: -8px;
+	margin-right: -10px;
+	position:relative;
 }
-
 /* module-webif.c value for STATUS item ( more info in Changeset 6668 by alno )
  * Class for formating values in statusview column "Idle" 
  * In new WebIf column Idle is not used. Info about Idle is in title */
@@ -1041,11 +1020,11 @@ span.text_entitle {
 	display:inline-block;
 	font-weight:700
 }
-/* ??? */
+/* cachex status */
 span.e_expired {background-color:#FFF3E7}
+/* ?? */ 
 .span, span {
 	text-align:center;
-	text-decoration:none
 }
 span.e_valid {
 	background-color:#E6FEBF
@@ -1064,7 +1043,7 @@ path.graph_grid {stroke-opacity:0.5;stroke:gray;}
 .sortable {
 	background-image: url(data:image/png;base64,R0lGODlhBQAIAJEAAAAAAP///4CAgP///yH5BAEAAAMALAAAAAAFAAgAAAIL3GQnuJ2f2lLI1AIAOw==);
 	background-repeat:no-repeat;
-	background-position:4px center;
+/*	background-position:4px center;*/
 	cursor:pointer;
 	padding-left:12px;
 	padding-right:8px
@@ -1094,19 +1073,15 @@ path.graph_grid {stroke-opacity:0.5;stroke:gray;}
 #livelog {
 	resize:vertical;
 	height:580px;
-	padding: 10px;
 	max-width:1500px;
 	overflow-y:auto;
 	list-style:none;
 	text-align:left;
 	margin:5px auto 15px;
-	/*border:1px dotted #AAA;*/
-	background-color:#666;
-	color:#FFF;
-	border-radius: 3px;
-	text-shadow: 1px 1px 1px #000;
-	/* font-family: "Courier New",monospace*/
-	font: 12px Verdana,Geneva,sans-serif,Arial;
+	border:1px dotted #AAA;
+	background-color:#FAFAFA;
+	color:#666;
+	font-family: "Courier New",monospace
 }
 #livelogdata {
 	list-style:none;
@@ -1218,7 +1193,6 @@ input.pintervall {
 	background-color:transparent;
 	width:100%;
 	height:5px;
-	font-size:3;
 }
 #graph {
 	width:98%;
@@ -1238,7 +1212,73 @@ div.bar {
 	vertical-align: baseline;
 }
 
-/* **************** 19. OTHER SETTINGS */
+/* **************** 19. FILE MENU */
+/* For filemenu - change dropdown menu */
+.drop .subcaret {
+	margin-top:7px;
+	margin-left:7px
+}
+.subcaret {
+	display:inline-block;
+	width:0;
+	height:0;
+	vertical-align:top;
+	border-top:4px solid #606060;
+	border-right:4px solid transparent;
+	border-left:4px solid transparent;
+	content:"";
+	opacity:1;
+	filter:alpha(opacity=100)
+}
+#nav ul.dropdown_nav {
+	padding:0;
+	margin:0
+}
+#nav ul.dropdown_nav li {
+	list-style-type:none;
+	margin:0;
+	padding:1px 0;
+	width:100%
+}
+#nav li ul.dropdown_nav li a {
+	color:#000;
+	padding:3px 5px;
+	display: block;
+	margin: 0;
+}
+#nav li {
+	position:relative
+}
+#nav li ul.dropdown_nav {
+	display:none;
+	position:absolute;
+	text-align:left;
+	top:16px;
+	right:0;
+	width:auto;
+	background-color:#FFF;
+	border:1px solid #DDD;
+}
+#nav li:hover ul.dropdown_nav {
+	display:block
+}
+#nav li ul.dropdown_nav li a:hover {
+	color:#F00423;
+	background:none
+}
+#nav li ul.dropdown_nav li.configmenu:hover {
+	background-color:#DDD
+}
+#nav li ul.dropdown_nav li.configmenu_selected a {
+	color:#F00423
+}
+#nav li ul.dropdown_nav li.configmenu_selected:hover {
+	background-color:#DDD
+}
+#nav li.configmenu:last-child:hover a.drop {
+	background-color:#DDD
+}
+/* **************** 20. OTHER SETTINGS */
 /* margin top from previous table */
 .margintop {
 	margin-top:30px
@@ -1355,7 +1395,13 @@ screen and (device-width: 360px) and (device-height: 640px) {
 		padding:100px 8px 300px
 	}
 
-/* **************** 2. MAIN MENU */
+/* **************** 2. BASIC SETTINGS - BODY,P,H4 */
+/* pre_shutdown.html */
+h4 {
+	line-height:20px;
+}
+
+/* **************** 3. MAIN MENU */
 	/* checkbox for show/hide main menu */
 		#toggle:checked ~ #mainmenu {display:block;opacity:1}
 	/* label for checkbox */
@@ -1452,7 +1498,7 @@ screen and (device-width: 360px) and (device-height: 640px) {
 			font-weight:700
 		}
 
-/* **************** 3. SUBNAV */
+/* **************** 4. SUBNAV */
 	/* checkbox for show/hide subnav */
 		#subtoggle:checked ~ #nav {display:block;opacity:1}
 	/* label for checkbox */
@@ -1535,7 +1581,15 @@ screen and (device-width: 360px) and (device-height: 640px) {
 			font-size:1.3em
 		}
 
-/* **************** 4. FOOTER */
+/* **************** 5. TABLE */
+
+/* ------- CACHEEX ------- */
+/* cacheex.html */
+table#cachexstats {
+	width:100%;
+}
+
+/* **************** 6. FOOTER */
 	div.footer ul ul li {
 		margin:5px
 	}
@@ -1559,13 +1613,17 @@ screen and (device-width: 360px) and (device-height: 640px) {
 		content:""
 	}
 
-/* **************** 5. TEXTAREA,SELECT,INPUT */
+/* **************** 7. TEXTAREA,SELECT,INPUT */
 	/* generaly settings for all input */
 		input[type="text"] {
 			padding:6px
-		}	
+		}
+	/* texteditor in file.html */
+		textarea.editor {
+			width:90%
+		}
 
-/* **************** 6. TABLES */
+/* **************** 8. TABLES */
 	/* TABLE - TEST IN readers.html */
 	/* Force table to not be like tables anymore */
 		table.readers,table.readers thead,table.readers tbody,table.readers th,table.readers td,table.readers tr { 
@@ -1699,22 +1757,48 @@ screen and (device-width: 360px) and (device-height: 640px) {
 		table.users td:nth-child(21),table.users td:nth-child(22),table.users td:nth-child(23),
 		table.users td:nth-child(24), table.users td:nth-child(25), table.users td:nth-child(26){ display:none }
 
-/* **************** 7. OTHER SETTINGS */
+/* **************** 9. DIV */
+/* pre_autoconf.html, pre_shutdown.html */
+div.warning {
+	font-size:1.1em
+}
+div.warning br {
+	display:none
+}
+/* **************** 10. OTHER SETTINGS */
 	/* Logo */
 		div.logo {
 			display:none
 		}	
 }
-/* just overwrite the default here */
-th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{background:#b5bdc8;background:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2I1YmRjOCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjM0JSIgc3RvcC1jb2xvcj0iIzUzNTY1ZSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyODM0M2IiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);background:-moz-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-webkit-gradient(linear,left top,left bottom,color-stop(0%,#b5bdc8),color-stop(34%,#53565e),color-stop(100%,#28343b));background:-webkit-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-o-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-ms-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:linear-gradient(to bottom,#b5bdc8 0%,#53565e 34%,#28343b 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#b5bdc8",endColorstr="#28343b",GradientType=0);color:#fff}
+table.configuser a,th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{
+color:#FFFFFF;
+text-shadow: black 0.2em 0.2em 0.2em;
+background-image: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0, #86ABDB),
+    color-stop(1, #0A2470)
+);
+background-image: -o-linear-gradient(bottom, #86ABDB 0%, #0A2470 100%);
+background-image: -moz-linear-gradient(bottom, #86ABDB 0%, #0A2470 100%);
+background-image: -webkit-linear-gradient(bottom, #86ABDB 0%, #0A2470 100%);
+background-image: -ms-linear-gradient(bottom, #86ABDB 0%, #0A2470 100%);
+background-image: linear-gradient(to bottom, #86ABDB 0%, #0A2470 100%);
+}
+td.subheadline input[type="button"] {color: #FFFFFF;text-shadow: 1px 1px 1px #000000;}
 li.menu a{color:#fff;text-decoration:none}
-li.menu_selected:hover a,li.menu:hover a,li.menu_selected a{margin-left:-2px;margin-right:-2px;padding:4px;border-radius:3px;text-shadow:1px 1px 0 #FFF;color:#000;text-decoration:none;background:linear-gradient(to bottom,#F6F6F6 25%,#EBEBEB 49%,#D9D9D9 50%,#FFFFFF 100%) repeat scroll 0 0 rgba(0,0,0,0);}
 table {border-spacing: 0;}
 td.servicescol1,td.servicescol2,td.servicescol3,td{border-bottom: 1px solid #000000;border-right: 1px solid #000000;}
 td:first-child{border-left: 1px solid #000000;}
-tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
 th.sortable:last-child,tbody tr th:last-child{border-right: 1px solid #000000;}
 div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
 div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
+tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
-table.config tbody tr td table.invisible tbody tr td{border:0}
+#livelog{padding-left:10px;padding-top:10px;height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;}
+table.invisible tbody tr td{border:0}
+
+
+
