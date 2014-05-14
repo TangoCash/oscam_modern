@@ -505,11 +505,20 @@ status refresh in seconds, default:none
 1 = enables hiding clients after idle time set in parameter \fBhideclient_to\fP, default:0
 .RE
 .PP
-\fBhttphidetype\fP = \fBcharacter\fP[\fBcharacter\fP]...
+\fBhttphidetype\fP = \fBtype\fP[\fBtype\fP]...
 .RS 3n
 characters defining columns to hide in web interface status page (see type 
-column), 'x' is a special character to match cacheex readers and proxies, 
-default:none
+column), default:none
+
+ types:
+
+ 'c': client
+ 'h': http
+ 'm': monitor
+ 'p': proxy
+ 'r': reader
+ 's': server
+ 'x': cache exchange
 .RE
 .PP
 \fBhttpscript\fP = \fBpath\fP
@@ -983,9 +992,24 @@ password for connection to local gbox peer, default:none
 set gbox version in hexadecimal low byte, default:25
 .RE
 .PP
+\fBmy_cpu_api\fP = \fBbyte\fP
+.RS 3n
+set gbox CPU and API byte in hexadecimal, default:40
+.RE
+.PP
 \fBgbox_reconnect\fP = \fBtime\fP
 .RS 3n
 send message to peers in seconds, default:300
+.RE
+.PP
+\fBgsms_disable\fP = \fB0\fP|\fB1\fP
+.RS 3n
+1 = disable gbox short message service (GSMS),default:0
+
+sending a messeage: /tmp/gsms.txt: <box ID> <1=mormal message|2=OSD/TV message> 
+<message 6 to 127 characters>, status will be stored in '/tmp/gsms.ack' 
+respective 'gsms.nack', receiving a message: The message will be stored in 
+/tmp/gsms.log 
 .RE
 .SS "The [dvbapi] section"
 .PP

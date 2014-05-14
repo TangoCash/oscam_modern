@@ -16,10 +16,8 @@
 	<div id = "graph" ></div>
 </div>
 <DIV ID="subnav">
-	<input id="subtoggle" type="checkbox"></input>
-	<label class="subtoggle" onclick="" for="subtoggle"></label>
 	<UL ID="nav">
-		<LI><B>##HTTPOSCAMLABEL## r9711</B></LI>
+		<LI><B>##HTTPOSCAMLABEL## r9720</B></LI>
 		<LI CLASS="configmenu"><A HREF="http://www.streamboard.tv/oscam-addons/timeline" TARGET="_blank">Timeline r##CS_SVN_VERSION##</A></LI>
 		<LI CLASS="configmenu"><A HREF="#statusfooter">Status</A></LI>
 		<LI ID="nopoll" CLASS="pollselect" style="display: none;">Pollrefresh no set - Polling disabled</LI>
@@ -37,26 +35,14 @@
 		<TH CLASS="statuscol9">Protocol</TH>
 		<TH CLASS="statuscol12">CAID:SRVID</TH>
 		<TH CLASS="statuscol13">Current Channel</TH>
-		<TH CLASS="statuscol14">LB Value/Reader</TH>
+		<TH CLASS="statuscol14">##STATUSCOL14HEAD##Reader</TH>
 		<TH ID="onlineidle" TITLE="Online &amp; Idle Info" CLASS="statuscol15">Login*</TH>
 		<TH CLASS="statuscol16">Status</TH>
 	</TR>
-<tbody id = "tbodys">
-##SERVERHEADLINE##
-##SERVERSTATUS##
-</tbody>
-<tbody id = "tbodyr">
-##READERHEADLINE##
-##READERSTATUS##
-</tbody>
-<tbody id = "tbodyp">
-##PROXYHEADLINE##
-##PROXYSTATUS##
-</tbody>
-<tbody id = "tbodyc">
-##CLIENTHEADLINE##
-##CLIENTSTATUS##
-</tbody>
+<tbody id="tbodys">##SERVERHEADLINE####SERVERSTATUS##</tbody>
+<tbody id="tbodyr">##READERHEADLINE####READERSTATUS##</tbody>
+<tbody id="tbodyp">##PROXYHEADLINE####PROXYSTATUS##</tbody>
+<tbody id="tbodyc">##CLIENTHEADLINE####CLIENTSTATUS##</tbody>
 </TABLE>
 ##LOG_HISTORY##
 <DIV CLASS="info ##DISPLAYINFO##">
