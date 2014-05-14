@@ -1783,7 +1783,7 @@ div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
 div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
 tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
-#livelog{padding-left:10px;padding-top:10px;height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;font:12px Verdana,Geneva,sans-serif,Arial;}
+#livelog{padding-left:10px;padding-top:10px;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;font: 12px Verdana,Geneva,sans-serif,Arial;}
 table.invisible tbody tr td{border:0}
 
 
