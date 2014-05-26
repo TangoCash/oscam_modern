@@ -4261,10 +4261,10 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							user_count_active++;
 						}
 					}
-					/*else if(cl->typ == 's' || cl->typ == 'h')
-					{
-						server_count_shown++;
-					}*/
+					//else if(cl->typ == 's' || cl->typ == 'h')
+					//{
+					//	server_count_shown++;
+					//}
 					else if(cl->typ == 'm')
 					{
 						monitor_count_shown++;
@@ -4358,11 +4358,11 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							tpl_addVar(vars, TPLADD, "LBLENC", urlencode(vars, usr));
 							tpl_addVar(vars, TPLADD, "CSIDX", tpl_getTpl(vars, "STATUSRBUTTON"));
 						}
-						/*else if (cl->typ == 'h' || cl->typ == 's')
-						{
-							tpl_addVar(vars, TPLADD, "TARGET", "Server");
-							tpl_addVar(vars, TPLADD, "CSIDX", "");
-						}*/
+						//else if (cl->typ == 'h' || cl->typ == 's')
+						//{
+						//	tpl_addVar(vars, TPLADD, "TARGET", "Server");
+						//	tpl_addVar(vars, TPLADD, "CSIDX", "");
+						//}
 						tpl_addVar(vars, TPLADD, "HIDEIDX", tpl_getTpl(vars, "STATUSHBUTTON"));
 						tpl_printf(vars, TPLADD, "CSIDXPLAIN", "id_%p", cl);
 					}
