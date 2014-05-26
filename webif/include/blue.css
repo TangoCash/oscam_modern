@@ -96,7 +96,7 @@ p.text-large-red {
 /* readerstats.html for P */
 #text_totalecm {margin-top:10px}
 /* footer.html */
-li.styleauthor:after {content:" | Bluemod 14.05.2012"}
+li.styleauthor:after {content:" | Envi Template - Last update 2014-05-06"}
 /* other settings for seubheadline */
 td.subheadline p {
 	float: left;
@@ -1384,10 +1384,10 @@ div.bar {
  * Test in PC - (device-width: 360px) and (device-height: 640px)
  */
 @media	
-only screen and (-webkit-device-pixel-ratio: 1.5),
+/*only screen and (-webkit-device-pixel-ratio: 1.5),
 only screen and (-webkit-device-pixel-ratio: 2),
 only screen and (min-width: 360px) and (orientation: portrait) and (-webkit-min-device-pixel-ratio: 3.0),
-only screen and (min-device-width: 320px) and (max-device-width: 480px) and (-webkit-device-pixel-ratio: 2) and (device-aspect-ratio: 2/3) and (orientation:portrait),
+only screen and (min-device-width: 320px) and (max-device-width: 480px) and (-webkit-device-pixel-ratio: 2) and (device-aspect-ratio: 2/3) and (orientation:portrait),*/
 screen and (device-width: 360px) and (device-height: 640px) {
 
 /* **************** 1. BASIC DIVISION PAGES */
@@ -1797,5 +1797,8 @@ div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
 div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
 tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
-#livelog{padding-left:10px;padding-top:10px;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;font: 12px Verdana,Geneva,sans-serif,Arial;}
+#livelog{padding-left:10px;padding-top:10px;height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;}
 table.invisible tbody tr td{border:0}
+
+
+
