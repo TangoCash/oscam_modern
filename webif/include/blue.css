@@ -1771,7 +1771,7 @@ div.warning br {
 			display:none
 		}	
 }
-table.configuser a,th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{
+th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{
 color:#FFFFFF;
 text-shadow: black 0.2em 0.2em 0.2em;
 background-image: -webkit-gradient(
