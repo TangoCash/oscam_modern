@@ -2794,29 +2794,6 @@ void dvbapi_handlesockmsg(unsigned char *buffer, uint32_t len, int32_t connfd)
 {
 	uint32_t val = 0, size = 0, i, k;
 
-#ifdef DVBAPI_SAMYGO
-    uchar *dest;
-    if(buffer && buffer[0] == 2)
-	{
-		uint32_t length = (7 + len - 12 - 4); // length of converted samygo pmt
-		
-		if(!cs_malloc(&dest, length))
-			return;
-		
-		memcpy(dest, "\x03\xFF\xFF\x00\x00\x13\x00", 7); // standard pmt header x03=list_only
-		memcpy(dest + 7, buffer + 12, length - 7); // copy samygo channel pmt info to right position
-		
-		uint32_t samygo_program_info_length = b2i(2, buffer + 10)&0xFFF; // length of program_info in PMT
-		samygo_program_info_length +=7; // add new pmt header size
-		dest[1] = buffer[3]; //channel srvid highbyte
-		dest[2] = buffer[4]; //channel srvid lowbyte
-		i2b_buf(2, (samygo_program_info_length-6)&0xFFF, dest + 4); // put program_info_length + standard fixup of 6 (since first streampid searched at program_info_length+6)
-		dvbapi_parse_capmt(dest, length, connfd, NULL);
-    }
-	free(dest);
-	return;
-#endif
-
 	for(k = 0; k < len; k += 3 + size + val)
 	{
 		if(buffer[0 + k] != 0x9F || buffer[1 + k] != 0x80)
@@ -3860,9 +3837,13 @@ static void *dvbapi_main_local(void *cli)
 								pmtlen += len;
 							if ((cfg.dvbapi_listenport || cfg.dvbapi_boxtype == BOXTYPE_PC_NODMX) && len == 0) {
 								//client disconnects, stop all assigned decoding
+								cs_debug_mask(D_DVBAPI, "Socket %d reported connection close", connfd);
 								for (j = 0; j < MAX_DEMUX; j++)
-									if (demux[j].socket_fd == connfd)
+									if (demux[j].socket_fd == connfd) {
 										dvbapi_stop_descrambling(j);
+										close(connfd);
+										connfd = -1;
+									}
 							}
 							if (pmtlen > 0) {
 								// check and try to process complete PMT objects and filter data
@@ -4432,13 +4413,7 @@ static void *dvbapi_handler(struct s_client *cl, uchar *UNUSED(mbuf), int32_t mo
 
 int32_t dvbapi_set_section_filter(int32_t demux_index, ECM_REQUEST *er)
 {
-
 	if(!er) { return -1; }
-
-#ifdef DVBAPI_SAMYGO
-    //cs_log("****** %s demux_index: %d caid: %04X", __func__, demux_index, er->caid);
-    return 0;
-#endif
 
 	if(selected_api != DVBAPI_3 && selected_api != DVBAPI_1 && selected_api != STAPI)   // only valid for dvbapi3, dvbapi1 and STAPI
 	{
