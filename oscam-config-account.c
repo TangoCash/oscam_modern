@@ -38,19 +38,18 @@ static void account_c35_suppresscmd08_fn(const char *token, char *value, void *s
 		{ fprintf_conf(f, token, "%d\n", *c35_suppresscmd08); }
 }
 
-static void account_umaxidle_fn(const char *token, char *value, void *setting, FILE *f)
+/*static void account_umaxidle_fn(const char *token, char *value, void *setting, FILE *f)
 {
-	uint32_t *umaxidle = setting;
+	int32_t *umaxidle = setting;
 	if(value)
 	{
-		*umaxidle = (uint32_t)strToIntVal(value, cfg.umaxidle);
+		*umaxidle = (int32_t)strToIntVal(value, cfg.umaxidle);
 		return;
 	}
 	if(*umaxidle != cfg.umaxidle || cfg.http_full_cfg)
 		{ fprintf_conf(f, token, "%u\n", *umaxidle); }
 }
-
-
+*/
 
 
 static void account_ncd_keepalive_fn(const char *token, char *value, void *setting, FILE *f)
@@ -366,7 +365,7 @@ static const struct config_list account_opts[] =
 	DEF_OPT_INT8("monlevel"             , OFS(monlvl),                  0),
 	DEF_OPT_FUNC("sleep"                , OFS(tosleep),                 account_tosleep_fn),
 	DEF_OPT_FUNC("suppresscmd08"        , OFS(c35_suppresscmd08),       account_c35_suppresscmd08_fn),
-	DEF_OPT_FUNC("umaxidle"                   , OFS(umaxidle),                          account_umaxidle_fn),
+	DEF_OPT_INT32("umaxidle"            , OFS(umaxidle),                -1),
 	DEF_OPT_FUNC("keepalive"            , OFS(ncd_keepalive),           account_ncd_keepalive_fn),
 	DEF_OPT_FUNC("au"                   , 0,                            account_au_fn),
 	DEF_OPT_UINT8("emmreassembly"       , OFS(emm_reassembly),          2),

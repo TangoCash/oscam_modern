@@ -50,17 +50,22 @@ String.prototype.toHHMMSS = function () {
 		return ''
 	}
 	var sec_num = parseInt(this, 10); // don't forget the second param
+	var years = Math.floor(sec_num / (86400*365));
 	var days = Math.floor(sec_num / 86400);
 	var hours = Math.floor(sec_num / 3600);
 	var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
 	var seconds = sec_num - (hours * 3600) - (minutes * 60);
+	hours = hours - (24 * days);
+	days = days - (365 * years);
+	if (years < 1) {
+		years = "";
+	} else {
+		years = years + "y ";
+	}
 	if (days < 1) {
 		days = "";
 	} else {
-		hours = hours - (24 * days);
-		if (days < 10) {
-			days = "0" + days + "d ";
-		}
+		days = days + "d ";
 	}
 	if (hours < 10) {
 		hours = "0" + hours;
@@ -208,7 +213,7 @@ $(function () {
 	});
 
 	$("#onlineidle").click(function () {
-		if (!httprefresh) return;
+		if (!pollrefresh) return;
 		if ($("#onlineidle").text() == 'Login*') {
 			$("#onlineidle")
 				.text('Online & Idle*')
@@ -219,6 +224,7 @@ $(function () {
 				.attr('title', 'Online & Idle info (click to switch)');
 		}
 		if (!nostorage) localStorage.loi = $("#onlineidle").text();
+		waitForMsg();
 	});
 
 	// switch reader ON/OFF
@@ -315,43 +321,7 @@ $(function () {
 		initDoc();
 	});
 
-	var moveBlanks = function (a, b) {
-		if (a < b) {
-			if (a == "") return 1;
-			else return -1;
-		}
-		if (a > b) {
-			if (b == "") return -1;
-			else return 1;
-		}
-		return 0;
-	};
-
-	var moveBlanksDesc = function (a, b) {
-		if (a < b) return 1;
-		if (a > b) return -1;
-		return 0;
-	};
-
-	var ip2int = function (value) {
-		if (value.indexOf('.') < 0) return 1;
-		var d = value.split('.');
-		var sum = 0;
-		for (var i = 0; i < 4; i++) {
-			sum = (sum << 8) + Number(d[i]);
-		}
-		return sum;
-	}
-
-	var table = $('#dataTable').stupidtable({
-		"ip": function (a, b) {
-			aIP = ip2int(a);
-			bIP = ip2int(b);
-			return aIP - bIP;
-		},
-		"moveBlanks": moveBlanks,
-		"moveBlanksDesc": moveBlanksDesc
-	});
+	var table = $('#dataTable').stupidtable();
 
 	table.bind('beforetablesort', function (event, data) {
 		lockpoll = 1;
@@ -401,6 +371,22 @@ function updateUserpage(data) {
 		case 'online':
 			$(uid).attr('class', item.user.classname);
 
+			if (!is_nopoll('usercol1')) {
+				if ($(uid + " td.usercol1 > span.span_notifier").length) {
+					if(item.user.unotify){
+						$(uid + " td.usercol1 > span.span_notifier")
+							.text(item.user.unotify);
+					}
+					else {
+						$(uid + " td.usercol1 > span.span_notifier").remove();
+					}
+				}
+				else if(item.user.unotify) {
+					$(uid + " td.usercol1")
+						.append('<SPAN CLASS="span_notifier">'+ item.user.unotify + '</SPAN>');
+				}
+			}
+
 			if (!is_nopoll('usercol2')) {
 				$(uid + " td.usercol2")
 					.attr('title', item.user.stats.expectsleep != 'undefined' ? (item.user.stats.expectsleep > 0 ? 'Sleeping in ' + item.user.stats.expectsleep + ' minutes' : 'Sleeping') : '')
@@ -413,24 +399,26 @@ function updateUserpage(data) {
 
 			if (!is_nopoll('usercol4')) {
 				if (item.user.protoicon.length > 0) {
-					if ($(uid + " td.usercol4").html().length == 0) {
+					if (!$(uid + " td.usercol4 > img").length || $(uid + " td.usercol4 > img").attr('src')!='image?i=IC_' + item.user.protoicon) {
 						var protoimage = $('<img class="protoicon" src="image?i=IC_' + item.user.protoicon + '" />');
 						protoimage.hide();
-						$(uid + " td.usercol4").prepend(protoimage);
+						$(uid + " td.usercol4").html(protoimage);
 						protoimage.fadeIn('slow');
 					}
 				} else {
 					$(uid + " td.usercol4").text(item.user.protocol);
 				}
 
-				$(uid + " td.usercol4").attr('title', item.user.prototitle);
+				$(uid + " td.usercol4")
+					.attr('title', item.user.prototitle)
+					.data('sort-value', item.user.protocol);
 			}
 
 			// channel icon
 			if (!is_nopoll('usercol6')) {
 				$(uid + " td.usercol6")
 					.attr('title', item.user.lastchanneltitle)
-					.data('sort-value', item.user.lastchanneltitle);
+					.data('sort-value', item.user.lastchannel);
 
 				if (item.user.lca.length > 0) {
 					// if we already have a picon within link
@@ -470,7 +458,7 @@ function updateUserpage(data) {
 
 			if (!is_nopoll('usercol7')) {
 				$(uid + " td.usercol7")
-					.text(item.user.stats.cwlastresptime + 'ms')
+					.text(item.user.stats.cwlastresptimems)
 					.data('sort-value', item.user.stats.cwlastresptime);
 			}
 			//usercol8 ???
@@ -523,6 +511,22 @@ function updateUserpage(data) {
 		case 'connected':
 			$(uid).attr('class', item.user.classname);
 
+			if (!is_nopoll('usercol1')) {
+				if ($(uid + " td.usercol1 > span.span_notifier").length) {
+					if(item.user.unotify){
+						$(uid + " td.usercol1 > span.span_notifier")
+							.text(item.user.unotify);
+					}
+					else {
+						$(uid + " td.usercol1 > span.span_notifier").remove();
+					}
+				}
+				else if(item.user.unotify) {
+					$(uid + " td.usercol1")
+						.append('<SPAN CLASS="span_notifier">'+ item.user.unotify + '</SPAN>');
+				}
+			}
+
 			if (!is_nopoll('usercol2')) {
 				$(uid + " td.usercol2")
 					.attr('title', '')
@@ -535,23 +539,25 @@ function updateUserpage(data) {
 
 			if (!is_nopoll('usercol4')) {
 				if (item.user.protoicon.length > 0) {
-					if ($(uid + " td.usercol4").html().length == 0) {
+					if (!$(uid + " td.usercol4 > img").length || $(uid + " td.usercol4 > img").attr('src')!='image?i=IC_' + item.user.protoicon) {
 						var protoimage = $('<img class="protoicon" src="image?i=IC_' + item.user.protoicon + '" />');
 						protoimage.hide();
-						$(uid + " td.usercol4").prepend(protoimage);
+						$(uid + " td.usercol4").html(protoimage);
 						protoimage.fadeIn('slow');
 					}
 				} else {
 					$(uid + " td.usercol4").text(item.user.protocol);
 				}
-				$(uid + " td.usercol4").attr('title', item.user.prototitle);
+				$(uid + " td.usercol4")
+					.attr('title', item.user.prototitle)
+					.data('sort-value', item.user.protocol);
 			}
 
 			if (!is_nopoll('usercol6')) {
 				// channel icon
 				$(uid + " td.usercol6")
 					.attr('title', item.user.lastchanneltitle)
-					.data('sort-value', item.user.lastchanneltitle);
+					.data('sort-value', item.user.lastchannel);
 
 				if (item.user.lca.length > 0) {
 					var image;
@@ -578,8 +584,11 @@ function updateUserpage(data) {
 
 			if (!is_nopoll('usercol7')) {
 				$(uid + " td.usercol7")
-					.text('')
-					.data('sort-value', 0);
+					.text(item.user.stats.cwlastresptimems)
+					.data('sort-value', item.user.stats.cwlastresptime ? item.user.stats.cwlastresptime : 0);
+			}
+			if (!is_nopoll('usercol19')) {
+				$(uid + " td.usercol19").text(item.user.stats.cwrate);
 			}
 			break;
 
@@ -588,6 +597,11 @@ function updateUserpage(data) {
 			if ('online,connected'.indexOf($(uid).attr('class')) > (-1)) {
 				// last status was online so cleanup offline
 				$(uid).attr('class', item.user.classname);
+				if (!is_nopoll('usercol1')) {
+					if ($(uid + " td.usercol1 > span.span_notifier").length) {
+						$(uid + " td.usercol1 > span.span_notifier").remove();
+					}
+				}
 				if (!is_nopoll('usercol2')) {
 					$(uid + " td.usercol2")
 						.attr('title', '')
@@ -634,28 +648,8 @@ function updateUserpage(data) {
 
 	});
 
-	// update user totals
-	$("#tot_users").html(data.oscam.totals.usertotal);
-	$("#tot_disabled").html(data.oscam.totals.userdisabled);
-	$("#tot_expired").html(data.oscam.totals.userexpired);
-	$("#tot_active").html(data.oscam.totals.useractive);
-	$("#tot_connected").html(data.oscam.totals.userconnected);
-	$("#tot_online").html(data.oscam.totals.useronline);
-
-	// update result totals
-	$("#tot_cwok").html(data.oscam.totals.cwok + " (" + data.oscam.totals.cwok_rel + "%)");
-	$("#tot_cwcache").html(data.oscam.totals.cwcache + " (" + data.oscam.totals.cwcache_rel + "%)");
-	$("#tot_cwnok").html(data.oscam.totals.cwnok + " (" + data.oscam.totals.cwnok_rel + "%)");
-	$("#tot_cwtout").html(data.oscam.totals.cwtimeout + " (" + data.oscam.totals.cwtimeout_rel + "%)");
-	$("#tot_cwign").html(data.oscam.totals.cwignore);
-	$("#tot_ecmmin").html(data.oscam.totals.ecm_min);
-	$("#tot_cw").html(data.oscam.totals.tot_cw);
-	var cwpos = parseInt(data.oscam.totals.cwok) + parseInt(data.oscam.totals.cwcache);
-	var cwpos_rel = runden(parseFloat(data.oscam.totals.cwok_rel) + parseFloat(data.oscam.totals.cwcache_rel));
-	$("#tot_cwpos").html("<B>Total OK:	</B> " + cwpos + " (" + cwpos_rel + "%)");
-	var cwneg = parseInt(data.oscam.totals.cwnok) + parseInt(data.oscam.totals.cwtimeout);
-	var cwneg_rel = runden(parseFloat(data.oscam.totals.cwnok_rel) + parseFloat(data.oscam.totals.cwtimeout_rel));
-	$("#tot_cwneg").html("<B>Total NOK:	 </B> " + cwneg + " (" + cwneg_rel + "%)");
+	// update user totals + ECM
+	updateTotals(data);
 
 	// update footer
 	updateFooter(data);
@@ -704,6 +698,9 @@ function updateReaderpage(data) {
 			custompoll(item);
 		}
 	});
+
+	// update user totals + ECM
+	updateTotals(data);
 
 	// update footer
 	updateFooter(data);
@@ -893,7 +890,7 @@ function addremoveSubheadline(remove, data, container, subheadline, type) {
 			strheadline += '<input type="button" onclick="window.location.href = \'status.html?hideidle=1\';" value="Hide Idle" title="Hide Idle User">';
 		} else if (type == 'm') {
 			strheadline += '<P id="shead">Server <span id="scs">' + data.oscam.status.scs + '</span>/<span id="sca">' + data.oscam.status.sca + '</span> & Monitors <span id="mcs">' + data.oscam.status.mcs + '</span>/<span id="mca">' + data.oscam.status.mca + '</span></P>'
-			strheadline += '<DIV><input type="button" onclick="window.location.href = \'status.html?hideidle=2\';" value="Show Hiddden" title="Show Hidden Server & Monitors">';
+			strheadline += '<DIV><input type="button" onclick="window.location.href = \'status.html?hideidle=2\';" value="Show Hidden" title="Show Hidden Server & Monitors">';
 		}
 		strheadline += '</DIV></TD></TR>';
 		var headline = $(strheadline);
@@ -906,40 +903,45 @@ function addremoveSubheadline(remove, data, container, subheadline, type) {
 /*
  *	Statuspage Functions: Update Totals cacheEx
  */
-function updateCacheexotals(data) {
-	$("#total_cachexpush").text(data.oscam.status.totals.total_cachexpush);
-	$("#total_cachexgot").text(data.oscam.status.totals.total_cachexgot);
-	$("#total_cachexhit").text(data.oscam.status.totals.total_cachexhit);
-	$("#rel_cachexhit").text(data.oscam.status.totals.rel_cachexhit);
-	$("#total_cachesize").text(data.oscam.status.totals.total_cachesize);
+function updateCacheextotals(data) {
+	$("#total_cachexpush").text(data.oscam.totals.total_cachexpush);
+	$("#total_cachexgot").text(data.oscam.totals.total_cachexgot);
+	$("#total_cachexhit").text(data.oscam.totals.total_cachexhit);
+	$("#rel_cachexhit").text(data.oscam.totals.rel_cachexhit);
+	$("#total_cachesize").text(data.oscam.totals.total_cachesize);
 }
 
 /*
  *	Statuspage Functions: Update Totals User + ECM
  */
 function updateTotals(data) {
-	$("#total_users").text(data.oscam.status.totals.total_users);
-	$("#total_active").text(data.oscam.status.totals.total_active);
-	$("#total_connected").text(data.oscam.status.totals.total_connected);
-	$("#total_online").text(data.oscam.status.totals.total_online);
-	$("#total_disabled").text(data.oscam.status.totals.total_disabled);
-	$("#total_expired").text(data.oscam.status.totals.total_expired);
-	$("#total_cwok").text(data.oscam.status.totals.total_cwok);
-	$("#rel_cwok").text(data.oscam.status.totals.rel_cwok);
-	$("#total_cwcache").text(data.oscam.status.totals.total_cwcache);
-	$("#rel_cwcache").text(data.oscam.status.totals.rel_cwcache);
-	$("#total_cwnok").text(data.oscam.status.totals.total_cwnok);
-	$("#rel_cwnok").text(data.oscam.status.totals.rel_cwnok);
-	$("#total_cwtout").text(data.oscam.status.totals.total_cwtout);
-	$("#rel_cwtout").text(data.oscam.status.totals.rel_cwtout);
-	$("#total_cwign").text(data.oscam.status.totals.total_cwign);
-	//$( "#rel_cwign" ).text( data.oscam.status.totals.rel_cwign );
-	$("#total_ecm_min").text(data.oscam.status.totals.total_ecm_min);
-	$("#total_cw").text(data.oscam.status.totals.total_cw);
-	$("#total_cwpos").text(data.oscam.status.totals.total_cwpos);
-	$("#rel_cwpos").text(data.oscam.status.totals.rel_cwpos);
-	$("#total_cwneg").text(data.oscam.status.totals.total_cwneg);
-	$("#rel_cwneg").text(data.oscam.status.totals.rel_cwneg);
+	$("#total_users").text(data.oscam.totals.total_users);
+	$("#total_active").text(data.oscam.totals.total_active);
+	$("#total_connected").text(data.oscam.totals.total_connected);
+	$("#total_online").text(data.oscam.totals.total_online);
+	$("#total_disabled").text(data.oscam.totals.total_disabled);
+	$("#total_expired").text(data.oscam.totals.total_expired);
+	$("#total_cwok").text(data.oscam.totals.total_cwok);
+	$("#rel_cwok").text(data.oscam.totals.rel_cwok);
+	$("#total_cwcache").text(data.oscam.totals.total_cwcache);
+	$("#rel_cwcache").text(data.oscam.totals.rel_cwcache);
+	$("#total_cwnok").text(data.oscam.totals.total_cwnok);
+	$("#rel_cwnok").text(data.oscam.totals.rel_cwnok);
+	$("#total_cwtout").text(data.oscam.totals.total_cwtout);
+	$("#rel_cwtout").text(data.oscam.totals.rel_cwtout);
+	$("#total_cwign").text(data.oscam.totals.total_cwign);
+	//$( "#rel_cwign" ).text( data.oscam.totals.rel_cwign );
+	$("#total_ecm_min").text(data.oscam.totals.total_ecm_min);
+	$("#total_cw").text(data.oscam.totals.total_cw);
+	$("#total_cwpos").text(data.oscam.totals.total_cwpos);
+	$("#rel_cwpos").text(data.oscam.totals.rel_cwpos);
+	$("#total_cwneg").text(data.oscam.totals.total_cwneg);
+	$("#rel_cwneg").text(data.oscam.totals.rel_cwneg);
+	$("#total_emok").text(data.oscam.totals.total_emok);
+	$("#rel_emok").text(data.oscam.totals.rel_emok);
+	$("#total_emnok").text(data.oscam.totals.total_emnok);
+	$("#rel_emnok").text(data.oscam.totals.rel_emnok);
+	$("#total_em").text(data.oscam.totals.total_em);
 }
 
 /*
@@ -1184,18 +1186,25 @@ function updateStatuspage(data) {
 		}
 
 		if (!is_nopoll('statuscol14')) {
-			if (item.type == 'c') {
-				$(uid + " > td.statuscol14").text(item.request.answered ? item.request.answered + ' (' + item.request.msvalue + 'ms)' : '');
+			if (item.type == 's' || item.type == 'h' || item.type == 'm') {
+				$(uid + " > td.statuscol14").text('');
 			} else {
-				if (item.request.lbvalue && data.oscam.lbdefined) {
+				var value = item.type == 'c' ? (item.request.answered ? item.request.answered + ' (' + item.request.msvalue + ' ms)' : '') : item.request.lbvalue;
+				if (data.oscam.lbdefined) {
+					var label = item.rname_enc.replace('+%28cache%29', '');
+					var name = item.type == 'c' ? item.request.answered.replace(' (cache)', '') : item.name;
 					if (!$(uid + " > td.statuscol14 > a").length) {
 						$(uid + " > td.statuscol14")
 							.text('')
-							.append('<a href="readerstats.html?label=' + item.name + '&amp;hide=4" TITLE="Show statistics for: ' + item.name + '">');
+							.append('<a href="readerstats.html?label=' + label + '&amp;hide=4" TITLE="Show statistics for: ' + name + '">');
+					} else {
+						$(uid + " > td.statuscol14 > a")
+							.attr('href','readerstats.html?label=' + label + '&hide=4')
+							.attr('title','Show statistics for: ' + name);
 					}
-					$(uid + " > td.statuscol14 > a").text(item.request.lbvalue);
+					$(uid + " > td.statuscol14 > a").text(value);
 				} else {
-					$(uid + " > td.statuscol14").text('no data');
+					$(uid + " > td.statuscol14").text(value);
 				}
 			}
 		}
@@ -1328,8 +1337,18 @@ function updateStatuspage(data) {
 	if ($("#total_users").length) updateTotals(data);
 
 	// cachex
-	if ($("#total_cachexpush").length) updateCacheexotals(data);
+	if ($("#total_cachexpush").length) updateCacheextotals(data);
 
+}
+
+
+/*
+ * Cacheexpage Functions: Update Page
+ */
+function updateCacheexpage(data) {
+
+	updateCacheextotals(data);
+	
 }
 
 /*
@@ -1355,6 +1374,9 @@ function updatePage(data) {
 		break;
 	case 'livelog':
 		updateLogpage(data);
+		break;
+	case 'cacheex':
+		updateCacheexpage(data);
 		break;
 	default:
 		break;
@@ -1424,9 +1446,9 @@ function waitForMsg() {
  * General: Set Poll Interval
  */
 function setPollrefresh() {
-	// Set pollintervall, if httprefresh set to 0 disable polling
-	if (httprefresh) {
-		pollintervall = parseInt(httprefresh) * 1000;
+	// Set pollintervall, if pollrefresh set to 0 disable polling
+	if (pollrefresh) {
+		pollintervall = parseInt(pollrefresh) * 1000;
 		if (pollintervall > 99000) pollintervall == 99000;
 		if (!nostorage) {
 			if (sessionStorage.pollintervall) pollintervall = sessionStorage.pollintervall;
@@ -1443,9 +1465,6 @@ var nostorage = 0;
  */
 $(document).ready(function () {
 
-	// fix empty tbody status.html, this will not work with css :empty
-	$(".status tbody:empty").hide();
-
 	if (!localStorage) {
 		nostorage = 1;
 		// remove whole filter block - makes no sense
@@ -1460,28 +1479,8 @@ $(document).ready(function () {
 	if (typeof oscamconf != "undefined") {
 		var language = $('meta[http-equiv="language"]').attr("content");
 		var wikihref = "http://www.streamboard.tv/wiki/OSCam/" + language + "/Config/oscam." + oscamconf + "#";
-		$("table.config a").click(function () {
-			if (!$(this).attr("href")) {
-				if ($(this).data('p')) {
-					var parm = $(this).data('p');
-				} else {
-					var parm = $(this).parent().next().find("input,select,textarea").attr('name');
-				}
-				window.open(wikihref + parm);
-			}
-		});
-		$("table.configuser a").click(function () {
-			if (!$(this).attr("href")) {
-				if ($(this).data('p')) {
-					var parm = $(this).data('p');
-				} else {
-					var parm = $(this).parent().next().find("input,select,textarea").attr('name');
-				}
-				window.open(wikihref + parm);
-			}
-		});
-		$("table.configreader a").click(function () {
-			if (!$(this).attr("href")) {
+		$("form table a").click(function () {
+			if (!$(this).attr("href") && !$(this).attr("name")) {
 				if ($(this).data('p')) {
 					var parm = $(this).data('p');
 				} else {
@@ -1499,11 +1498,6 @@ $(document).ready(function () {
 	if (typeof page != 'undefined') {
 
 		switch (page) {
-
-		case 'cacheex':
-			//do nothing
-
-			break;
 
 		case 'livelog':
 
@@ -1524,34 +1518,40 @@ $(document).ready(function () {
 			waitForMsg();
 
 			break;
-		default:
-			if (page == 'status') {
-				$("#chart").hide();
-				if (!nostorage && httprefresh) {
-					if (localStorage.loi == 'Login*') {
-						$("#onlineidle")
-							.text('Login*')
-							.attr('title', 'Online & Idle info (click to switch)');
-					} else {
-						$("#onlineidle")
-							.text('Online & Idle*')
-							.attr('title', 'Login info (click to switch)');
-					}
+
+		case 'status':
+
+			$(".status tbody:empty").hide();
+			$("#chart").hide();
+			if (!nostorage && pollrefresh) {
+				if (localStorage.loi == 'Login*') {
+					$("#onlineidle")
+						.text('Login*')
+						.css('cursor','pointer')
+						.attr('title', 'Online & Idle info (click to switch)');
+				} else {
+					$("#onlineidle")
+						.text('Online & Idle*')
+						.css('cursor','pointer')
+						.attr('title', 'Login info (click to switch)');
 				}
 			}
-
-			// if httprefresh set to 0 hide pollselector
-			setPollrefresh();
-			if (httprefresh) {
-				$(":text[name='pintervall']").val(pollintervall / 1000);
-				$("#poll").show();
-				waitForMsg();
-			} else {
-				$("#nopoll").show();
-			}
-
 			break;
 
+		default:
+			//do nothing
+
+			break;
+		}
+
+		// if pollrefresh set to 0 hide pollselector
+		setPollrefresh();
+		if (pollrefresh) {
+			$(":text[name='pintervall']").val(pollintervall / 1000);
+			$("#poll").show();
+			waitForMsg();
+		} else {
+			$("#nopoll").show();
 		}
 	}
 });
@@ -1831,14 +1831,33 @@ $(document).ready(function () {
 		ASC: "asc",
 		DESC: "desc"
 	};
+	var convert_locale = function (c) {
+		if (c == "") return 0;
+		if(locale_decpoint == ",") {
+			c = c.replace( /\./g,"" ).replace( /,/,"." );
+		}else if(locale_decpoint == "."){
+			c = c.replace( /,/g,"" );
+		}
+		return(c);
+	}
+	var ip2int = function dot2num(dot) {
+		if (dot == "") return 1;
+		var d = dot.split('.');
+			return ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
+	}
 	e.fn.stupidtable.default_sort_fns = {
 		"int": function (e, t) {
-			return parseInt(e, 10) - parseInt(t, 10)
+			return parseInt(convert_locale(e), 10) - parseInt(convert_locale(t), 10)
 		},
 		"float": function (e, t) {
-			return parseFloat(e) - parseFloat(t)
+			return parseFloat(convert_locale(e)) - parseFloat(convert_locale(t))
 		},
-		string: function (e, t) {
+		"ip": function (a, b) {
+			aIP = ip2int(a);
+			bIP = ip2int(b);
+			return aIP - bIP;
+		},
+		"string": function (e, t) {
 			if (e < t) return -1;
 			if (e > t) return +1;
 			return 0

@@ -1799,6 +1799,12 @@ tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
 #livelog{padding-left:10px;padding-top:10px;height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;}
 table.invisible tbody tr td{border:0}
+table.invisible tbody tr td,td.invisible tr td{border:0;}
+textarea.bt{width: 480px;}
+table.config tbody tr td input,input.medium {width: 200px;}
+table.config tbody tr td input[type="checkbox"],td.invisible input[type="checkbox"],input#chb {width: 10px;}
+td.configcolsave input[type="submit"], input.withunit.short {width: 50px;}
+tr.configcontrol td.centered input[type="submit"] {width: 100px;}
 
 
 

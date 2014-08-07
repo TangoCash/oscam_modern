@@ -271,7 +271,7 @@ int32_t ecm_ratelimit_check(struct s_reader *reader, ECM_REQUEST *er, int32_t re
 
 	if(rl.ratelimitecm > 0)
 	{
-		cs_debug_mask(D_CLIENT, "ratelimit found for CAID: %04X PROVID: %06X SRVID: %04X CHID: %04X maxecms: %d cycle: %dms srvidhold: %dms",
+		cs_debug_mask(D_CLIENT, "ratelimit found for CAID: %04X PROVID: %06X SRVID: %04X CHID: %04X maxecms: %d cycle: %d ms srvidhold: %d ms",
 					  rl.caid, rl.provid, rl.srvid, rl.chid, rl.ratelimitecm, rl.ratelimittime, rl.srvidholdtime);
 	}
 	else   // nothing found: apply general reader limits
@@ -283,7 +283,7 @@ int32_t ecm_ratelimit_check(struct s_reader *reader, ECM_REQUEST *er, int32_t re
 		rl.provid = er->prid;
 		rl.chid = er->chid;
 		rl.srvid = er->srvid;
-		cs_debug_mask(D_CLIENT, "ratelimiter apply readerdefault for CAID: %04X PROVID: %06X SRVID: %04X CHID: %04X maxecms: %d cycle: %dms srvidhold: %dms",
+		cs_debug_mask(D_CLIENT, "ratelimiter apply readerdefault for CAID: %04X PROVID: %06X SRVID: %04X CHID: %04X maxecms: %d cycle: %d ms srvidhold: %d ms",
 					  rl.caid, rl.provid, rl.srvid, rl.chid, rl.ratelimitecm, rl.ratelimittime, rl.srvidholdtime);
 	}
 	// Below this line: rate limit functionality.
@@ -1076,13 +1076,13 @@ void reader_do_idle(struct s_reader *reader)
 {
 	if(reader->ph.c_idle)
 		{ reader->ph.c_idle(); }
-	else
+	else if (reader->tcp_ito > 0)
 	{
 		time_t now;
 		int32_t time_diff;
 		time(&now);
 		time_diff = abs(now - reader->last_s);
-		if(time_diff > (reader->tcp_ito * 60))
+		if(time_diff > reader->tcp_ito)
 		{
 			struct s_client *cl = reader->client;
 			if(check_client(cl) && reader->tcp_connected && reader->ph.type == MOD_CONN_TCP)
@@ -1299,7 +1299,7 @@ static int32_t restart_cardreader_int(struct s_reader *rdr, int32_t restart)
 	{
 		remove_reader_from_active(rdr); // remove from list
 		kill_thread(cl); // kill old thread
-		cs_sleepms(500);
+		cs_sleepms(1500);  //we have to wait a bit so free_client is ended and socket closed too!
 	}
 
 	while(restart && is_valid_client(cl))

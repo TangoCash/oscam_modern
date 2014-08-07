@@ -957,7 +957,7 @@ void camd35_cache_push_in(struct s_client *cl, uchar *buf)
 void send_keepalive(struct s_client *cl)
 {
 
-	if(cl->reader && cl->reader->keepalive)
+	if(cl->reader)
 	{
 		if(tcp_connect(cl))
 		{
@@ -1004,7 +1004,8 @@ int32_t camd35_client_init(struct s_client *cl)
 
 	cs_log("%s proxy %s:%d", cl->reader->ph.desc, cl->reader->device, cl->reader->r_port);
 
-	send_keepalive(cl);
+	if(cl->reader->keepalive)
+		send_keepalive(cl);
 
 	return(0);
 }
@@ -1017,18 +1018,18 @@ void camd35_idle(void)
 	if(!cl->reader)
 		{ return; }
 
-	if(cl->reader->keepalive)
+	if(cl->reader->keepalive) 
 	{
 		send_keepalive(cl);
 	}
-	else if(cl->reader->tcp_ito)
+	else if(cl->reader->tcp_ito>0) // only check if user added an inactivity timeout
 	{
 		//inactivity timeout check
 		time_t now;
 		int32_t time_diff;
 		time(&now);
 		time_diff = abs(now - cl->reader->last_s);
-		if(time_diff>(cl->reader->tcp_ito*60))
+		if(time_diff>cl->reader->tcp_ito)
 		{
 			if(check_client(cl) && cl->reader->tcp_connected && cl->reader->ph.type==MOD_CONN_TCP)
 			{

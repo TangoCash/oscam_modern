@@ -559,7 +559,7 @@ static int8_t cc_cycle_connection(struct s_client *cl)
 	if(!cl || cl->kill)
 		{ return 0; }
 
-	cs_debug_mask(D_TRACE, "%s unlocked-cycleconnection! timeout %dms",
+	cs_debug_mask(D_TRACE, "%s unlocked-cycleconnection! timeout %d ms",
 				  getprefix(), cl->reader->cc_reconnect);
 
 	cc_cli_close(cl, 0);
@@ -2728,7 +2728,10 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 #ifdef CS_CACHEEX
 	case MSG_CACHE_PUSH:
 	{
-		cc_cache_push_in(cl, data);
+		if((l - 4) >= 18)
+		{
+			cc_cache_push_in(cl, data);
+		}
 		break;
 	}
 #endif

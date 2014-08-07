@@ -577,8 +577,13 @@ void client_check_status(struct s_client *cl)
 	{
 	case 'm':
 	case 'c':
+
+		//Check umaxidle to avoid client is killed for inactivity, it has priority than cmaxidle
+		if(!cl->account->umaxidle)
+			break;
+
 		// Check user for exceeding umaxidle by checking cl->last
-		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) && cl->account->umaxidle &&
+		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) && cl->account->umaxidle>0 &&
 				cl->last && (time(NULL) - cl->last) > (time_t)cl->account->umaxidle)
 		{
 			add_job(cl, ACTION_CLIENT_IDLE, NULL, 0);
@@ -586,7 +591,7 @@ void client_check_status(struct s_client *cl)
 
 		// Check clients for exceeding cmaxidle by checking cl->last
 		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) &&
-				cl->last && !cl->account->umaxidle && cfg.cmaxidle && (time(NULL) - cl->last) > (time_t)cfg.cmaxidle)
+				cl->last && cl->account->umaxidle==-1 && cfg.cmaxidle && (time(NULL) - cl->last) > (time_t)cfg.cmaxidle)
 		{
 			add_job(cl, ACTION_CLIENT_IDLE, NULL, 0);
 		}

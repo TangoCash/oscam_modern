@@ -874,7 +874,7 @@ static int32_t dvbapi_find_emmpid(int32_t demux_id, uint8_t type, uint16_t caid,
 	for(k = 0; k < demux[demux_id].EMMpidcount; k++)
 	{
 		if(demux[demux_id].EMMpids[k].CAID == caid
-				&& demux[demux_id].EMMpids[k].PROVID == provid
+				&& demux[demux_id].EMMpids[k].PROVID == provid && provid != 0
 				&& (demux[demux_id].EMMpids[k].type & type))
 			{ return k; }
 		else if(demux[demux_id].EMMpids[k].CAID == caid
@@ -3176,13 +3176,14 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 	struct s_ecmpids *curpid = &demux[demux_id].ECMpids[demux[demux_id].demux_fd[filter_num].pidindex];
 	int32_t pid = demux[demux_id].demux_fd[filter_num].pidindex; //DeepThought: pid could be -1
 	uint32_t chid = 0x10000;
+	uint32_t ecmlen = (b2i(2, buffer + 1)&0xFFF)+3;
 
 	if(demux[demux_id].demux_fd[filter_num].type == TYPE_ECM)
 	{
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d Filter #%d fetched ecm data", demux_id, filter_num + 1);
-		if((uint) len  != (b2i(2, buffer + 1)&0xFFF)+3)   // invalid CAT length
+		cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d Filter #%d fetched ECM data (ecmlength = %03X)", demux_id, filter_num + 1, ecmlen);
+		if((uint) len  < ecmlen) // invalid CAT length
 		{
-			cs_debug_mask(D_DVBAPI, "[DVBAPI] Received an ECM with invalid CAT length!");
+			cs_debug_mask(D_DVBAPI, "[DVBAPI] Received data with total length %03X but ECM length is %03X -> invalid CAT length!", len, ecmlen);
 			return;
 		}
 
@@ -3221,7 +3222,7 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 		er->pid   = curpid->ECM_PID;
 		er->prid  = curpid->PROVID;
 		er->vpid  = curpid->VPID;
-		er->ecmlen = len;
+		er->ecmlen = ecmlen;
 		memcpy(er->ecm, buffer, er->ecmlen);
 
 		chid = get_subid(er); // fetch chid or fake chid
@@ -3229,7 +3230,6 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 
 		if(curpid->CAID >> 8 == 0x06)  //irdeto cas
 		{
-			cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d ECMTYPE %02X CAID %04X PROVID %06X ECMPID %04X IRDETO INDEX %02X MAX INDEX %02X CHID %04X CYCLE %02X VPID %04X", demux_id, er->ecm[0], er->caid, er->prid, er->pid, er->ecm[4], er->ecm[5], er->chid, curpid->irdeto_cycle, er->vpid);
 
 			if(curpid->irdeto_curindex != buffer[4])   // old style wrong irdeto index
 			{
@@ -3239,12 +3239,20 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 				}
 				else   // we are already running and not interested in this ecm
 				{
-					curpid->table = 0;
+					if(curpid->table != buffer[0]) curpid->table = 0; // fix for receivers not supporting section filtering
 					dvbapi_set_section_filter(demux_id, er); // set ecm filter to odd + even since this ecm doesnt match with current irdeto index
 					NULLFREE(er);
 					return;
 				}
 			}
+			else //fix for receivers not supporting section filtering
+			{
+				if(curpid->table == buffer[0]){
+					NULLFREE(er);
+					return;
+				}
+			}
+			cs_debug_mask(D_DVBAPI, "[DVBAPI] Demuxer #%d ECMTYPE %02X CAID %04X PROVID %06X ECMPID %04X IRDETO INDEX %02X MAX INDEX %02X CHID %04X CYCLE %02X VPID %04X", demux_id, er->ecm[0], er->caid, er->prid, er->pid, er->ecm[4], er->ecm[5], er->chid, curpid->irdeto_cycle, er->vpid);
 		}
 		else
 		{
@@ -3317,7 +3325,7 @@ void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, i
 					|| (p->srvid && p->srvid != demux[demux_id].program_number))
 				{ continue; }
 
-			if(p->delay == len && p->force < 6)
+			if((uint)p->delay == ecmlen && p->force < 6)
 			{
 				p->force++;
 				NULLFREE(er);
@@ -3894,21 +3902,30 @@ static void *dvbapi_main_local(void *cli)
 							if (pmtlen > 0) {
 								// check and try to process complete PMT objects and filter data
 								// by chunks to avoid PMT buffer overflows
-								if (pmtlen > 8 && mbuf[0] == 0xff && mbuf[1] == 0xff) //filter data
+								if (pmtlen > 8 && mbuf[0] == 0xff && mbuf[1] == 0xff) //no pmt data but filter data
 								{
 									int32_t demux_index = mbuf[4];
 									int32_t filter_num = mbuf[5];
 									int32_t data_len = b2i(2, mbuf+7)&0x0FFF;
 									uint32_t chunksize = 6 + 3 + data_len;
 
-									chunks_processed++;
-									dvbapi_process_input(demux_index, filter_num, mbuf + 6, data_len + 3);
+									if (pmtlen >= chunksize) // only process filterdata if all complete in buffer
+									{
+										chunks_processed++;
+										dvbapi_process_input(demux_index, filter_num, mbuf + 6, data_len + 3);
+										if (pmtlen == chunksize) // if we fetched and handled the exact chucksize reset buffer counter! 
+										{
+											pmtlen = 0;
+										}
+											
+									}
 
 									// if we read more data then processed, move it to beginning
 									if (pmtlen > chunksize)
+									{
 										memmove(mbuf, mbuf + chunksize, pmtlen - chunksize);
-									
-									pmtlen -= chunksize;
+										pmtlen -= chunksize;
+									}
 									continue;
 								}
 								else if (pmtlen > 4 && mbuf[0] == 0x9f && mbuf[1] == 0x80 && mbuf[2] == 0x32)
@@ -3935,16 +3952,22 @@ static void *dvbapi_main_local(void *cli)
 
 									// handle if we have a complete PMT object
 									chunksize = 3 + size + val;
-									if (chunksize < sizeof(mbuf))
+									if (chunksize < sizeof(mbuf) && chunksize <= pmtlen) // only handle if we fetched a complete chunksize!
 									{
 										chunks_processed++;
 										cs_ddump_mask(D_DVBAPI, mbuf, chunksize, "[DVBAPI] Parsing #%d PMT object(s):", chunks_processed);
 										dvbapi_handlesockmsg(mbuf, chunksize, connfd);
+										if (chunksize == pmtlen) // if we fetched and handled the exact chucksize reset buffer counter!
+										{
+											pmtlen = 0;
+										}
 
 										// if we read more data then processed, move it to beginning
 										if (pmtlen > chunksize)
+										{
 											memmove(mbuf, mbuf + chunksize, pmtlen - chunksize);
-										pmtlen -= chunksize;
+											pmtlen -= chunksize;
+										}
 										continue;
 									}
 								}
@@ -4108,7 +4131,7 @@ void delayer(ECM_REQUEST *er)
 	int32_t gone = comp_timeb(&tpe, &er->tps);
 	if( gone < cfg.dvbapi_delayer)
 	{
-		cs_debug_mask(D_DVBAPI, "delayer: gone=%dms, cfg=%dms -> delay=%dms", gone, cfg.dvbapi_delayer, cfg.dvbapi_delayer - gone);
+		cs_debug_mask(D_DVBAPI, "delayer: gone=%d ms, cfg=%d ms -> delay=%d ms", gone, cfg.dvbapi_delayer, cfg.dvbapi_delayer - gone);
 		cs_sleepms(cfg.dvbapi_delayer - gone);
 	}
 }
@@ -4457,6 +4480,9 @@ static void *dvbapi_handler(struct s_client *cl, uchar *UNUSED(mbuf), int32_t mo
 
 int32_t dvbapi_set_section_filter(int32_t demux_index, ECM_REQUEST *er)
 {
+#ifdef DVBAPI_SAMYGO // samygo section filtering is not working (tested samygolib 0.4)
+	return 0;
+#endif
 	if(!er) { return -1; }
 
 	if(selected_api != DVBAPI_3 && selected_api != DVBAPI_1 && selected_api != STAPI)   // only valid for dvbapi3, dvbapi1 and STAPI

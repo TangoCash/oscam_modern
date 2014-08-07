@@ -234,8 +234,8 @@ div.sidlistclose a {
 }
 #mainmenu li {
 	display:inline;
-	margin-left:5px;
-	margin-right:5px;
+	margin-left:3px;
+	margin-right:3px;
 	padding:5px 3px 3px;
 	font-size:16px;
 	font-weight:400;
@@ -646,10 +646,11 @@ tr:hover td a {
 tr:hover td a:hover {
 	color:#FFF
 }
-table.status #tbodyc tr:last-child td {
-	border-bottom:1px
+/*table.status #tbodyc tr:last-child td {
+	border-bottom:1px;
+	border-color: #000;
 }
-
+*/
 /* **************** 11. DIV */
 /* status.html, entitlements_genericbit.html */
 div.log {
@@ -713,7 +714,7 @@ div.footer {
 	margin-bottom:0;
 	margin-top:40px;
 	background-color:#17191B;
-/*	border-top:10px solid #000*/
+	border-top:1px solid #000
 }
 div.footer ul {
 	margin:5px
@@ -900,20 +901,20 @@ td.configcolsave {
 /* only for statusheadline button in status.html */
 td.subheadline input[type="button"] {
 	float:right;
+	font-size:10px;
 	margin:0 0 0 2px;
-	width:95px;
-	font-weight:normal;
 	-webkit-appearance:none;
 	border-radius:3px;
-	border:1px solid #AAA;
-	text-align:center;    	
-	height:20px;
+	border:1px solid #FFF;
+	text-align:center;
+	text-shadow:1px 1px 1px #0000;
 	color:#333;
 	background-color:#F8F8F8;
 	cursor:pointer;
 }
+
 td.subheadline input[type="button"]:hover {
-	background:#0B1219; 
+	background:red;
 	color:#FFF;
 	-webkit-transition: all .01s ease-out; 
 	-moz-transition: all .01s linear; 
@@ -976,11 +977,29 @@ td#in.centered img {
 
 /* **************** 14. SPAN */
 /* module-webif.c and userconfig_notify.html */
-span.span_notifier {
-	margin-left:2px;
-	padding:1px 4px;
-	color:#FFF;
-	background:red
+span.span_notifier{
+	background: radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -moz-radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -ms-radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -o-radial-gradient( center -9px, circle closest-side, white 0, red 26px );
+	background: -webkit-radial-gradient( center -9px, circle, white 0, red 26px );
+	background-color: red;
+	border: 2px solid white;
+	border-radius: 50%; 
+	box-shadow: 1px 1px 1px black;
+	color: white;
+	font: bold 12px/10px Helvetica, Verdana, Tahoma;
+	height: 12px; /* height + padding-top must equal width */
+	padding-top: 0px; /* height + padding-top must equal width */
+	text-align: center;
+	width: 20px;
+	left: -3px;
+	margin-top: 0;
+	padding-left: 4px;
+	padding-right: 4px;
+	top: -8px;
+	margin-right: -10px;
+	position:relative;
 }
 /* module-webif.c value for STATUS item ( more info in Changeset 6668 by alno )
  * Class for formating values in statusview column "Idle" 
@@ -1311,7 +1330,7 @@ div.bar {
  * 1152 x 864, 1280 x 1024
  * 1366 x 768 [ 15" Netbook ]
  */
-@media screen and (min-width: 1024px) and (max-width: 1366px) {
+@media screen and (min-width: 1024px) and (max-width: 1024px) {
 	div.groups {
 		text-overflow:ellipsis;
 		-o-text-overflow:ellipsis
@@ -1752,3 +1771,26 @@ div.warning br {
 			display:none
 		}	
 }
+
+th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{background:#b5bdc8;background:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2I1YmRjOCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjM0JSIgc3RvcC1jb2xvcj0iIzUzNTY1ZSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyODM0M2IiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);background:-moz-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-webkit-gradient(linear,left top,left bottom,color-stop(0%,#b5bdc8),color-stop(34%,#53565e),color-stop(100%,#28343b));background:-webkit-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-o-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-ms-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:linear-gradient(to bottom,#b5bdc8 0%,#53565e 34%,#28343b 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#b5bdc8",endColorstr="#28343b",GradientType=0);color:#fff}
+td.subheadline input[type="button"] {color: #FFFFFF;text-shadow: 1px 1px 1px #000000;}
+li.menu a{color:#fff;text-decoration:none}
+table {border-spacing: 0;}
+td.servicescol1,td.servicescol2,td.servicescol3,td{border-bottom: 1px solid #000000;border-right: 1px solid #000000;}
+td:first-child{border-left: 1px solid #000000;}
+th.sortable:last-child,tbody tr th:last-child{border-right: 1px solid #000000;}
+div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
+div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
+tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
+td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
+
+#livelog{padding-left:10px;padding-top:10px;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;font: 12px Verdana,Geneva,sans-serif,Arial;}
+table.invisible tbody tr td,td.invisible tr td{border:0;}
+textarea.bt{width: 480px;}
+table.config tbody tr td input,input.medium {width: 200px;}
+table.config tbody tr td input[type="checkbox"],td.invisible input[type="checkbox"],input#chb {width: 10px;}
+td.configcolsave input[type="submit"], input.withunit.short {width: 50px;}
+tr.configcontrol td.centered input[type="submit"] {width: 100px;}
+
+
+

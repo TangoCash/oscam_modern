@@ -1367,6 +1367,7 @@ struct s_reader                                     //contains device info, read
 	uint16_t		VgCredit;
 	uint16_t        VgPin;
 	unsigned char   VgFuse;
+	unsigned char	VgCountryC[3];
 	unsigned char   VgRegionC[8];
 #ifdef WITH_LB
 	int32_t         lb_weight;                      //loadbalance weight factor, if unset, weight=100. The higher the value, the higher the usage-possibility
@@ -1453,7 +1454,7 @@ struct s_auth
 	int8_t          monlvl;
 	uint64_t        grp;
 	int32_t         tosleep;
-	uint32_t      umaxidle;
+	int32_t      umaxidle;
 	CAIDTAB         ctab;
 	SIDTABS         sidtabs;
 	FTAB            fchid;
@@ -1680,6 +1681,7 @@ struct s_config
 	int8_t          http_force_sslv3;
 	char            *http_cert;
 	char            *http_help_lang;
+	char            *http_locale;
 	char            *http_oscam_label;
 #endif
 	int8_t          http_full_cfg;
@@ -1703,7 +1705,7 @@ struct s_config
 	IN_ADDR_T       c35_tcp_srvip;
 #endif
 	int8_t          c35_suppresscmd08; // used in cccam module
-	uint32_t    umaxidle; //User max Idle
+	int32_t    umaxidle; //User max Idle
 #ifdef MODULE_NEWCAMD
 	PTAB            ncd_ptab;
 	IN_ADDR_T       ncd_srvip;

@@ -931,9 +931,10 @@ static void reader_fixups_fn(void *var)
 #ifdef CS_CACHEEX
 		if(rdr && rdr->cacheex.mode>1)
 			{ rdr->keepalive = 1; }   //with cacheex, it is required!
+		else
 #endif
-		if(rdr->keepalive)
-			{ rdr->tcp_rto = 60; }	  //we cannot check on rto before send keepalive (each 30s), so set rto > 30
+		if(rdr->typ == R_CAMD35)
+			{ rdr->keepalive = 0; }   //with NO-cacheex, and UDP, keepalive is not required!
 	}
 }
 
