@@ -7200,8 +7200,8 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 			if(cfg.http_locale){
 				float decimal_point = 0.0;
 				setlocale(LC_ALL, cfg.http_locale);
-				tpl_printf(vars, TPLADD, "TMP_DECPOINT", "%.2f", decimal_point);
-				tpl_addVar(vars, TPLADD, "LOCALE_DECPOINT", strstr(tpl_getVar(vars, "TMP_DECPOINT"), ".") ? ".": ",");
+				tpl_printf(vars, TPLADD, "TMP_DECPOINT", "%.1f", decimal_point);
+				tpl_addVar(vars, TPLADD, "LOCALE_DECPOINT", strstr(tpl_getVar(vars, "TMP_DECPOINT"), ",") ? ",": ".");
 			}
 
 			tpl_addVar(vars, TPLADD, "HTTP_CHARSET", cs_http_use_utf8 ? "UTF-8" : "ISO-8859-1");
