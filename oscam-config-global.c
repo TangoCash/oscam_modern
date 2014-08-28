@@ -305,7 +305,7 @@ static const struct config_list global_opts[] =
 	DEF_OPT_INT32("unlockparental"          , OFS(ulparent),            0),
 	DEF_OPT_INT32("nice"                    , OFS(nice),                99),
 	DEF_OPT_INT32("maxlogsize"              , OFS(max_log_size),        10),
-	DEF_OPT_INT8("waitforcards"             , OFS(waitforcards),        NULL),
+	DEF_OPT_INT8("waitforcards"             , OFS(waitforcards),        0),
 	DEF_OPT_INT32("waitforcards_extra_delay"    , OFS(waitforcards_extra_delay), 500),
 	DEF_OPT_INT8("preferlocalcards"         , OFS(preferlocalcards),    0),
 	DEF_OPT_INT32("readerrestartseconds"    , OFS(reader_restart_seconds), 5),
