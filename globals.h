@@ -221,7 +221,7 @@ typedef unsigned char uchar;
 /* ===========================
  *         constants
  * =========================== */
-#define CS_VERSION    "1.20-unstable_svn"
+#define CS_VERSION    "1.20-unstable-patch"
 #ifndef CS_SVN_VERSION
 #   define CS_SVN_VERSION "test"
 #endif
@@ -1401,6 +1401,7 @@ struct s_reader                                     //contains device info, read
 	int8_t          cooldownstate;
 	struct timeb    cooldowntime;
 	struct ecmrl    rlecmh[MAXECMRATELIMIT];
+	int8_t          fix_07;
 	int8_t          fix_9993;
 	uint8_t         ins7E[0x1A + 1];
 	uint8_t         ins7E11[0x01 + 1];

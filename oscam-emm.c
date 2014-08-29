@@ -429,6 +429,22 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 		client->last = time(NULL);
 
 		int32_t is_blocked = 0;
+
+		if (aureader->fix_07)
+		{
+			if(ep->emm[1] == 0x70 && ep->emm[8] != 2 && (caid == 0x098C || caid == 0x9C4))
+			{
+				rdr_log(aureader,"emmtype 0x%02X marked as unknown for caid 0x%04X", ep->emm[8],caid);
+				ep->type = UNKNOWN;
+			}
+
+			if(ep->emm[1] == 0 && ep->emm[4] != 2 && (caid == 0x098C || caid == 0x9C4))
+			{
+				rdr_log(aureader,"emmtype 0x%02X marked as unknown for caid 0x%04X", ep->emm[4],caid);
+				ep->type = UNKNOWN;
+			}
+		}
+
 		switch(ep->type)
 		{
 		case UNKNOWN:
