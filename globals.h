@@ -221,7 +221,7 @@ typedef unsigned char uchar;
 /* ===========================
  *         constants
  * =========================== */
-#define CS_VERSION    "1.20-unstable-patch"
+#define CS_VERSION    "1.20-modern"
 #ifndef CS_SVN_VERSION
 #   define CS_SVN_VERSION "test"
 #endif
