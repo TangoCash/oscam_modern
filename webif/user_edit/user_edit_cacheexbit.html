@@ -13,7 +13,11 @@
 				<TR><TD><A>Cache-EX 3 ECM filter:</A></TD><TD><input name="cacheex_ecm_filter" type="text" maxlength="320" value="##CACHEEX_ECM_FILTER##"></TD></TR>
 				<TR><TD><A>Cache-EX 3 filter adv.:</A></TD>
 					<TD CLASS="invisible">
-						<input name="cacheex_drop_csp" value="0" type="hidden"><input name="cacheex_drop_csp" value="1" type="checkbox" ##DCCHECKED##><label>drop csp cache</label>&nbsp;&nbsp;
-						<input name="cacheex_allow_request" value="0" type="hidden"><input name="cacheex_allow_request" value="1" type="checkbox" ##ARCHECKED##><label>allow request</label>
+						<TABLE>
+							<TR>
+								<TD><input name="cacheex_drop_csp" value="0" type="hidden"><input name="cacheex_drop_csp" value="1" type="checkbox" ##DCCHECKED##><label>drop csp cache</label></TD>
+								<TD><input name="cacheex_allow_request" value="0" type="hidden"><input name="cacheex_allow_request" value="1" type="checkbox" ##ARCHECKED##><label>allow request</label></TD>
+							</TR>
+						</TABLE>
 					</TD>
 				</TR>
