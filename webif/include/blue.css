@@ -124,7 +124,7 @@ a:hover {
 a.debugl:link {
 	margin:0 1px
 }
-a.debugl:hover{
+a.debugl:hover, a.debugs:hover{
 	background-color:#A00;
 	color:#FFF
 }
@@ -1771,6 +1771,21 @@ div.warning br {
 			display:none
 		}	
 }
+/* hiding formatline for width of firstrow in config, readers and users / width in info */
+tr.configfirstrow, tr.configfirstrow td,
+tr.infocolswidth, tr.infocolswidth td, tr.infocolswidth th {
+	border:0;
+	height:0;
+	padding:0
+}
+
+.colorPicker_def_color {
+	color:#333333
+}
+.colorPicker_def_fcolor {
+	color:#FFFFFF
+}
+
 th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{
 color:#FFFFFF;
 text-shadow: black 0.2em 0.2em 0.2em;
@@ -1797,7 +1812,7 @@ div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
 div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
 tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
-#livelog{padding-left:10px;padding-top:10px;height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#555555;color:#FFFFFF;}
+#livelog{padding-left:10px;padding-top:10px;height:500px;width:97%;margin-left:1%;overflow-y:auto;list-style:none;text-align:left;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#333333;color:#FFFFFF;}
 table.invisible tbody tr td{border:0}
 table.invisible tbody tr td,td.invisible tr td{border:0;}
 textarea.bt{width: 480px;}
