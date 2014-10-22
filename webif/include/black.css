@@ -104,6 +104,15 @@ td.subheadline p {
 	font-weight:bold;
 	margin-left:5px
 }
+#filesubmit {
+	height:20px
+ }
+li {
+	list-style:none
+}
+/* readerstats.html for P */
+#text_totalecm {}
+
 /* footer.html */
 div.footer p {
 	margin:5px

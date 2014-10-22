@@ -55,7 +55,9 @@
 #define DVBAPI_DMX_SET_FILTER  0x403c6f2b
 #define DVBAPI_DMX_STOP        0x00006f2a
 
+#define DVBAPI_AOT_CA          0x9F803000
 #define DVBAPI_AOT_CA_PMT      0x9F803200  //least significant byte is length (ignored)
+#define DVBAPI_AOT_CA_STOP     0x9F803F04
 #define DVBAPI_FILTER_DATA     0xFFFF0000
 #define DVBAPI_CLIENT_INFO     0xFFFF0001
 #define DVBAPI_SERVER_INFO     0xFFFF0002
@@ -279,6 +281,9 @@ int8_t update_streampid_list(uint8_t cadevice, uint16_t pid, int32_t idx);
 int8_t remove_streampid_from_list(uint8_t cadevice, uint16_t pid, int32_t idx);
 void disable_unused_streampids(int16_t demux_id);
 int8_t is_ca_used(uint8_t cadevice);
+const char *dvbapi_get_client_name(void);
+uint16_t dvbapi_get_client_proto_version(void);
+void delayer(ECM_REQUEST *er);
 
 #ifdef DVBAPI_LOG_PREFIX
 #undef cs_log

@@ -66,11 +66,11 @@ static int32_t set_provider_info(struct s_reader *reader, int32_t i)
 
 	provid = b2ll(4, reader->prid[i]);
 	int seca_version = reader->card_atr[9] & 0X0F; //Get seca cardversion from cardatr
-	if(seca_version == 10 && provid == 0x006a){ // check for cds nagra smartcard (seca3) 
+	if(seca_version == 10){ // check for nagra smartcard (seca3) 
 		reader->secatype = 3;
-		rdr_log(reader, "Detected seca3 card");
+		rdr_log(reader, "Detected seca/nagra (seca3) card");
 	}
-	if(seca_version == 7 && provid == 0x006a){ // check for cds seca smartcard (seca2)
+	if(seca_version == 7){ // check for seca smartcard (seca2)
 		reader->secatype = 2;
 		rdr_log(reader, "Detected seca2 card");
 	}
@@ -227,8 +227,7 @@ static int32_t seca_card_init(struct s_reader *reader, ATR *newatr)
 	serial = b2ll(5, cta_res + 3) ;
 	rdr_log_sensitive(reader, "type: SECA, caid: %04X, serial: {%llu}, card: %s v%d.%d",
 					  reader->caid, (unsigned long long) serial, card, atr[9] & 0x0F, atr[9] >> 4);
-	// The && ins7e11_fast_reset != 2 is a very dirty hack for Golden interstar receivers when driver for that box is fixed remove this hack.
-	if ((((atr[7] << 8 | atr[8]) == 0x7070) && ((atr[9] &0x0F) >= 10)) && reader->ins7e11_fast_reset != 2) // is this possibly a nagra card tunneling seca commands?
+	if (((atr[7] << 8 | atr[8]) == 0x7070) && ((atr[9] &0x0F) >= 10)) // is this possibly a nagra card tunneling seca commands?
 	{
 		rdr_log(reader, "Trying to switch to nagra layer of this card!");
 		write_cmd(ins80, handshake); // try to init nagra layer
@@ -246,9 +245,10 @@ static int32_t seca_card_init(struct s_reader *reader, ATR *newatr)
 			memset(reader->rom, 0, sizeof(reader->rom));
 			
 			ATR_GetHistoricalBytes(&nagra_atr, reader->rom, &hist_size); // get historical bytes containing romrev from nagra atr
-			
-			rdr_log(reader, "Switching back to seca mode!");
+
+			rdr_log(reader, "Switching back to seca mode! ");
 			call(reader->crdr.activate(reader, &nagra_atr)); // switch back to seca layer
+
 			if ((reader->typ == R_SMART || reader->typ == R_INTERNAL || !strcasecmp(reader->crdr.desc, "smargo")) && ins7e11_state == 1)
 			{
 				ins7e11_state = 0;

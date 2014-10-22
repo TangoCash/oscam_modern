@@ -38,11 +38,12 @@ reader protocol, \fIrequired\fR:
  \fBmp35\fP
  \fBnewcamd\fP|\fBnewcamd525\fP
  \fBnewcamd524\fP
- \fBpcsc\fP 
- \fBradegast\fP 
+ \fBpcsc\fP
+ \fBradegast\fP
+ \fBscam\fP
  \fBsc8in1\fP
  \fBserial\fP
- \fBsmargo\fP 
+ \fBsmargo\fP
  \fBsmartreader\fP
 .RE
 .PP
@@ -50,6 +51,7 @@ reader protocol, \fIrequired\fR:
          \fB<device|device:slot>\fP|
          \fB<ip|hostname>,<port>[,<lport>]\fP|
          \fB<ip|hostname>,<gboxpport>\fP|
+         \fB<ip|hostname>,<scamport>\fP|
          \fBpcsc\fP|
          \fB<0|1>\fP>|
          \fBconstantcw\fP
@@ -170,6 +172,16 @@ add 26 hex-bytes payload for NDS Videoguard 2 SCs, valid for physical readers on
 \fBins7e11\fP = \fBTA1 byte\fP
 .RS 3n
 set TA1 byte for NDS Videoguard 2 SCs, valid for physical readers only, default:none
+.RE
+.PP
+\fBfix07\fP = \fBpayload\fP
+.RS 3n
+1=enable 0x07 fix for NDS Videoguard 2 SCs, valid for physical readers only, default:1
+.RE
+.PP
+\fB\fP = \fBpayload\fP
+.RS 3n
+add check control for pin payload for NDS Videoguard 2 SCs, valid for physical readers only, default:none
 .RE
 .PP
 \fBforce_irdeto\fP = \fB0\fP|\fB1\fP

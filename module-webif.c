@@ -1023,11 +1023,11 @@ static char *send_oscam_config_webif(struct templatevars *vars, struct uriparams
 	}
 
 	struct dirent **namelist;
-   	int count;
-	count = scandir(cs_confdir, &namelist, 0, alphasort ) ;
+	int count;
+	count = scandir(cs_confdir, &namelist, 0, alphasort );
 
- 	if( count >= 0 )
-   	{
+	if( count >= 0 )
+	{
 		for( i = 0 ; i < count; i++ )
 		{
 			if(is_ext(namelist[i]->d_name, ".css"))
@@ -1037,9 +1037,9 @@ static char *send_oscam_config_webif(struct templatevars *vars, struct uriparams
 						   namelist[i]->d_name,
 						   cfg.http_css && strstr(cfg.http_css, namelist[i]->d_name) ? " selected" : "",
 						   cs_confdir, namelist[i]->d_name);
- 			}	
-         	free( namelist[i] ) ;
-      	}
+			}
+			free( namelist[i] );
+		}
 		free(namelist);
 	}
 
@@ -2614,7 +2614,7 @@ static char *send_oscam_reader_stats(struct templatevars *vars, struct uriparams
 		}
 	}
 
-	tpl_printf(vars, TPLADD, "TOTALECM", "%" PRIu64, ecmcount);
+	tpl_printf(vars, TPLADD, "TOTALECM", "%'" PRIu64, ecmcount);
 
 	if(!apicall)
 		{ return tpl_getTpl(vars, "READERSTATS"); }
@@ -3054,6 +3054,14 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 				}
 			}
 		}
+		return;
+	}
+#endif
+#ifdef HAVE_DVBAPI
+	if(streq(proto, "dvbapi") && cl->typ == 'c' && dvbapi_get_client_name())
+	{
+		tpl_printf(vars, TPLADD, "CLIENTPROTO", "<A HREF=\"#\" CLASS=\"tooltip\">%s<SPAN>client: %s<BR>protocol version: %d</SPAN></A>", proto, dvbapi_get_client_name(), dvbapi_get_client_proto_version());
+		tpl_printf(vars, TPLADD, "CLIENTPROTOSORT", "%s", proto);
 		return;
 	}
 #endif
@@ -5391,18 +5399,18 @@ static char *send_oscam_script(struct templatevars * vars, struct uriparams * pa
 	if(!cfg.http_readonly && cfg.http_script)
 	{
 		struct dirent **namelist;
-   		int count, i;
-		count = scandir(cfg.http_script, &namelist, 0, alphasort ) ;
- 		if( count >= 0 )
-   		{
-      		for( i = 0 ; i < count; i++ )
+		int count, i;
+		count = scandir(cfg.http_script, &namelist, 0, alphasort );
+		if( count >= 0 )
+		{
+			for( i = 0 ; i < count; i++ )
 			{
 				if(is_ext(namelist[i]->d_name, ".script") || is_ext(namelist[i]->d_name, ".sh"))
 				{
 					tpl_printf(vars, TPLAPPEND, "SCRIPTOPTIONS", "<option value=\"script.html?scriptname=%s\">%s</option>\n",namelist[i]->d_name,namelist[i]->d_name);
- 				}	
-         		free( namelist[i] ) ;
-      		}
+ 				}
+				free( namelist[i] );
+			}
 			free(namelist);
 		}
 
@@ -5456,7 +5464,7 @@ static char *send_oscam_scanusb(struct templatevars * vars)
 	{
 		tpl_addVar(vars, TPLADD, "USBENTRY", "<b>lsusb:</b> Failed to run or not installed!");
 		tpl_addVar(vars, TPLADD, "USBBIT", tpl_getTpl(vars, "SCANUSBBIT"));
-	} 
+	}
 	else
 	{
 		while(fgets(path, sizeof(path) - 1, fp) != NULL)
@@ -6238,6 +6246,7 @@ static char *send_oscam_cacheex(struct templatevars * vars, struct uriparams * p
 		}
 		else if(get_module(cl)->listenertype == LIS_CSPUDP)
 		{
+			cacheex_name_link_tpl = "SREADER";
 			tpl_addVar(vars, TPLADD, "TYPE", "csp");
 			tpl_addVar(vars, TPLADD, "NAME", "csp");
 			tpl_addVar(vars, TPLADD, "IP", cs_inet_ntoa(cl->ip));

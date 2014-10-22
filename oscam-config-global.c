@@ -324,6 +324,8 @@ static const struct config_list global_opts[] =
 	DEF_OPT_INT32("lb_min_ecmcount"         , OFS(lb_min_ecmcount),     DEFAULT_MIN_ECM_COUNT),
 	DEF_OPT_INT32("lb_max_ecmcount"         , OFS(lb_max_ecmcount),     DEFAULT_MAX_ECM_COUNT),
 	DEF_OPT_INT32("lb_reopen_seconds"       , OFS(lb_reopen_seconds),   DEFAULT_REOPEN_SECONDS),
+	DEF_OPT_INT8("lb_reopen_invalid"  		, OFS(lb_reopen_invalid),   1),
+	DEF_OPT_INT8("lb_force_reopen_always"   , OFS(lb_force_reopen_always),   0),
 	DEF_OPT_INT32("lb_retrylimit"           , OFS(lb_retrylimit),       DEFAULT_RETRYLIMIT),
 	DEF_OPT_INT32("lb_stat_cleanup"         , OFS(lb_stat_cleanup),     DEFAULT_LB_STAT_CLEANUP),
 	DEF_OPT_INT32("lb_max_readers"          , OFS(lb_max_readers),      0),
@@ -722,7 +724,7 @@ static const struct config_list cccam_opts[] =
 	DEF_OPT_FUNC("serverip"			, OFS(cc_srvip),		serverip_fn),
 	DEF_OPT_HEX("nodeid"			, OFS(cc_fixed_nodeid),		SIZEOF(cc_fixed_nodeid)),
 	DEF_OPT_SSTR("version"			, OFS(cc_version),		"", SIZEOF(cc_version)),
-	DEF_OPT_INT8("reshare"			, OFS(cc_reshare),		5),
+	DEF_OPT_INT8("reshare"			, OFS(cc_reshare),		10),
 	DEF_OPT_INT8("reshare_mode"		, OFS(cc_reshare_services),	4),
 	DEF_OPT_INT8("ignorereshare"		, OFS(cc_ignore_reshare),	0),
 	DEF_OPT_INT8("forward_origin_card"	, OFS(cc_forward_origin_card),	0),
@@ -770,7 +772,7 @@ static const struct config_list scam_opts[] =
 	DEF_OPT_SAVE_FUNC(scam_should_save_fn),
 	DEF_OPT_INT32("port"    , OFS(scam_port),    0),
 	DEF_OPT_FUNC("serverip" , OFS(scam_srvip),   serverip_fn),
-	DEF_OPT_FUNC("allowed"  , OFS(scam_allowed), iprange_fn, .free_value = iprange_free_fn),	
+	DEF_OPT_FUNC("allowed"  , OFS(scam_allowed), iprange_fn, .free_value = iprange_free_fn),
 	DEF_LAST_OPT
 };
 #else

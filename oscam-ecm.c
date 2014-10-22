@@ -1251,6 +1251,21 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 
 ESC:
 
+	if(er->rc == E_TIMEOUT) // cleanout timeout ecm response so they can be asked again
+	{
+		struct s_ecm_answer *ea_list;
+		for(ea_list = er->matching_rdr; ea_list; ea_list = ea_list->next)
+		{
+			if(ea_list->reader)
+			{
+				ea_list->status = 0; // clear status
+				ea_list->rc = E_UNHANDLED; // set
+			}
+		}
+		er->rc = E_UNHANDLED; // set default rc status to unhandled
+		er->cwc_next_cw_cycle = 2; //set it to: we dont know
+	}	
+
 	return 0;
 }
 
@@ -1475,6 +1490,7 @@ void chk_dcw(struct s_ecm_answer *ea)
 		}
 #endif
 		break;
+	case E_INVALID:
 	case E_NOTFOUND:
 	{
 
@@ -2166,7 +2182,7 @@ void get_cw(struct s_client *client, ECM_REQUEST *er)
 			}
 			if(client->c35_sleepsend != 0)
 			{
-				er->rc = E_STOPPED; // send stop command CMD08 {00 xx}
+				er->rc = E_STOPPED; // send sleep command CMD08 {00 255}
 			}
 			else
 			{

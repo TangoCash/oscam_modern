@@ -48,7 +48,7 @@ DESCRIPTIONS
 	   3 = only one connection per user, but only the last login
 	       will survive (old MpCS behavior)
 	   4 = set user only to fake if source ip is different,
-	       but only the last login will survive
+	       but only the last login will survive 
 
        numusers = quantity
 	  anti-cascading: user per account,  0	=  anti-cascading  disabled,  -1  =  global  value  from  oscam.conf,

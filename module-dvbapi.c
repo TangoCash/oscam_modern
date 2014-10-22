@@ -102,6 +102,7 @@ static const struct box_devices devices[BOX_COUNT] =
 static int32_t selected_box = -1;
 static int32_t selected_api = -1;
 static int32_t dir_fd = -1;
+char *client_name = NULL;
 static uint16_t client_proto_version = 0;
 
 static int32_t ca_fd[8]; // holds fd handle of each ca device 0 = not in use
@@ -458,29 +459,48 @@ int32_t dvbapi_net_send(uint32_t request, int32_t socket_fd, int32_t demux_index
 
 			if (data)       // filter data when starting
 			{
-				memcpy(&packet[size], data, sct_filter_size);       //dmx_sct_filter_params struct
-
 				if (client_proto_version >= 1)
 				{
-					struct dmx_sct_filter_params *fp = (struct dmx_sct_filter_params *) &packet[size];
-					fp->pid = htons(fp->pid);
-					fp->timeout = htonl(fp->timeout);
-					fp->flags = htonl(fp->flags);
-				}
+					struct dmx_sct_filter_params *fp = (struct dmx_sct_filter_params *) data;
 
-				size += sct_filter_size;
+					// adding all dmx_sct_filter_params structure fields
+					// one by one to avoid padding problems
+					uint16_t pid = htons(fp->pid);
+					memcpy(&packet[size], &pid, 2);
+					size += 2;
+
+					memcpy(&packet[size], fp->filter.filter, 16);
+					size += 16;
+					memcpy(&packet[size], fp->filter.mask, 16);
+					size += 16;
+					memcpy(&packet[size], fp->filter.mode, 16);
+					size += 16;
+
+					uint32_t timeout = htonl(fp->timeout);
+					memcpy(&packet[size], &timeout, 4);
+					size += 4;
+
+					uint32_t flags = htonl(fp->flags);
+					memcpy(&packet[size], &flags, 4);
+					size += 4;
+				}
+				else
+				{
+					memcpy(&packet[size], data, sct_filter_size);       //dmx_sct_filter_params struct
+					size += sct_filter_size;
+				}
 			}
 			else            // pid when stopping
 			{
 				if (client_proto_version >= 1)
 				{
-					int16_t pid = htons(demux[demux_index].demux_fd[filter_number].pid);
+					uint16_t pid = htons(demux[demux_index].demux_fd[filter_number].pid);
 					memcpy(&packet[size], &pid, 2);
 					size += 2;
 				}
 				else
 				{
-					int16_t pid = demux[demux_index].demux_fd[filter_number].pid;
+					uint16_t pid = demux[demux_index].demux_fd[filter_number].pid;
 					packet[size++] = pid >> 8;
 					packet[size++] = pid & 0xff;
 				}
@@ -2874,7 +2894,7 @@ void dvbapi_handlesockmsg(unsigned char *buffer, uint32_t len, int32_t connfd)
 			// 9F 80 3f 04 83 02 00 <demux index>
 			cs_ddump_mask(D_DVBAPI, buffer, len, "capmt 3f:");
 			// ipbox fix
-			if(cfg.dvbapi_boxtype == BOXTYPE_IPBOX)
+			if(cfg.dvbapi_boxtype == BOXTYPE_IPBOX || cfg.dvbapi_listenport)
 			{
 				int32_t demux_index = buffer[7 + k];
 				for(i = 0; i < MAX_DEMUX; i++)
@@ -2885,20 +2905,23 @@ void dvbapi_handlesockmsg(unsigned char *buffer, uint32_t len, int32_t connfd)
 						break;
 					}
 				}
-				// check do we have any demux running on this fd
-				int16_t execlose = 1;
-				for(i = 0; i < MAX_DEMUX; i++)
+				if (cfg.dvbapi_boxtype == BOXTYPE_IPBOX)
 				{
-					if(demux[i].socket_fd == connfd)
+					// check do we have any demux running on this fd
+					int16_t execlose = 1;
+					for(i = 0; i < MAX_DEMUX; i++)
 					{
-						execlose = 0;
-						break;
+						if(demux[i].socket_fd == connfd)
+						{
+							execlose = 0;
+							break;
+						}
 					}
-				}
-				if(execlose)
-				{
-					int32_t ret = close(connfd);
-					if(ret < 0) { cs_log("ERROR: Could not close PMT fd (errno=%d %s)", errno, strerror(errno)); }
+					if(execlose)
+					{
+						int32_t ret = close(connfd);
+						if(ret < 0) { cs_log("ERROR: Could not close PMT fd (errno=%d %s)", errno, strerror(errno)); }
+					}
 				}
 			}
 			else
@@ -3876,7 +3899,7 @@ static void *dvbapi_main_local(void *cli)
 					pmthandling = 1;     // pmthandling in progress!
 					pmt_stopmarking = 0; // to stop_descrambling marking in PMT 6 mode
 					connfd = -1;         // initially no socket to read from
-					int new = 0;
+					int add_to_poll = 0; // we may need to additionally poll this socket when no PMT data comes in
 
 					if (pfd2[i].fd == listenfd)
 					{
@@ -3893,7 +3916,7 @@ static void *dvbapi_main_local(void *cli)
 								client->ip = SIN_GET_ADDR(servaddr);
 								client->port = ntohs(SIN_GET_PORT(servaddr));
 							}
-							new = 1;
+							add_to_poll = 1;
 
 							if(cfg.dvbapi_pmtmode == 3 || cfg.dvbapi_pmtmode == 0) { disable_pmt_files = 1; }
 
@@ -3916,24 +3939,37 @@ static void *dvbapi_main_local(void *cli)
 							len = recv(connfd, mbuf + pmtlen, sizeof(mbuf) - pmtlen, MSG_DONTWAIT);
 							if (len > 0)
 								pmtlen += len;
-							if ((cfg.dvbapi_listenport || cfg.dvbapi_boxtype == BOXTYPE_PC_NODMX) && len == 0)
+							if ((cfg.dvbapi_listenport || cfg.dvbapi_boxtype == BOXTYPE_PC_NODMX) &&
+								(len == 0 || (len == -1 && (errno != EINTR && errno != EAGAIN))))
 							{
 								//client disconnects, stop all assigned decoding
 								cs_debug_mask(D_DVBAPI, "Socket %d reported connection close", connfd);
 								for (j = 0; j < MAX_DEMUX; j++)
+								{
 									if (demux[j].socket_fd == connfd)
 										dvbapi_stop_descrambling(j);
+									// remove from unassoc_fd when necessary
+									if (unassoc_fd[j] == connfd)
+										unassoc_fd[j] = 0;
+								}
 								close(connfd);
 								connfd = -1;
+								add_to_poll = 0;
 								client_proto_version = 0;
+								if (client_name)
+								{
+									free(client_name);
+									client_name = NULL;
+								}
 								if (cfg.dvbapi_listenport)
 								{
 									//update webif data
 									client->ip = get_null_ip();
 									client->port = 0;
 								}
+								break;
 							}
-							if (pmtlen > 8) //if we received less then 8 bytes, than it's not complete for sure
+							if (pmtlen >= 8) //if we received less then 8 bytes, than it's not complete for sure
 							{
 								// check and try to process complete PMT objects and filter data by chunks to avoid PMT buffer overflows
 								uint32_t *opcode_ptr = (uint32_t *) &mbuf[0];         //used only to silent compiler warning about dereferencing type-punned pointer
@@ -3942,7 +3978,7 @@ static void *dvbapi_main_local(void *cli)
 								uint32_t data_len = 0;                                //variable for internal data length (eg. for the filter data size, PMT len)
 
 								//detect the opcode, its size (chunksize) and its internal data size (data_len)
-								if ((opcode & 0xFFFFFF00) == DVBAPI_AOT_CA_PMT)
+								if ((opcode & 0xFFFFF000) == DVBAPI_AOT_CA)
 								{
 									// parse packet size (ASN.1)
 									uint32_t size = 0;
@@ -3987,10 +4023,13 @@ static void *dvbapi_main_local(void *cli)
 								if (chunksize < sizeof(mbuf) && chunksize <= pmtlen) // only handle if we fetched a complete chunksize!
 								{
 									chunks_processed++;
-									if ((opcode & 0xFFFFFF00) == DVBAPI_AOT_CA_PMT)
+									if ((opcode & 0xFFFFF000) == DVBAPI_AOT_CA)
 									{
 										cs_ddump_mask(D_DVBAPI, mbuf, chunksize, "[DVBAPI] Parsing #%d PMT object(s):", chunks_processed);
 										dvbapi_handlesockmsg(mbuf, chunksize, connfd);
+										add_to_poll = 0;
+										if (cfg.dvbapi_listenport && opcode == DVBAPI_AOT_CA_STOP)
+											add_to_poll = 1;
 									}
 									else switch (opcode)
 									{
@@ -4005,10 +4044,14 @@ static void *dvbapi_main_local(void *cli)
 										{
 											uint16_t *client_proto_ptr = (uint16_t *) &mbuf[4];
 											uint16_t client_proto = ntohs(*client_proto_ptr);
-											char client_name[data_len + 1];
-											memcpy(&client_name, &mbuf[7], data_len);
-											client_name[data_len] = 0;
-											cs_log("[DVBAPI] Client connected: '%s' (protocol version = %d)", client_name, client_proto);
+											if (client_name)
+												free(client_name);
+											if (cs_malloc(&client_name, data_len + 1))
+											{
+												memcpy(client_name, &mbuf[7], data_len);
+												client_name[data_len] = 0;
+												cs_log("[DVBAPI] Client connected: '%s' (protocol version = %d)", client_name, client_proto);
+											}
 											client_proto_version = client_proto; //setting the global var according to the client
 
 											// as a response we are sending our info to the client:
@@ -4045,10 +4088,10 @@ static void *dvbapi_main_local(void *cli)
 							}
 						} while (pmtlen < sizeof(mbuf) && tries--);
 
-						// if the connection is new and we read no data, then add it to the poll,
+						// if the connection is new and we read no PMT data, then add it to the poll,
 						// otherwise this socket will not be checked with poll when data arives
 						// because fd it is not yet assigned with the demux
-						if (new && !pmtlen && !chunks_processed) {
+						if (add_to_poll) {
 							for (j = 0; j < MAX_DEMUX; j++) {
 								if (!unassoc_fd[j]) {
 									unassoc_fd[j] = connfd;
@@ -4957,6 +5000,16 @@ int8_t is_ca_used(uint8_t cadevice)
 		}
 	}
 	return CA_IS_CLEAR;
+}
+
+const char *dvbapi_get_client_name(void)
+{
+	return client_name;
+}
+
+uint16_t dvbapi_get_client_proto_version(void)
+{
+	return client_proto_version;
 }
 
 /*
