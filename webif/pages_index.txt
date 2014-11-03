@@ -130,6 +130,7 @@ ICENT                         images/ICENT.svg
 ICHID                         images/ICHID.svg
 ICKIL                         images/ICKIL.svg
 IC_LOGO                       images/ICMLOGO.svg
+IC_LOGOW                      images/ICMLOGOW.svg
 ICREF                         images/ICREF.svg
 ICRES                         images/ICRES.svg
 ICSTA                         images/ICSTA.svg
@@ -217,6 +218,7 @@ READERSTATSBIT                readerstats/readerstats_statsbit.html             
 READERSTATSROWNOTFOUNDBIT     readerstats/readerstatsnotfound.html                        WITH_LB
 READERSTATSROWBIT             readerstats/readerstatsrowbit.html                          WITH_LB
 READERSTATSROWTIMEOUTBIT      readerstats/readerstatstimeoutbit.html                      WITH_LB
+READERSTATSROWINVALIDBIT      readerstats/readerstatsinvalid.html                         WITH_LB
 
 SAVETEMPLATES                 savetemplates/savetemplates.html
 

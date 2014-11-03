@@ -23,7 +23,6 @@
 
 struct sr_data
 {
-	int8_t srdataok;
 	unsigned char T;
 	uint32_t fs; 
 	uint32_t ETU;
@@ -255,7 +254,9 @@ static int32_t Sci_Reset(struct s_reader *reader, ATR *atr)
 	int32_t tries = 0;
 	while(ret == ERROR && tries < 5)
 	{
+		cs_sleepms(150);
 		ioctl(reader->handle, IOCTL_SET_PARAMETERS, &params);
+		cs_sleepms(150); // give the reader some time to process the params
 		ioctl(reader->handle, IOCTL_SET_RESET, 1);
 		ret = Sci_Read_ATR(reader, atr);
 		params.fs = 0; // fs 0 heals unresponsive readers due to incorrect previous parameters before box needed powercycle (tested working on XP1000 box)
@@ -268,6 +269,7 @@ static int32_t Sci_Reset(struct s_reader *reader, ATR *atr)
 
 static int32_t Sci_WriteSettings(struct s_reader *reader, unsigned char T, uint32_t fs, uint32_t ETU, uint32_t WWT, uint32_t CWT, uint32_t BWT, uint32_t EGT, unsigned char P, unsigned char I)
 {
+    cs_sleepms(150);
 	struct sr_data *crdr_data = reader->crdr_data;
 	crdr_data->T = T;
 	crdr_data->fs = fs;
@@ -304,14 +306,15 @@ static int32_t Sci_WriteSettings(struct s_reader *reader, unsigned char T, uint3
 				   (int)params.P, (int)params.I, (int)params.U);
 
 	ioctl(reader->handle, IOCTL_SET_PARAMETERS, &params);
+	cs_sleepms(150); // give the reader some time to process the params
 	return OK;
 }
 
-#if defined(__SH4__)
-#define __IOCTL_CARD_ACTIVATED IOCTL_GET_IS_CARD_PRESENT
-#else
-#define __IOCTL_CARD_ACTIVATED IOCTL_GET_IS_CARD_ACTIVATED
-#endif
+#if defined(__SH4__) 
+#define __IOCTL_CARD_ACTIVATED IOCTL_GET_IS_CARD_PRESENT 
+#else 
+#define __IOCTL_CARD_ACTIVATED IOCTL_GET_IS_CARD_ACTIVATED 
+#endif 
 
 static int32_t Sci_Activate(struct s_reader *reader)
 {
@@ -339,7 +342,7 @@ static int32_t Sci_FastReset(struct s_reader *reader, ATR *atr)
 	ioctl(reader->handle, IOCTL_SET_ATR_READY, 1);
 
 	Sci_WriteSettings(reader, crdr_data->T,crdr_data->fs,crdr_data->ETU, crdr_data->WWT,crdr_data->CWT,crdr_data->BWT,crdr_data->EGT,crdr_data->P,crdr_data->I);
-
+	cs_sleepms(150);
 	return ret;
 }
 
@@ -359,8 +362,6 @@ static int32_t Sci_Init(struct s_reader *reader)
 
 	if(!reader->crdr_data && !cs_malloc(&reader->crdr_data, sizeof(struct sr_data)))
 		{ return ERROR; }
-	struct sr_data *crdr_data = reader->crdr_data;
-	crdr_data->srdataok = 1; // just to avoid non used parameter warning. reader->crdr_date is used later on.
 
 	return OK;
 }
@@ -395,16 +396,19 @@ static int32_t sci_write_settings3(struct s_reader *reader, uint32_t ETU, uint32
 		if(reader->protocol_type != ATR_PROTOCOL_TYPE_T14)   // fix VU+ internal reader slow responses on T0/T1
 		{
 			call(Sci_WriteSettings(reader, 0, reader->divider, ETU, WWT, CWT, BWT, EGT, 5, (unsigned char)I));
+			cs_sleepms(150);
 		}
 		else     // no fixup for T14 protocol otherwise error
 		{
 			call(Sci_WriteSettings(reader, reader->protocol_type, reader->divider, ETU, WWT, CWT, BWT, EGT, 5, (unsigned char)I));
+			cs_sleepms(150);
 		}
 	}
 	else     // all other brand boxes than dreamboxes or VU+!
 	{
 		// P fixed at 5V since this is default class A card, and TB is deprecated
 		call(Sci_WriteSettings(reader, reader->protocol_type, F, ETU, WWT, CWT, BWT, EGT, 5, (unsigned char)I));
+		cs_sleepms(150);
 	}
 	return OK;
 }

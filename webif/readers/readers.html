@@ -1,4 +1,5 @@
 ##TPLHEADERSHORT##
+##REFRESH##
 	<script type="text/javascript">
 	
 	var page = 'reader';
@@ -17,9 +18,8 @@
 			<LI CLASS="configmenu"><A HREF="#" onclick="addreader();">Add Reader</A></LI>
 			<LI CLASS="configmenu"><A HREF="readers.html?action=reloadreaders">Reload Readers</A></LI>
 			<LI CLASS="configmenu"><A HREF="scanusb.html">Scan USB</A></LI>
-			<LI CLASS="configmenu"><A HREF="readers.html?action=resetallrdrstats">Reset Readerstats</A></LI>
+			<LI CLASS="configmenu"><A HREF="readers.html?action=resetallrdrstats" onclick="return confirm('Reset Readerstats ?')">Reset Readerstats</A></LI>
 			<LI CLASS="configmenu"><A TARGET="_blank" HREF="graph.svg?type=servers">Show Graphs</A></LI>
-			<LI ID="nopoll" CLASS="pollselect" style="display: none;">Pollrefresh no set - Polling disabled</LI>
 			<LI ID="poll" CLASS="pollselect" style="display: none;">Pollintervall:<input type="text" name="pintervall" class="pintervall" value="" readonly>sec.<button id="dec">&ndash;</button><button id="inc">+</button></LI>
 		</UL>
 	</DIV>
@@ -49,8 +49,8 @@
 			<TH data-sort="string-ins" class="sortable">Reader</TH>
 			<TH data-sort="string-ins" class="sortable">Protocol</TH>
 			<TH>Groups</TH>
-			<TH data-sort="int" class="sortable">OK</TH>
-			<TH data-sort="int" class="sortable">NOK</TH>
+			<TH data-sort="int" data-sort-default="desc" class="sortable">OK</TH>
+			<TH data-sort="int" data-sort-default="desc" class="sortable">NOK</TH>
 			<TH>Filtered<BR><SPAN TITLE="filtered by ECM Header Whitelist"> Head </SPAN>/<SPAN TITLE="filtered by ECM Whitelist"> Len </SPAN></TH>
 			<TH>error<BR><SPAN TITLE="unknown EMM"> UK </SPAN>/<SPAN TITLE="global EMM"> G </SPAN>/<SPAN TITLE="shared EMM"> S </SPAN>/<SPAN TITLE="unique EMM"> UQ </SPAN></TH>
 			<TH>written<BR><SPAN TITLE="unknown EMM"> UK </SPAN>/<SPAN TITLE="global EMM"> G </SPAN>/<SPAN TITLE="shared EMM"> S </SPAN>/<SPAN TITLE="unique EMM"> UQ </SPAN></TH>

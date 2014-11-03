@@ -302,16 +302,16 @@ static const struct config_list global_opts[] =
 	DEF_OPT_INT32("bindwait"                , OFS(bindwait),            CS_BIND_TIMEOUT),
 	DEF_OPT_UINT32("netprio"                , OFS(netprio),             0),
 	DEF_OPT_INT32("sleep"                   , OFS(tosleep),             0),
-	DEF_OPT_INT32("unlockparental"          , OFS(ulparent),            0),
+	DEF_OPT_INT32("unlockparental"          , OFS(ulparent),            1),
 	DEF_OPT_INT32("nice"                    , OFS(nice),                99),
 	DEF_OPT_INT32("maxlogsize"              , OFS(max_log_size),        10),
 	DEF_OPT_INT8("waitforcards"             , OFS(waitforcards),        0),
 	DEF_OPT_INT32("waitforcards_extra_delay"    , OFS(waitforcards_extra_delay), 500),
-	DEF_OPT_INT8("preferlocalcards"         , OFS(preferlocalcards),    0),
+	DEF_OPT_INT8("preferlocalcards"         , OFS(preferlocalcards),    1),
 	DEF_OPT_INT32("readerrestartseconds"    , OFS(reader_restart_seconds), 5),
-	DEF_OPT_INT8("dropdups"                 , OFS(dropdups),            0),
-	DEF_OPT_INT8("block_same_ip"            , OFS(block_same_ip),       1),
-	DEF_OPT_INT8("block_same_name"          , OFS(block_same_name),     1),
+	DEF_OPT_INT8("dropdups"                 , OFS(dropdups),            1),
+	DEF_OPT_INT8("block_same_ip"            , OFS(block_same_ip),       0),
+	DEF_OPT_INT8("block_same_name"          , OFS(block_same_name),     0),
 	DEF_OPT_STR("usrfile"                   , OFS(usrfile),             NULL),
 	DEF_OPT_STR("mailfile"                  , OFS(mailfile),            NULL),
 	DEF_OPT_STR("cwlogdir"                  , OFS(cwlogdir),            NULL),
@@ -496,15 +496,15 @@ static const struct config_list webif_opts[] =
 	DEF_OPT_STR("httpcert"                  , OFS(http_cert),               NULL),
 	DEF_OPT_INT32("http_prepend_embedded_css"   , OFS(http_prepend_embedded_css), 0),
 	DEF_OPT_INT32("httprefresh"             , OFS(http_refresh),            0),
-	DEF_OPT_INT32("httppollrefresh"         , OFS(poll_refresh),            0),
+	DEF_OPT_INT32("httppollrefresh"         , OFS(poll_refresh),            60),
 	DEF_OPT_INT8("httphideidleclients"      , OFS(http_hide_idle_clients),  0),
-	DEF_OPT_STR("httphidetype"              , OFS(http_hide_type),          "sh"),
+	DEF_OPT_STR("httphidetype"              , OFS(http_hide_type),         "sh"),
 	DEF_OPT_INT8("httpshowpicons"           , OFS(http_showpicons),         0),
 	DEF_OPT_INT8("httppiconsize"            , OFS(http_picon_size),         0),
-	DEF_OPT_INT8("httpshowmeminfo"          , OFS(http_showmeminfo),        0),
+	DEF_OPT_INT8("httpshowmeminfo"          , OFS(http_showmeminfo),        1),
 	DEF_OPT_INT8("httpshowuserinfo"         , OFS(http_showuserinfo),       0),
 	DEF_OPT_INT8("httpshowcacheexinfo"      , OFS(http_showcacheexinfo),    0),
-	DEF_OPT_INT8("httpshowecminfo"          , OFS(http_showecminfo),        0),
+	DEF_OPT_INT8("httpshowecminfo"          , OFS(http_showecminfo),        1),
 	DEF_OPT_INT8("httpshowloadinfo"         , OFS(http_showloadinfo),       0),
 	DEF_OPT_FUNC("httpallowed"              , OFS(http_allowed),            iprange_fn, .free_value = iprange_free_fn),
 	DEF_OPT_INT8("httpreadonly"             , OFS(http_readonly),           0),
@@ -766,7 +766,6 @@ static bool scam_should_save_fn(void *UNUSED(var))
 {
 	return cfg.scam_port;
 }
-
 static const struct config_list scam_opts[] =
 {
 	DEF_OPT_SAVE_FUNC(scam_should_save_fn),
@@ -778,7 +777,6 @@ static const struct config_list scam_opts[] =
 #else
 static const struct config_list scam_opts[] = { DEF_LAST_OPT };
 #endif
-
 #ifdef MODULE_RADEGAST
 static bool radegast_should_save_fn(void *UNUSED(var))
 {

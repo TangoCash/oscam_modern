@@ -175,11 +175,20 @@ void cc_crypt_cmd0c(struct s_client *cl, uint8_t *buf, int32_t len)
 	}
 	case MODE_CMD_0x0C_RC6 :   //RC6
 	{
-		int32_t i;
-		SwapLBi(buf, len);
+		// buf may be unaligned, 
+		// so we use malloc() memory for the uint32_t* cast
+		uint8_t *tmp;
+		int32_t i;	
+		
+		if(!cs_malloc(&tmp, len))
+			{ return; }
+		memcpy(tmp, buf, len);
+		
+		SwapLBi(tmp, len);
 		for(i = 0; i < len / 16; i++)
-			{ rc6_block_decrypt((uint32_t *)(buf + i * 16), (uint32_t *)(out + i * 16), 1, cc->cmd0c_RC6_cryptkey); }
+			{ rc6_block_decrypt((uint32_t *)(tmp + i * 16), (uint32_t *)(out + i * 16), 1, cc->cmd0c_RC6_cryptkey); }
 		SwapLBi(out, len);
+		NULLFREE(tmp);
 		break;
 	}
 	case MODE_CMD_0x0C_RC4:   // RC4
@@ -288,18 +297,43 @@ int32_t sid_eq(struct cc_srvid *srvid1, struct cc_srvid *srvid2)
 	return (srvid1->sid == srvid2->sid && (srvid1->chid == srvid2->chid || !srvid1->chid || !srvid2->chid) && (srvid1->ecmlen == srvid2->ecmlen || !srvid1->ecmlen || !srvid2->ecmlen));
 }
 
-struct cc_srvid *is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_blocked)
+int32_t sid_eq_nb(struct cc_srvid *srvid1, struct cc_srvid_block *srvid2)
+{
+	return sid_eq(srvid1, (struct cc_srvid *)srvid2);
+}
+
+int32_t sid_eq_bb(struct cc_srvid_block *srvid1, struct cc_srvid_block *srvid2)
+{
+	return (srvid1->sid == srvid2->sid && (srvid1->chid == srvid2->chid || !srvid1->chid || !srvid2->chid) && (srvid1->ecmlen == srvid2->ecmlen || !srvid1->ecmlen || !srvid2->ecmlen)
+				&& (srvid1->blocked_till == srvid2->blocked_till || !srvid1->blocked_till || !srvid2->blocked_till));
+}
+
+struct cc_srvid_block *is_sid_blocked(struct cc_card *card, struct cc_srvid *srvid_blocked)
 {
 	LL_ITER it = ll_iter_create(card->badsids);
-	struct cc_srvid *srvid;
+	struct cc_srvid_block *srvid;
 	while((srvid = ll_iter_next(&it)))
 	{
-		if(sid_eq(srvid, srvid_blocked))
+		if(sid_eq_nb(srvid_blocked, srvid))
 		{
 			break;
 		}
 	}
 	return srvid;
+}
+
+uint32_t has_perm_blocked_sid(struct cc_card *card)
+{
+	LL_ITER it = ll_iter_create(card->badsids);
+	struct cc_srvid_block *srvid;
+	while((srvid = ll_iter_next(&it)))
+	{
+		if(srvid->blocked_till == 0)
+		{
+			break;
+		}
+	}
+	return srvid != NULL;
 }
 
 struct cc_srvid   *is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good)
@@ -338,9 +372,9 @@ void add_sid_block(struct s_client *cl __attribute__((unused)), struct cc_card *
 void remove_sid_block(struct cc_card *card, struct cc_srvid *srvid_blocked)
 {
 	LL_ITER it = ll_iter_create(card->badsids);
-	struct cc_srvid *srvid;
+	struct cc_srvid_block *srvid;
 	while((srvid = ll_iter_next(&it)))
-		if(sid_eq(srvid, srvid_blocked))
+		if(sid_eq_nb(srvid_blocked, srvid))
 			{ ll_iter_remove_data(&it); }
 }
 
@@ -1244,10 +1278,38 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 				|| (chk_only && cfg.lb_mode && cfg.lb_auto_betatunnel && ((cur_er->caid >> 8 == 0x18 && ncard->caid >> 8 == 0x17 && cfg.lb_auto_betatunnel_mode <= 3) || (cur_er->caid >> 8 == 0x17 && ncard->caid >> 8 == 0x18 && cfg.lb_auto_betatunnel_mode >= 1))) //accept beta card when beta-tunnel is on
 #endif
 		  )
-		{
-			struct cc_srvid *blocked_sid = is_sid_blocked(ncard, &cur_srvid);
-			if(blocked_sid && (!chk_only || blocked_sid->ecmlen == 0))
-				{ continue; }
+		{		
+			int32_t goodSidCount = ll_count(ncard->goodsids);
+			int32_t badSidCount = ll_count(ncard->badsids);
+			struct cc_srvid *good_sid;
+			struct cc_srvid_block *blocked_sid;
+			
+			// only good sids -> check if sid is good
+			if(goodSidCount && !badSidCount)
+			{			
+				good_sid = is_good_sid(ncard, &cur_srvid);
+				if(!good_sid)
+					{ continue; }
+			}
+			// only bad sids -> check if sid is bad
+			else if(!goodSidCount && badSidCount)
+			{
+				blocked_sid = is_sid_blocked(ncard, &cur_srvid);
+				if(blocked_sid && (!chk_only || blocked_sid->blocked_till == 0))
+					{ continue; }
+			}			
+			// bad and good sids -> check not blocked and good
+			else if (goodSidCount && badSidCount)
+			{
+				blocked_sid = is_sid_blocked(ncard, &cur_srvid);				
+				good_sid = is_good_sid(ncard, &cur_srvid);
+				
+				if(blocked_sid && (!chk_only || blocked_sid->blocked_till == 0))
+					{ continue; }
+				if(!good_sid)
+					{ continue; }
+			}
+
 
 			if(!(rdr->cc_want_emu) && (ncard->caid >> 8 == 0x18) && (!xcard || ncard->hop < xcard->hop))
 				{ xcard = ncard; } //remember card (D+ / 1810 fix) if request has no provider, but card has
@@ -1306,7 +1368,7 @@ static void reopen_sids(struct cc_data *cc, int8_t ignore_time, ECM_REQUEST *cur
 			LL_ITER it2 = ll_iter_create(card->badsids);
 			struct cc_srvid_block *srvid;
 			while((srvid = ll_iter_next(&it2)))
-				if(srvid->ecmlen > 0 && sid_eq((struct cc_srvid *)srvid, cur_srvid))   //ecmlen==0: From remote peer, so do not remove
+				if(srvid->blocked_till > 0 && sid_eq((struct cc_srvid *)srvid, cur_srvid))
 				{
 					if(ignore_time || srvid->blocked_till <= utime)
 						{ ll_iter_remove_data(&it2); }
@@ -1478,7 +1540,10 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 		}
 
 		if(!card)
-			{ card = get_matching_card(cl, cur_er, 0); }
+		{
+			reopen_sids(cc, 0, cur_er, &cur_srvid);
+			card = get_matching_card(cl, cur_er, 0);
+		}
 
 		if(!card && has_srvid(rdr->client, cur_er))
 		{
@@ -2238,6 +2303,136 @@ int32_t cc_cache_push_chk(struct s_client *cl, struct ecm_request_t *er)
 	return 1;
 }
 
+void cc_cache_filter_out(struct s_client *cl)
+{
+	struct s_reader *rdr = (cl->typ == 'c') ? NULL : cl->reader;
+	int i = 0, j;
+	CECSPVALUETAB *filter;
+	//minimal size, keep it <= 512 for max UDP packet size without fragmentation
+	int32_t size = 482;
+	uint8_t buf[482];
+	memset(buf, 0, sizeof(buf));		
+
+	//mode==2 send filters from rdr
+	if(rdr && rdr->cacheex.mode == 2) 
+	{
+		filter = &rdr->cacheex.filter_caidtab;
+	}
+	//mode==3 send filters from acc
+	else if(cl->typ == 'c' && cl->account && cl->account->cacheex.mode == 3) 
+	{
+		filter = &cl->account->cacheex.filter_caidtab;
+	}
+	else {
+		return;	
+	}
+	
+	i2b_buf(2, filter->n, buf + i);
+	i += 2;
+	
+	for(j=0; j<30; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{
+			i2b_buf(4, filter->caid[j], buf + i);
+		}
+		i += 4;
+	}
+
+	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{
+			i2b_buf(4, filter->cmask[j], buf + i);
+		}
+		i += 4;
+	}
+	
+	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{			
+			i2b_buf(4, filter->prid[j], buf + i);
+		}
+		i += 4;
+	}
+	
+	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{			
+			i2b_buf(4, filter->srvid[j], buf + i);
+		}
+		i += 4;
+	}
+
+	cs_debug_mask(D_CACHEEX, "cacheex: sending push filter request to %s", username(cl));
+	cc_cmd_send(cl, buf, size, MSG_CACHE_FILTER);
+}
+
+void cc_cache_filter_in(struct s_client *cl, uchar *buf)
+{
+	struct s_reader *rdr = (cl->typ == 'c') ? NULL : cl->reader;
+	int i = 0, j;
+	CECSPVALUETAB *filter;	
+	
+	//mode==2 write filters to acc
+	if(cl->typ == 'c' && cl->account && cl->account->cacheex.mode == 2
+		&& cl->account->cacheex.allow_filter == 1) 
+	{
+		filter = &cl->account->cacheex.filter_caidtab;
+	}
+	//mode==3 write filters to rdr
+	else if(rdr && rdr->cacheex.mode == 3 && rdr->cacheex.allow_filter == 1) 
+	{
+		filter = &rdr->cacheex.filter_caidtab;
+	}
+	else {
+		return;	
+	}
+	  
+	filter->n = b2i(2, buf + i);
+	i += 2;
+	
+	for(j=0; j<30; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{
+			filter->caid[j] = b2i(4, buf + i);
+		}
+		i += 4;
+	}
+
+	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{
+			filter->cmask[j] = b2i(4, buf + i);
+		}
+		i += 4;
+	}
+	
+	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{
+			filter->prid[j] = b2i(4, buf + i);
+		}
+		i += 4;
+	}
+	
+	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
+	{
+		if(j<CS_MAXCAIDTAB)
+		{
+			filter->srvid[j] = b2i(4, buf + i);
+		}
+		i += 4;
+	}
+	
+	cs_debug_mask(D_CACHEEX, "cacheex: received push filter request from %s", username(cl));	
+}
+
 int32_t cc_cache_push_out(struct s_client *cl, struct ecm_request_t *er)
 {
 	int8_t rc = (er->rc < E_NOTFOUND) ? E_FOUND : er->rc;
@@ -2734,6 +2929,15 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		}
 		break;
 	}
+	
+	case MSG_CACHE_FILTER:
+	{
+		if((l - 4) >= 482)
+		{
+			cc_cache_filter_in(cl, data);
+		}
+		break;
+	}	
 #endif
 
 	case MSG_CW_NOK1:
@@ -2870,7 +3074,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 					else
 					{
 						move_card_to_end(cl, card);
-						remove_good_sid(card, &srvid);
+						add_sid_block(cl, card, &srvid);
 					}
 
 					if(card->rating < MIN_RATING)
@@ -3094,7 +3298,6 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 					{
 						cs_debug_mask(D_READER, "%s cws: %d %s", getprefix(),
 									  ecm_idx, cs_hexdump(0, cc->dcw, 16, tmp_dbg, sizeof(tmp_dbg)));
-						add_good_sid(cl, card, &srvid);
 
 						//check response time, if > fallbacktime, switch cards!
 						struct timeb tpe;
@@ -3868,7 +4071,12 @@ void cc_srv_init2(struct s_client *cl)
 			cs_disconnect_client(cl);
 		}
 		else
-			{ cl->init_done = 1; }
+		{
+			cl->init_done = 1;
+#ifdef CS_CACHEEX
+			cc_cache_filter_out(cl);
+#endif
+		}
 	}
 	return;
 }
@@ -4067,6 +4275,10 @@ int32_t cc_cli_connect(struct s_client *cl)
 	cc->just_logged_in = 1;
 	cl->crypted = 1;
 	cc->ecm_busy = 0;
+
+#ifdef CS_CACHEEX
+	cc_cache_filter_out(cl);
+#endif
 
 	return 0;
 }

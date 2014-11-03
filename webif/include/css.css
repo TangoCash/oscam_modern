@@ -96,7 +96,7 @@ p.text-large-red {
 /* readerstats.html for P */
 #text_totalecm {margin-top:10px}
 /* footer.html */
-li.styleauthor:after {content:" | Envi Template - Last update 2014-05-06"}
+li.styleauthor:after {content:" | Last update 2014-11-03"}
 /* other settings for seubheadline */
 td.subheadline p {
 	float: left;
@@ -729,7 +729,8 @@ div.footer ul {
 	margin:5px
 }
 div.footer li {
-	color:#656565
+    color: #aaaaaa;
+    text-shadow: 1px 1px 1px #000000;
 }
 div.footer b {
 	color:#999
@@ -744,9 +745,9 @@ ul.textfooter {
 ul.textfooter,  ul.textfooter ul {
 	list-style-type:none
 }
-ul.textfooter li {
+/*ul.textfooter li {
 	display:inline
-}
+}*/
 
 /* status.html, main DIV for statistics info */
 div.info {
@@ -1040,10 +1041,14 @@ span.e_valid {
 }
 
 /* **************** 15. GRAPH */
-rect.graph_bg {fill:white;}
-text.graph_error {text-anchor:middle;fill:red;}
-text.graph_grid_txt {text-anchor:end;font-size:12px;fill:gray;}
-path.graph_grid {stroke-opacity:0.5;stroke:gray;}
+svg.graph {background-color:#F0F0F0;font-family:Arial;font-size:9px}
+rect.graph_bg {fill:white}
+rect.graph_button {fill:#A9D0F5}
+text.graph_error {text-anchor:middle;fill:red}
+text.graph_top_txt {text-anchor:end}
+text.graph_grid_txt {text-anchor:end;fill:gray}
+path.graph_grid {stroke-opacity:0.5;stroke-width:0.7px;stroke:gray}
+path.graph_curve {stroke-opacity:0.8;stroke-width:0.7px;fill:none}
 
 /* **************** 16. SORTING IN TABLE */
 .users th {
@@ -1795,6 +1800,9 @@ tr.infocolswidth, tr.infocolswidth td, tr.infocolswidth th {
 .colorPicker_def_fcolor {
 	color:#FFFFFF
 }
+td.subservice, td.invisible{
+padding:5px;
+}
 
 th.sortable,th,#chart,#main,div.footer,td.subheadline,.visible tbody tr th,td.subheadline input{background:#b5bdc8;background:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2I1YmRjOCIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjM0JSIgc3RvcC1jb2xvcj0iIzUzNTY1ZSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyODM0M2IiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);background:-moz-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-webkit-gradient(linear,left top,left bottom,color-stop(0%,#b5bdc8),color-stop(34%,#53565e),color-stop(100%,#28343b));background:-webkit-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-o-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:-ms-linear-gradient(top,#b5bdc8 0%,#53565e 34%,#28343b 100%);background:linear-gradient(to bottom,#b5bdc8 0%,#53565e 34%,#28343b 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#b5bdc8",endColorstr="#28343b",GradientType=0);color:#fff}
 td.subheadline input[type="button"] {color: #FFFFFF;text-shadow: 1px 1px 1px #000000;}
@@ -1814,7 +1822,7 @@ textarea.bt{width: 480px;}
 table.config tbody tr td input,input.medium {width: 200px;}
 table.config tbody tr td input[type="checkbox"],td.invisible input[type="checkbox"],input#chb {width: 10px;}
 td.configcolsave input[type="submit"], input.withunit.short {width: 50px;}
-tr.configcontrol td.centered input[type="submit"] {width: 100px;}
+tr.configcontrol td.centered input[type="submit"] {width: 105px;}
 
 
 

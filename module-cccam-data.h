@@ -57,6 +57,7 @@ typedef enum
 	MSG_NEW_CARD_SIDINFO = 0x0f,
 	MSG_SLEEPSEND = 0x80, //Sleepsend support
 	MSG_CACHE_PUSH = 0x81, //CacheEx Cache-Push In/Out
+	MSG_CACHE_FILTER = 0x82, //CacheEx Cache-Filter Request
 	MSG_CW_NOK1 = 0xfe, //Node no more available
 	MSG_CW_NOK2 = 0xff, //No decoding
 	MSG_NO_HEADER = 0xffff
@@ -111,7 +112,7 @@ struct cc_card
 	uint8_t reshare;
 	uint8_t hexserial[8]; // card serial (for au)
 	LLIST *providers; // providers (struct cc_provider)
-	LLIST *badsids; // sids that have failed to decode (struct cc_srvid)
+	LLIST *badsids; // sids that have failed to decode (struct cc_srvid_block)
 	LLIST *goodsids; //sids that could decoded (struct cc_srvid)
 	LLIST *remote_nodes; //remote note id, 8 bytes
 	struct s_reader  *origin_reader;

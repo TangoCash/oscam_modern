@@ -1,6 +1,5 @@
 		<input name="part" type="hidden" value="webif">
 		<input name="http_prepend_embedded_css" type="hidden" value="0">
-		<input name="httphidetype" type="hidden" value="sh">
 		<input name="httpshowpicons" type="hidden" value="0">
 		<input name="httphideidleclients" type="hidden" value="0">
 		<TABLE CLASS="config">
@@ -12,12 +11,8 @@
 			<TR><TD><A>OSCam Label:</A></TD><TD><input name="httposcamlabel" type="text" maxlength="64" value="##HTTPOSCAMLABEL##"></TD></TR>
 			<TR><TD><A>Refresh:</A></TD>
 				<TD CLASS="invisible">
-					<TABLE>
-						<TR>
-							<TD><A data-p="httprefresh">Http:</A>&nbsp;<input name="httprefresh" class="withunit short" type="text" maxlength="5" value="##HTTPREFRESH##"> s
-							<TD><A data-p="httppollrefresh">Poll (initial refresh):</A>&nbsp;<input name="httppollrefresh" class="withunit short" type="text" maxlength="2" value="##HTTPPOLLREFRESH##"> s</TD>
-						</TR>
-					</TABLE>
+					<A data-p="httprefresh">&nbsp;Http:</A>&nbsp;<input name="httprefresh" class="withunit short" type="text" maxlength="5" value="##HTTPREFRESH##">&nbsp;s &nbsp;&nbsp;
+					<A data-p="httppollrefresh">Poll (initial refresh):</A>&nbsp;<input name="httppollrefresh" class="withunit short" type="text" maxlength="2" value="##HTTPPOLLREFRESH##">&nbsp;s
 				</TD>
 			</TR>
 			<TR><TD><A>Http allowed:</A></TD><TD><input name="httpallowed" type="text" maxlength="200" value="##HTTPALLOW##"></TD></TR>
@@ -25,14 +20,12 @@
 			<TR><TD><A>Http Locale:</A></TD><TD><input name="httplocale" class="medium" type="text" maxlength="12" value="##HTTPLOCALE##"> e.g. en_US, de_DE.utf8 (if available and works on the server)</TD></TR>
 			<TR><TD><A>Http dyndns:</A></TD><TD><input name="httpdyndns" type="text" maxlength="200" value="##HTTPDYNDNS##"></TD></TR>
 			<TR><TD><A>Au low:</A></TD><TD><input name="aulow" class="withunit short" type="text" maxlength="5" value="##AULOW##"> min</TD></TR>
-			<TR><TD><A>Http save full config:</A></TD>
+			<TR><TD><A>Http save:</A></TD>
 				<TD CLASS="invisible">
-					<TABLE>
-						<TR>
-							<TD><input name="httpsavefullcfg" value="0" type="hidden"><input name="httpsavefullcfg" type="checkbox" value="1" ##HTTPSAVEFULLSELECT##><label></label></TD>
-							<TD><A data-p="httpoverwritebakfile">Http overwrite bak file:</A></TD><TD><input name="httpoverwritebakfile" value="0" type="hidden"><input name="httpoverwritebakfile" type="checkbox" value="1" ##HTTPOVERWRITEBAKFILE##><label></label></TD>
-						</TR>
-					</TABLE>
+					&nbsp;<input name="httpsavefullcfg" value="0" type="hidden"><input name="httpsavefullcfg" type="checkbox" value="1" ##HTTPSAVEFULLSELECT##><label></label>
+					<A data-p="httpsavefullcfg">full config&nbsp;&nbsp;</A>
+					<input name="httpoverwritebakfile" value="0" type="hidden"><input name="httpoverwritebakfile" type="checkbox" value="1" ##HTTPOVERWRITEBAKFILE##><label></label>
+					<A data-p="httpoverwritebakfile">overwrite bak file</A>
 				</TD>
 			</TR>
 			<TR><TH COLSPAN="2">Css style settings</TH></TR>
@@ -51,38 +44,29 @@
 			<TR><TH COLSPAN="2">Picons settings</TH></TR>
 			<TR><TD><A>Http Show Picons:</A></TD>
 				<TD CLASS="invisible">
-					<TABLE>
-						<TR>
-							<TD><input name="httpshowpicons" value="0" type="hidden"><input name="httpshowpicons" type="checkbox" value="1" ##SHOWPICONSCHECKED##><label></label></TD>
-							<TD><A data-p="httppiconsize">Height:</A>&nbsp;<input name="httppiconsize" class="withunit short" type="text" maxlength="5" value="##HTTPPICONSIZE##"> px</TD>
-						</TR>
-					</TABLE>
+					&nbsp;<input name="httpshowpicons" value="0" type="hidden"><input name="httpshowpicons" type="checkbox" value="1" ##SHOWPICONSCHECKED##><label></label>
+					<A data-p="httppiconsize">Height:</A>&nbsp;<input name="httppiconsize" class="withunit short" type="text" maxlength="5" value="##HTTPPICONSIZE##">&nbsp;px
 				</TD>
 			</TR>
 			<TR><TH COLSPAN="2">Show/Hide in Status</TH></TR>
 			<TR><TD><A>Http Hide Type:</A></TD><TD><input name="httphidetype" class="medium" type="text" maxlength="10" value="##HTTPHIDETYPE##"></TD></TR>
-			<TR><TD><A>Http Hide Idle Clients:</A></TD>
+			<TR><TD><A>Http Hide:</A></TD>
 				<TD CLASS="invisible">
-					<TABLE>
-						<TR>
-							<TD><input name="httphideidleclients" value="0" type="hidden"><input name="httphideidleclients" type="checkbox" value="1" ##CHECKED##><label></label></TD>
-							<TD><A data-p="hideclient_to">Hide client to:</A>&nbsp;<input name="hideclient_to" class="withunit short" type="text" maxlength="5" value="##HIDECLIENTTO##"> s</TD>
-						</TR>
-					</TABLE>
+					<A data-p="httphideidleclients">Idle Clients&nbsp;</A>
+					<input name="httphideidleclients" value="0" type="hidden">
+					<input name="httphideidleclients" type="checkbox" value="1" ##CHECKED##><label></label>
+					<A data-p="hideclient_to">&nbsp;Hide client to:&nbsp;</A>
+					<input name="hideclient_to" class="withunit short" type="text" maxlength="5" value="##HIDECLIENTTO##">&nbsp;s
 				</TD>
 			</TR>
 			<TR><TD><A>Show in STATUS:</A></TD>
 				<TD CLASS="invisible">
-					<TABLE>
-						<TR>
-							<TD><input name="http_status_log" type="hidden" value="0"><input name="http_status_log" type="checkbox" value="1" ##SHOWLOGCHECKED##><label>Log</label></TD>
-							<TD><input name="httpshowuserinfo" type="hidden" value="0"><input name="httpshowuserinfo" type="checkbox" value="1" ##SHOWUSERINFOCHECKED##><label>Users info</label></TD>
-							<TD><input name="httpshowecminfo" type="hidden" value="0"><input name="httpshowecminfo" type="checkbox" value="1" ##SHOWECMINFOCHECKED##><label>ECM info</label></TD>
+					&nbsp;<input name="http_status_log" type="hidden" value="0"><input name="http_status_log" type="checkbox" value="1" ##SHOWLOGCHECKED##><label>Log</label>
+					&nbsp;<input name="httpshowuserinfo" type="hidden" value="0"><input name="httpshowuserinfo" type="checkbox" value="1" ##SHOWUSERINFOCHECKED##><label>Users info</label>
+					&nbsp;<input name="httpshowecminfo" type="hidden" value="0"><input name="httpshowecminfo" type="checkbox" value="1" ##SHOWECMINFOCHECKED##><label>ECM info</label>
 ##TPLSHOWCACHEEXINFO##
-							<TD><input name="httpshowmeminfo" type="hidden" value="0"><input name="httpshowmeminfo" type="checkbox" value="1" ##SHOWMEMINFOCHECKED##><label>Memory info</label></TD>
-							<TD><input name="httpshowloadinfo" type="hidden" value="0"><input name="httpshowloadinfo" type="checkbox" value="1" ##SHOWLOADINFOCHECKED##><label>Load info</label></TD>
-						</TR>
-					</TABLE>
+					&nbsp;<input name="httpshowmeminfo" type="hidden" value="0"><input name="httpshowmeminfo" type="checkbox" value="1" ##SHOWMEMINFOCHECKED##><label>Memory info</label>
+					&nbsp;<input name="httpshowloadinfo" type="hidden" value="0"><input name="httpshowloadinfo" type="checkbox" value="1" ##SHOWLOADINFOCHECKED##><label>Load info</label>
 				</TD>
 			</TR>
 			<TR><TH COLSPAN="2">Template settings</TH></TR>

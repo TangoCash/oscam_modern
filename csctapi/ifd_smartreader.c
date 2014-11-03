@@ -380,7 +380,6 @@ static uint32_t  smartreader_determine_max_packet_size(struct s_reader *reader)
 			}
 		}
 	}
-
 	return packet_size;
 }
 
