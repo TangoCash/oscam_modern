@@ -975,7 +975,6 @@ void dvbapi_start_emm_filter(int32_t demux_index)
 	LL_ITER itr = ll_iter_create(cl->aureader_list);
 	while((rdr = ll_iter_next(&itr)))
 	{
-
 		if(!rdr->client || rdr->audisabled != 0 || !rdr->enable || (!is_network_reader(rdr) && rdr->card_status != CARD_INSERTED))
 			{ continue; }
 
@@ -985,20 +984,30 @@ void dvbapi_start_emm_filter(int32_t demux_index)
 		{
 			caid = ncaid = demux[demux_index].EMMpids[c].CAID;
 			if(!caid) continue;
-			if(emm_reader_match(rdr, caid, 0))
+
+			if(chk_is_betatunnel_caid(caid) == 2)
+			{
+				ncaid = tunemm_caid_map(FROM_TO, caid, demux[demux_index].program_number);
+			}
+
+			if (emm_reader_match(rdr, caid, 0) || emm_reader_match(rdr, ncaid, 0))
 			{
 				cs = get_cardsystem_by_caid(caid);
 				if(cs)
 				{
-					if(chk_is_betatunnel_caid(caid) == 1)
-					{ 
-						ncaid = tunemm_caid_map(TO_FROM, caid, demux[demux_index].program_number);
-					}
-					if(caid != ncaid && dvbapi_find_emmpid(demux_index, EMM_UNIQUE | EMM_SHARED | EMM_GLOBAL, ncaid, 0) > -1)
+					if(caid != ncaid && dvbapi_find_emmpid(demux_index, EMM_UNIQUE | EMM_SHARED | EMM_GLOBAL, caid, 0) > -1)
 					{
-						cs->get_tunemm_filter(rdr, &dmx_filter, &filter_count);
-						cs_debug_mask(D_DVBAPI, "[EMM Filter] setting emm filter for betatunnel: %04X -> %04X", ncaid, caid);
-						caid = ncaid;
+						cs = get_cardsystem_by_caid(ncaid);
+						if(cs)
+						{
+							cs->get_tunemm_filter(rdr, &dmx_filter, &filter_count);
+							cs_debug_mask(D_DVBAPI, "[EMM Filter] setting emm filter for betatunnel: %04X -> %04X", ncaid, caid);
+						}
+						else
+						{
+							cs_debug_mask(D_DVBAPI, "[EMM Filter] cardsystem for emm filter for caid %04X of reader %s not found", ncaid, rdr->label);
+							continue;
+						}
 					}
 					else if (cs->get_emm_filter)
 					{
@@ -1082,17 +1091,17 @@ void dvbapi_add_ecmpid_int(int32_t demux_id, uint16_t caid, uint16_t ecmpid, uin
 	int32_t stream = demux[demux_id].STREAMpidcount - 1;
 	for(n = 0; n < demux[demux_id].ECMpidcount; n++)
 	{
-		if(stream > -1 && demux[demux_id].ECMpids[n].CAID == caid && demux[demux_id].ECMpids[n].ECM_PID == ecmpid)
+		if(stream > -1 && demux[demux_id].ECMpids[n].CAID == caid && demux[demux_id].ECMpids[n].ECM_PID == ecmpid && demux[demux_id].ECMpids[n].PROVID == provid)
 		{
 			if(!demux[demux_id].ECMpids[n].streams)
 			{
 				//we already got this caid/ecmpid as global, no need to add the single stream
-				cs_log("[SKIP STREAM %d] CAID: %04X ECM_PID: %04X PROVID: %06X", n, caid, ecmpid, provid);
+				cs_log("[SKIP STREAM] CAID: %04X ECM_PID: %04X PROVID: %06X (Same as ECMPID #%d)", caid, ecmpid, provid, n);
 				continue;
 			}
 			added = 1;
 			demux[demux_id].ECMpids[n].streams |= (1 << stream);
-			cs_log("[ADD STREAM %d] CAID: %04X ECM_PID: %04X PROVID: %06X", n, caid, ecmpid, provid);
+			cs_log("[ADD STREAM TO ECMPID #%d] CAID: %04X ECM_PID: %04X PROVID: %06X", n, caid, ecmpid, provid);
 		}
 	}
 
@@ -1100,7 +1109,7 @@ void dvbapi_add_ecmpid_int(int32_t demux_id, uint16_t caid, uint16_t ecmpid, uin
 		{ return; }
 	for(n = 0; n < demux[demux_id].ECMpidcount; n++)  // check for existing pid
 	{
-		if(demux[demux_id].ECMpids[n].CAID == caid && demux[demux_id].ECMpids[n].ECM_PID == ecmpid)
+		if(demux[demux_id].ECMpids[n].CAID == caid && demux[demux_id].ECMpids[n].ECM_PID == ecmpid && demux[demux_id].ECMpids[n].PROVID == provid)
 			{ return; } // found same pid -> skip
 	}
 	demux[demux_id].ECMpids[demux[demux_id].ECMpidcount].ECM_PID = ecmpid;
@@ -1121,7 +1130,7 @@ void dvbapi_add_ecmpid_int(int32_t demux_id, uint16_t caid, uint16_t ecmpid, uin
 	if(stream > -1)
 		{ demux[demux_id].ECMpids[demux[demux_id].ECMpidcount].streams |= (1 << stream); }
 
-	cs_log("[ADD PID %d] CAID: %04X ECM_PID: %04X PROVID: %06X", demux[demux_id].ECMpidcount, caid, ecmpid, provid);
+	cs_log("[NEW ECMPID #%d] CAID: %04X ECM_PID: %04X PROVID: %06X", demux[demux_id].ECMpidcount, caid, ecmpid, provid);
 	if(caid >> 8 == 0x06) { demux[demux_id].emmstart.time = 1; }  // marker to fetch emms early irdeto needs them!
 
 	demux[demux_id].ECMpidcount++;
@@ -1530,6 +1539,7 @@ int32_t dvbapi_start_descrambling(int32_t demux_id, int32_t pid, int8_t checked)
 		{
 			int32_t j, n;
 			er->ecmlen = 5;
+			er->ecm[0] = 0x80; // to pass the cache check it must be 0x80 or 0x81
 			er->ecm[1] = 0x00;
 			er->ecm[2] = 0x02;
 			i2b_buf(2, er->srvid, er->ecm + 3);
@@ -3704,8 +3714,6 @@ static void *dvbapi_main_local(void *cli)
 					}
 				}
 				if(emmstarted != demux[i].emm_filter && !emmcounter) { continue; }  // proceed with next demuxer if no emms where running before
-				// if no additional filters activated reset emmpidcount (fixes repeated trying of setting filters!)
-				if(emmstarted == demux[i].emm_filter) { demux[i].EMMpidcount = 0; }
 			}
 
 			if(ecmcounter == 0 && demux[i].ECMpidcount > 0)   // Restart decoding all caids we have ecmpids but no ecm filters!

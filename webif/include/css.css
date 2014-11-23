@@ -96,7 +96,7 @@ p.text-large-red {
 /* readerstats.html for P */
 #text_totalecm {margin-top:10px}
 /* footer.html */
-li.styleauthor:after {content:" | Last update 2014-11-03"}
+li.styleauthor:after {content:" Gorgone | Last update 2014-11-23"}
 /* other settings for seubheadline */
 td.subheadline p {
 	float: left;
@@ -316,13 +316,16 @@ li.menu_selected a {
 li.configmenu a, li.configmenu a:hover,
 li.configmenu_selected a, li.configmenu_selected a:hover {
 	text-decoration:none;
+	font-weight: 600;
 	color:#050840
 }
 #nav li.configmenu_selected > a:link,
 #nav li.configmenu_selected > a:visited,
 #nav li.configmenu_selected > a:active,
 #nav li.configmenu > a:hover {
-	color: #D80320
+	color: #ff0000;
+	font-weight: 600;
+	text-shadow: 2px 2px 3px #000000;
 }
 #nav li{
 	position:relative
@@ -699,12 +702,32 @@ div.filterform {
 div.warning {
 	margin:42px 0 14px
 }
-/* logobit.html - Logo for Oscam */
-div.logo {
+/* logobit.html - Log for Oscam */
+svg#OSCam.OSCam_logo{
 	position:fixed;
 	top:10px;
 	left:10px;
-	z-index:1060
+	z-index:1060;
+-moz-transform:rotate(-20deg);
+-webkit-transform:rotate(-20deg);
+-o-transform:rotate(-20deg);
+-ms-transform:rotate(-20deg);
+transform:rotate(-20deg);
+	fill:#FFFFFF
+}
+svg#OSCam.OSCam_logo:hover{
+	position:fixed;
+	top:10px;
+	left:10px;
+	z-index:1060;
+-moz-transform:rotate(0deg);
+-webkit-transform:rotate(0deg);
+-o-transform:rotate(0deg);
+-ms-transform:rotate(0deg);
+transform:rotate(0deg);
+}
+
+
 }
 /* READERS and USERS items */
 div.groups {

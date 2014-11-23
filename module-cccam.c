@@ -1220,8 +1220,8 @@ void set_au_data(struct s_client *cl, struct s_reader *rdr, struct cc_card *card
 	}
 
 	rdr->caid = card->caid;
-	//if (cur_er) stefansat disabled for now as it seems to stop updating management providers
-	//  rdr->auprovid = cur_er->prid;
+	if (cur_er)
+		rdr->auprovid = cur_er->prid;
 }
 
 int32_t same_first_node(struct cc_card *card1, struct cc_card *card2)
@@ -1840,9 +1840,6 @@ int32_t cc_send_emm(EMM_PACKET *ep)
 	ll_append(cc->pending_emms, emmbuf);
 	cc_send_pending_emms(cl);
 
-#if defined(WEBIF) || defined(LCDSUPPORT)
-	rdr->emmwritten[ep->type]++;
-#endif
 	return 1;
 }
 

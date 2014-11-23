@@ -80,22 +80,18 @@ void cacheex_timeout(ECM_REQUEST *er)
 		cs_debug_mask(D_LB, "{client %s, caid %04X, prid %06X, srvid %04X} cacheex timeout! ", (check_client(er->client) ? er->client->account->usr : "-"), er->caid, er->prid, er->srvid);
 
 		//check if "normal" readers selected, if not send NOT FOUND!
-		if(  !cfg.wait_until_ctimeout
-			 &&
-			 (
-				(!er->from_cacheex1_client && (er->reader_count + er->fallback_reader_count - er->cacheex_reader_count) <= 0)    //not-cacheex-1 client and no normal readers available (or filtered by LB)
-					||
-				(er->from_cacheex1_client && !er->reader_nocacheex_avail)  //cacheex1-client and no normal readers available for others clients
-		     )
-		  )
+		//cacheex1-client (having always no "normal" reader), or not-cacheex-1 client with no normal readers available (or filtered by LB)
+		if( (er->reader_count + er->fallback_reader_count - er->cacheex_reader_count) <= 0 )
 		{
-			er->rc = E_NOTFOUND;
-			er->selected_reader = NULL;
-			er->rcEx = 0;
+			if(!cfg.wait_until_ctimeout){
+				er->rc = E_NOTFOUND;
+				er->selected_reader = NULL;
+				er->rcEx = 0;
 
-			cs_debug_mask(D_LB, "{client %s, caid %04X, prid %06X, srvid %04X} cacheex timeout: NO \"normal\" readers... not_found! ", (check_client(er->client) ? er->client->account->usr : "-"), er->caid, er->prid, er->srvid);
-			send_dcw(er->client, er);
-			return;
+				cs_debug_mask(D_LB, "{client %s, caid %04X, prid %06X, srvid %04X} cacheex timeout: NO \"normal\" readers... not_found! ", (check_client(er->client) ? er->client->account->usr : "-"), er->caid, er->prid, er->srvid);
+				send_dcw(er->client, er);
+				return;
+			}
 		}
 		else
 		{
@@ -1176,20 +1172,6 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 		er->rc = E_FOUND;
 	}
 
-	if (er->caid >> 8 == 0x09 && er->cw && er->rc < E_NOTFOUND){
-		if (er->ecm[0] == 0x80 && checkCWpart(er->cw, 1) && !checkCWpart(er->cw, 0)){ // wrong: even ecm should only have even part of cw used
-			cs_debug_mask(D_TRACE,"NDS videoguard controlword swapped");
-			memcpy(er->cw, er->cw + 8, 8);  // move card cw answer to right part!
-			memset(er->cw+8,0,8); // blanc old position
-		}
-
-		if (er->ecm[0] == 0x81 && checkCWpart(er->cw, 0) && !checkCWpart(er->cw, 1)){ // wrong: odd ecm should only have odd part of cw used
-			cs_debug_mask(D_TRACE,"NDS videoguard controlword swapped");
-			memcpy(er->cw+8, er->cw, 8);  // move card cw answer to right part!
-			memset(er->cw,0,8); // blanc old position
-		}
-	}
-
 	if(cfg.double_check &&  er->rc == E_FOUND && er->selected_reader && is_double_check_caid(er))
 	{
 		if(er->checked == 0)   //First CW, save it and wait for next one
@@ -1251,7 +1233,7 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 
 ESC:
 
-	if(er->rc == E_TIMEOUT || er->rc == E_NOTFOUND) // cleanout timeout and notfound ecm response so they can be asked again
+	if(er->rc == E_TIMEOUT) // cleanout timeout ecm response so they can be asked again
 	{
 		struct s_ecm_answer *ea_list;
 		for(ea_list = er->matching_rdr; ea_list; ea_list = ea_list->next)
@@ -1427,10 +1409,6 @@ void chk_dcw(struct s_ecm_answer *ea)
 	if(!ert)
 		{ return; }
 
-	//cache update
-	if(ea && ea->rc < E_NOTFOUND)
-		add_cache_from_reader(ert, eardr, ert->csp_hash, ert->ecmd5, ea->cw, ert->caid, ert->prid, ert->srvid );
-
 	//ecm request already answered!
 	if(ert->rc < E_99)
 	{
@@ -1462,7 +1440,7 @@ void chk_dcw(struct s_ecm_answer *ea)
 	//check if check_cw enabled
 	if(eardr && cacheex_reader(eardr)){  //IF mode-1 reader
 		CWCHECK check_cw = get_cwcheck(ert);
-		if(check_cw.counter>1) //if answer from cacheex-1 reader, and we have to check cw counter, not send answer to client! thread check_cache will send answer to client!
+		if(check_cw.counter>1) //if answer from cacheex-1 reader, and we have to check cw counter, not send answer to client! thread check_cache will check counter and send answer to client!
 			return;
 	}
 #endif
@@ -1495,10 +1473,8 @@ void chk_dcw(struct s_ecm_answer *ea)
 	{
 
 #ifdef CS_CACHEEX
-		/* if not wait_time expired and wait_time due to hitcache, or ecm is cacheex-1 and there are other normal readers for check INT cache, we have to wait wait_time expires before send rc to client!
-		 * (Before cacheex_wait_time_expired, this answered reader is obviously a cacheex mode 1 reader!)
-		 */
-		if((!ert->cacheex_wait_time_expired && ert->cacheex_hitcache) || (ert->from_cacheex1_client && ert->reader_nocacheex_avail))
+		// if not wait_time expired and wait_time due to hitcache (or awtime>0), we have to wait cacheex before call readers. This one is (should be) answer by ex1-readers
+		if(cacheex_reader(eardr) && !ert->cacheex_wait_time_expired && ert->cacheex_hitcache)
 			{ return; }
 #endif
 
@@ -1555,7 +1531,11 @@ void chk_dcw(struct s_ecm_answer *ea)
 		}
 		}
 
-		if(!reader_left)   // no more matching reader
+		if(!reader_left  // no more matching reader
+#ifdef CS_CACHEEX
+		  && !cfg.wait_until_ctimeout
+#endif
+		  )
 			{ ert->rc = E_NOTFOUND; } //so we set the return code
 
 		break;
@@ -1678,12 +1658,16 @@ int32_t write_ecm_answer(struct s_reader *reader, ECM_REQUEST *er, int8_t rc, ui
 		return 0;
 	}
 
-
 	//SPECIAL CHECKs for rc
 	if(rc < E_NOTFOUND && cw && chk_is_null_CW(cw))    //if cw=0 by anticascading
 	{
 		rc = E_NOTFOUND;
 		cs_debug_mask(D_TRACE | D_LB, "WARNING: reader %s send fake cw, set rc=E_NOTFOUND!", reader ? reader->label : "-");
+	}
+
+	if(rc < E_NOTFOUND && cw && !chk_halfCW(er,cw)){
+		rc = E_NOTFOUND;
+		cs_debug_mask(D_TRACE | D_LB, "WARNING: reader %s send wrong swapped NDS cw, set rc=E_NOTFOUND!", reader ? reader->label : "-");
 	}
 
 	if(reader && cw && rc < E_NOTFOUND)
@@ -1783,7 +1767,12 @@ int32_t write_ecm_answer(struct s_reader *reader, ECM_REQUEST *er, int8_t rc, ui
 
 	if(!ea->is_pending)   //not for pending ea - only once for ea
 	{
-		send_reader_stat(reader, er, ea, ea->rc);   //send stats for LB
+		//cache update
+		if(ea && ea->rc < E_NOTFOUND && ea->cw)
+			add_cache_from_reader(er, reader, er->csp_hash, er->ecmd5, ea->cw, er->caid, er->prid, er->srvid );
+
+		//readers stats for LB
+		send_reader_stat(reader, er, ea, ea->rc);
 
 		//reader checks
 		char ecmd5[17 * 3];
@@ -2264,6 +2253,11 @@ void get_cw(struct s_client *client, ECM_REQUEST *er)
 		}
 	}
 
+	//cheks for odd/even byte
+	if(get_odd_even(er)==0){
+		cs_debug_mask(D_TRACE, "warning: ecm with null odd/even byte from %s", (check_client(er->client)?er->client->account->usr:"-"));
+		er->rc = E_INVALID;
+	}
 
 	//not continue, send rc to client
 	if(er->rc < E_UNHANDLED)

@@ -1,4 +1,5 @@
 #include "globals.h"
+#include "oscam-cache.h"
 #include "oscam-chk.h"
 #include "oscam-ecm.h"
 #include "oscam-client.h"
@@ -977,6 +978,55 @@ int32_t chk_is_null_CW(uchar cw[])
 		if(cw[i])
 			{ return 0; }
 	}
+	return 1;
+}
+
+
+
+/**
+ * Check for ecm request that expects half cw format
+ **/
+int8_t is_halfCW_er(ECM_REQUEST *er)
+{
+  if(
+	 er->caid >> 8 == 0x09
+	 &&
+	 (er->caid == 0x09C4 || er->caid ==  0x098C || er->caid == 0x0963 || er->caid == 0x09CD || er->caid == 0x0919 || er->caid == 0x093B || er->caid == 0x098E)
+	)
+		return 1;
+
+  return 0;
+}
+
+
+/**
+ * Check for wrong half CWs
+ **/
+int8_t chk_halfCW(ECM_REQUEST *er, uchar *cw)
+{
+  if(is_halfCW_er(er) && cw){
+
+	 int8_t part1 = checkCWpart(cw, 0);
+	 int8_t part2 = checkCWpart(cw, 1);
+
+	 //check for correct half cw format
+	 if(part1 && part2){
+		 return 0;
+	 }
+
+	 //check for correct cw position
+	 if(
+	    (get_odd_even(er) == 0x80 && part1 && !part2)   //xxxxxxxx00000000
+		||
+		(get_odd_even(er) == 0x81 && !part1 && part2)   //00000000xxxxxxxx
+	 )
+	 {
+		return 1;
+	 }
+
+	 return 0;  //not correct swapped cw
+
+  }else
 	return 1;
 }
 
