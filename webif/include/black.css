@@ -1856,4 +1856,4 @@ td.configcolsave input[type="submit"], input.withunit.short {width: 50px;}
 tr.configcontrol td.centered input[type="submit"] {width: 105px;}
 
 
-
+div#regexdata{ border: 5px solid red; padding-top: 20px; display: block; background-color: rgb(221, 221, 221); width: 850px; height: 170px; margin-left: auto; margin-right: auto;}
