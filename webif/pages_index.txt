@@ -129,7 +129,6 @@ ICENT                         images/ICENT.svg
 ICHID                         images/ICHID.svg
 ICKIL                         images/ICKIL.svg
 LOGOBITSVG                    images/ICMLOGO.svg
-IC_LOGOW                      images/ICMLOGOW.svg
 ICREF                         images/ICREF.svg
 ICRES                         images/ICRES.svg
 ICSTA                         images/ICSTA.svg
