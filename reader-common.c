@@ -281,79 +281,85 @@ bool cardreader_init(struct s_reader *reader)
 {
 	struct s_client *client = reader->client;
 	client->typ = 'r';
+	int8_t i = 0;
 	set_localhost_ip(&client->ip);
-	while(cardreader_device_init(reader) == 2)
+	while((cardreader_device_init(reader) == 2) && i < 10)
 	{
-		int8_t i = 0;
-		do
+		cs_sleepms(2000);
+		if(!ll_contains(configured_readers, reader) || !is_valid_client(client) || reader->enable != 1)
+			{ return false; }
+		i++;
+	}
+	if (i >= 10)
+	{
+		reader->card_status = READER_DEVICE_ERROR;
+		cardreader_close(reader);
+		reader->enable = 0;
+		return false;
+	}
+	else 
+	{
+		if((reader->cardmhz > 2000) && (reader->typ != R_SMART))
 		{
-			cs_sleepms(2000);
-			if(!ll_contains(configured_readers, reader) || !is_valid_client(client) || reader->enable != 1)
-				{ return false; }
-			i++;
-		}
-		while(i < 30);
-	}
-	if((reader->cardmhz > 2000) && (reader->typ != R_SMART))
-	{
-		rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, pll max=%.2f MHz, wanted mhz=%.2f MHz",
-				reader->device,
-				reader->detect & 0x80 ? "!" : "",
-				RDR_CD_TXT[reader->detect & 0x7f],
-				(float)reader->cardmhz / 100,
-				(float)reader->mhz / 100);
-	}
-	else
-	{
-		if ((reader->typ == R_SMART) || (!strcasecmp(reader->crdr.desc, "smargo")) ){
-			rdr_debug_mask(reader, D_IFD, "clocking for smartreader with smartreader or smargo protocol");
-			if (reader->cardmhz >= 2000) reader->cardmhz =  369; else
-			if (reader->cardmhz >= 1600) reader->cardmhz = 1600; else
-			if (reader->cardmhz >= 1200) reader->cardmhz = 1200; else
-			if (reader->cardmhz >= 961)  reader->cardmhz =  961; else
-			if (reader->cardmhz >= 800)  reader->cardmhz =  800; else
-			if (reader->cardmhz >= 686)  reader->cardmhz =  686; else
-			if (reader->cardmhz >= 600)  reader->cardmhz =  600; else
-			if (reader->cardmhz >= 534)  reader->cardmhz =  534; else
-			if (reader->cardmhz >= 480)  reader->cardmhz =  480; else
-			if (reader->cardmhz >= 436)  reader->cardmhz =  436; else
-			if (reader->cardmhz >= 400)  reader->cardmhz =  400; else
-			if (reader->cardmhz >= 369)  reader->cardmhz =  369; else
-			if (reader->cardmhz == 357)  reader->cardmhz =  369; else // 357 not a default smartreader setting
-			if (reader->cardmhz >= 343)  reader->cardmhz =  343; else 
-			reader->cardmhz =  320;
-			if (reader->mhz >= 1600) reader->mhz = 1600; else
-			if (reader->mhz >= 1200) reader->mhz = 1200; else
-			if (reader->mhz >= 961)  reader->mhz =  961; else
-			if (reader->mhz >= 900)  reader->mhz =  900; else
-			if (reader->mhz >= 800)  reader->mhz =  800; else
-			if (reader->mhz >= 686)  reader->mhz =  686; else
-			if (reader->mhz >= 600)  reader->mhz =  600; else
-			if (reader->mhz >= 534)  reader->mhz =  534; else
-			if (reader->mhz >= 480)  reader->mhz =  480; else
-			if (reader->mhz >= 436)  reader->mhz =  436; else
-			if (reader->mhz >= 400)  reader->mhz =  369; else
-			if (reader->mhz >= 369)  reader->mhz =  369; else
-			if (reader->mhz == 357)  reader->mhz =  369; else // 357 not a default smartreader setting
-			if (reader->mhz >= 343)  reader->mhz =  343; else 
-			reader->mhz =  320;
-	    }
-		if (((reader->typ == R_SMART) && (reader->autospeed == 1)) || ((!strcasecmp(reader->crdr.desc, "smargo")) && (reader->autospeed == 1))) { 
-			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, mhz= AUTO, cardmhz=%d)",
+			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, pll max=%.2f MHz, wanted mhz=%.2f MHz",
 					reader->device,
 					reader->detect & 0x80 ? "!" : "",
 					RDR_CD_TXT[reader->detect & 0x7f],
-					reader->cardmhz);
-		} else {
-			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, mhz=%d, cardmhz=%d)",
-					reader->device,
-					reader->detect & 0x80 ? "!" : "",
-					RDR_CD_TXT[reader->detect & 0x7f],
-					reader->mhz,
-					reader->cardmhz);
+					(float)reader->cardmhz / 100,
+					(float)reader->mhz / 100);
 		}
+		else
+		{
+			if ((reader->typ == R_SMART) || (!strcasecmp(reader->crdr.desc, "smargo")) ){
+				rdr_debug_mask(reader, D_IFD, "clocking for smartreader with smartreader or smargo protocol");
+				if (reader->cardmhz >= 2000) reader->cardmhz =  369; else
+				if (reader->cardmhz >= 1600) reader->cardmhz = 1600; else
+				if (reader->cardmhz >= 1200) reader->cardmhz = 1200; else
+				if (reader->cardmhz >= 961)  reader->cardmhz =  961; else
+				if (reader->cardmhz >= 800)  reader->cardmhz =  800; else
+				if (reader->cardmhz >= 686)  reader->cardmhz =  686; else
+				if (reader->cardmhz >= 600)  reader->cardmhz =  600; else
+				if (reader->cardmhz >= 534)  reader->cardmhz =  534; else
+				if (reader->cardmhz >= 480)  reader->cardmhz =  480; else
+				if (reader->cardmhz >= 436)  reader->cardmhz =  436; else
+				if (reader->cardmhz >= 400)  reader->cardmhz =  400; else
+				if (reader->cardmhz >= 369)  reader->cardmhz =  369; else
+				if (reader->cardmhz == 357)  reader->cardmhz =  369; else // 357 not a default smartreader setting
+				if (reader->cardmhz >= 343)  reader->cardmhz =  343; else 
+				reader->cardmhz =  320;
+				if (reader->mhz >= 1600) reader->mhz = 1600; else
+				if (reader->mhz >= 1200) reader->mhz = 1200; else
+				if (reader->mhz >= 961)  reader->mhz =  961; else
+				if (reader->mhz >= 900)  reader->mhz =  900; else
+				if (reader->mhz >= 800)  reader->mhz =  800; else
+				if (reader->mhz >= 686)  reader->mhz =  686; else
+				if (reader->mhz >= 600)  reader->mhz =  600; else
+				if (reader->mhz >= 534)  reader->mhz =  534; else
+				if (reader->mhz >= 480)  reader->mhz =  480; else
+				if (reader->mhz >= 436)  reader->mhz =  436; else
+				if (reader->mhz >= 400)  reader->mhz =  369; else
+				if (reader->mhz >= 369)  reader->mhz =  369; else
+				if (reader->mhz == 357)  reader->mhz =  369; else // 357 not a default smartreader setting
+				if (reader->mhz >= 343)  reader->mhz =  343; else 
+				reader->mhz =  320;
+	    	}
+			if (((reader->typ == R_SMART) && (reader->autospeed == 1)) || ((!strcasecmp(reader->crdr.desc, "smargo")) && (reader->autospeed == 1))) { 
+				rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, mhz= AUTO, cardmhz=%d)",
+						reader->device,
+						reader->detect & 0x80 ? "!" : "",
+						RDR_CD_TXT[reader->detect & 0x7f],
+						reader->cardmhz);
+			} else {
+				rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, mhz=%d, cardmhz=%d)",
+						reader->device,
+						reader->detect & 0x80 ? "!" : "",
+						RDR_CD_TXT[reader->detect & 0x7f],
+						reader->mhz,
+						reader->cardmhz);
+			}
+		}
+		return true;
 	}
-	return true;
 }
 
 void cardreader_close(struct s_reader *reader)

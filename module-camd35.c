@@ -331,9 +331,9 @@ static void camd35_request_emm(ECM_REQUEST *er)
 	uint16_t au_caid = aureader->caid;
 
 	// Bulcrypt has 2 caids and aureader->caid can't be used.
-	// Use 5581 for AU.
+    // Use ECM_REQUEST caid for AU.
 	if(!au_caid && (er->caid == 0x5581 || er->caid == 0x4aee))
-		{ au_caid = 0x5581; }
+		{ au_caid = er->caid; }
 
 	time(&now);
 	if(!memcmp(cl->lastserial, aureader->hexserial, 8))
@@ -346,7 +346,7 @@ static void camd35_request_emm(ECM_REQUEST *er)
 	{
 		cl->disable_counter = 0;
 		cs_log("%s emm-request sent (reader=%s, caid=%04X, auprovid=%06X)",
-			   username(cur_client()), aureader->label, aureader->caid,
+			   username(cur_client()), aureader->label, au_caid,
 			   aureader->auprovid ? aureader->auprovid : b2i(4, aureader->prid[0]));
 	}
 	else if(cl->disable_counter > 2)
@@ -379,13 +379,6 @@ static void camd35_request_emm(ECM_REQUEST *er)
 		mbuf[39] = 1;                           // no. caids
 		mbuf[20] = au_caid >> 8;        // caid's (max 8)
 		mbuf[21] = au_caid & 0xff;
-		if(au_caid == 0x5581)
-		{
-			// Bulcrypt have two CAIDs, add the second one
-			mbuf[39]++;
-			mbuf[22] = 0x4aee >> 8;
-			mbuf[23] = 0x4aee & 0xff;
-		}
 		memcpy(mbuf + 40, aureader->hexserial, 6);  // serial now 6 bytes
 		mbuf[47] = aureader->nprov;
 		for(i = 0; i < aureader->nprov; i++)
@@ -407,7 +400,7 @@ static void camd35_request_emm(ECM_REQUEST *er)
 		mbuf[128] = (aureader->blockemm & EMM_GLOBAL && !(aureader->saveemm & EMM_GLOBAL)) ? 0 : 1;
 		mbuf[129] = (aureader->blockemm & EMM_SHARED && !(aureader->saveemm & EMM_SHARED)) ? 0 : 1;
 		mbuf[130] = (aureader->blockemm & EMM_UNIQUE && !(aureader->saveemm & EMM_UNIQUE)) ? 0 : 1;
-		//mbuf[131] = aureader->card_system; //Cardsystem for Oscam client
+		mbuf[127] = (aureader->blockemm & EMM_UNKNOWN && !(aureader->saveemm & EMM_UNKNOWN)) ? 0 : 1;
 	}
 	else        // disable emm
 		{ mbuf[20] = mbuf[39] = mbuf[40] = mbuf[47] = mbuf[49] = 1; }
@@ -1360,6 +1353,7 @@ static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc,
 		rdr->blockemm |= (buf[128] == 1) ? 0 : EMM_GLOBAL;
 		rdr->blockemm |= (buf[129] == 1) ? 0 : EMM_SHARED;
 		rdr->blockemm |= (buf[130] == 1) ? 0 : EMM_UNIQUE;
+		rdr->blockemm |= (buf[127] == 1) ? 0 : EMM_UNKNOWN;
 		cs_log("%s CMD05 AU request for caid: %04X auprovid: %06X",
 			   rdr->label,
 			   rdr->caid,

@@ -687,16 +687,29 @@ int8_t get_stats_linux(const pid_t pid, struct pstat* result)
 			if(sscanf(line, "Cached: %" PRId64" \n kB", &meminfo_cached) == 1){
 				break;
 			}
-    	}
-    }
+		}
+	}
 	fclose(fd);
+
+	// read processes from /proc
+	uint info_procs = 0;
+	DIR *hdir;
+	if((hdir = opendir("/proc")) != NULL){
+		struct dirent entry;
+		struct dirent *dirresult;
+		while(cs_readdir_r(hdir, &entry, &dirresult) == 0 && dirresult != NULL)
+		{
+			if (entry.d_name[0] > '0' && entry.d_name[0] <= '9') { info_procs++; }
+		}
+		closedir(hdir);
+	}
 
 	// read cpu/meminfo from sysinfo()
 	struct sysinfo info;
 	float shiftfloat = (float)(1 << SI_LOAD_SHIFT);
 	if (!sysinfo(&info)) {
 		// processes
-		result->info_procs = info.procs;
+		result->info_procs = info_procs;
 		// cpu load
 		result->cpu_avg[0] = (float) info.loads[0] / shiftfloat;
 		result->cpu_avg[1] = (float) info.loads[1] / shiftfloat;
@@ -741,8 +754,8 @@ void calc_cpu_usage_pct(struct pstat* cur_usage, struct pstat* last_usage)
 		int64_t last_ticks = last_usage->utime_ticks + last_usage->cutime_ticks;
 		//reset flags if set bevore
 		cur_usage->check_available &= ~(1 << 9);
- 		cur_usage->check_available &= ~(1 << 10);
- 		cur_usage->check_available &= ~(1 << 11);
+		cur_usage->check_available &= ~(1 << 10);
+		cur_usage->check_available &= ~(1 << 11);
 
 		cur_usage->cpu_usage_user = 100.0 * abs(cur_ticks - last_ticks) / total_time_diff;
 

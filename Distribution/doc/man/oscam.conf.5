@@ -123,11 +123,6 @@ usrfile logging mode:
 1 = disable saving NDS Videoguard mail messages from provider, default:1
 .RE
 .PP
-\fBnds_swap_cw\fP = \fB0\fP|\fB1\fP
-.RS 3n
-0 = NDS Videoguard CWs will be dropped, if CWs do not have an odd and even sample, default=0
-.RE
-.PP
 \fBmailfile\fP = \fBfile\fP
 .RS 3n
 define file saving NDS Videoguard mail messages from provider, default:none
@@ -581,6 +576,11 @@ write config:
 1 = show picons in user list, default:0
 .RE
 .PP
+\fBhttppiconpath\fP = \fBpath\fP
+.RS 3n
+path to picons, default:none
+.RE
+.PP
 \fBhttphelplang\fP = \fBen\fP|\fBde\fP|\fBfr\fP|\fB<available wiki languages>\fP
 .RS 3n
 set right language for wiki entry point, default:en
@@ -660,6 +660,11 @@ wait time in milli-seconds for cache exchange and Cardservproxy before sending E
             expires, requests will go to normal readers
  
  \fBcounter\fP = set minimum CW counter to allow CW is used, default:1
+.RE
+.PP
+\fBcacheex_mode1_delay\fP = \fBCAID1:time,[BCAID2:time]...\fP
+.RS 3n
+delay in milli-seconds for asking cache exchange mode 1 readers, default:none
 .RE
 .PP
 \fBcsp_port\fP = \fBport\fP

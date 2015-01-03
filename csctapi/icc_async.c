@@ -303,7 +303,11 @@ int32_t ICC_Async_Close(struct s_reader *reader)
 {
 	rdr_debug_mask(reader, D_IFD, "Closing device %s", reader->device);
 	call(reader->crdr.close(reader));
-	if(reader->typ != R_SC8in1) { NULLFREE(reader->crdr_data); }
+	if(reader->typ != R_SC8in1)
+        { 
+           NULLFREE(reader->crdr_data);
+           NULLFREE(reader->csystem_data);
+        }
 	rdr_debug_mask(reader, D_IFD, "Device %s succesfully closed", reader->device);
 	return OK;
 }
@@ -350,7 +354,6 @@ static int32_t ICC_Async_GetPLL_Divider(struct s_reader *reader)
 	if(reader->cardmhz != 8300)  /* Check dreambox is not DM7025 */
 	{
 		float divider;
-		rdr_log(reader," TEST tempo mhz check = %u mhz", reader->mhz);
 		divider = ((float) reader->cardmhz) / ((float) reader->mhz);
 		if (tempfi == 9) reader->divider = (int32_t) divider; // some card's runs only when slightly oveclocked like HD02
 		else {

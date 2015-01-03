@@ -1,12 +1,13 @@
 ##TPLHEADERSHORT##
 	<script type="text/javascript">
 		var oscamconf = 'user';
+		existing_inserts = new Array(##EXISTING_INS##);
 	</script>
 ##TPLBODY##
 ##TPLMENU##
 ##TPLMESSAGE##
 <DIV ID="subnav"><UL ID="nav"><LI CLASS="text_entitle">Edit User ##USERNAME##</LI></UL></DIV>
-	<form action="user_edit.html" method="get">
+	<form action="user_edit.html" method="get" name="user_edit">
 		<input name="user" type="hidden" value="##USERNAME##">
 		<TABLE CLASS="configuser">
 			<TR><TH COLSPAN="2">User general settings</TH></TR>
@@ -50,14 +51,27 @@
 					</select>
 				</TD>
 			</TR>
+
+			<TR><TD><A>Prefer local cards:</A></TD>
+				<TD>
+					<select name="preferlocalcards">
+						<option value="-1" ##PREFERLOCALCARDS-1##>-1 - Use Global Prefer local cards</option>
+						<option value="0"  ##PREFERLOCALCARDS0## >&nbsp;0 - local cards like proxied</option>
+						<option value="1"  ##PREFERLOCALCARDS1## >&nbsp;1 - prefer cache-ex then local cards</option>
+						<option value="2"  ##PREFERLOCALCARDS2## >&nbsp;2 - prefer local cards above cache-ex</option>
+					</select>
+					&nbsp;Global Prefer local cards value:<SPAN CLASS="global_conf" TITLE="This value is used if Prefer local cards = -1"><A HREF="config.html?part=global">##CFGPREFERLOCALCARDS##</A></SPAN>
+				</TD>
+			</TR>
 ##USEREDITSIDINS##
 ##TPLUSEREDITANTICASC##
 ##TPLUSEREDITCCCAM##
 			<TR><TD><A>Keepalive:</A></TD><TD><input name="keepalive" type="hidden" value="0"><input name="keepalive" type="checkbox" value="1" ##KEEPALIVE##><label></label></TD></TR>
 ##TPLUSEREDITCACHEEXBIT##
+##TPLUSEREDITCWCYCLE##
 			<TR>
 				<TD CLASS="centered"><input type="submit" name="action" value="Save" title="Save settings and reload users" ##BTNDISABLED##></TD>
-				<TD CLASS="centered"><input name="newuser" class="longer" type="text" maxlength="20" title="Enter new username if you want to clone this user">&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Save As" title="Save as new user and reload users" ##BTNDISABLED##></TD>
+				<TD CLASS="centered"><input name="newuser" class="longer" type="text" maxlength="20" title="Enter new username if you want to clone this user">&nbsp;&nbsp;&nbsp;<input type="submit" onclick="return chkinsert(document.user_edit.newuser.value)" name="action" value="Save As" title="Save as new user and reload users" ##BTNDISABLED##></TD>
 			</TR>
 			<TR CLASS="configfirstrow"><TD></TD><TD></TD></TR>
 		</TABLE>

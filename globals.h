@@ -221,9 +221,9 @@ typedef unsigned char uchar;
 /* ===========================
  *         constants
  * =========================== */
-#define CS_VERSION    "1.20-modern_svn"
+#define CS_VERSION    "1.20-modern"
 #ifndef CS_SVN_VERSION
-#   define CS_SVN_VERSION "modern"
+#   define CS_SVN_VERSION "test"
 #endif
 #ifndef CS_TARGET
 #   define CS_TARGET "unknown"
@@ -380,11 +380,12 @@ typedef unsigned char uchar;
 #define NCD_525     2
 
 // moved from reader-common.h
-#define UNKNOWN        0
-#define CARD_NEED_INIT 1
-#define CARD_INSERTED  2
-#define CARD_FAILURE   3
-#define NO_CARD        4
+#define UNKNOWN               0
+#define CARD_NEED_INIT        1
+#define CARD_INSERTED         2
+#define CARD_FAILURE          3
+#define NO_CARD               4
+#define READER_DEVICE_ERROR   5
 
 // moved from stats
 #define DEFAULT_REOPEN_SECONDS 30
@@ -829,12 +830,13 @@ typedef struct ecm_request_t
 	struct timeb    tps;                // incoming time stamp
 	int8_t          btun;               // mark er as betatunneled
 	uint16_t            reader_avail;               // count of available readers for ecm
-	uint16_t            readers;                    // count of available used readers
-	uint16_t            reader_nocacheex_avail;     // count of "normal" readers
-	uint16_t            reader_count;               // count of contacted readers
-	uint16_t            fallback_reader_count;      // count of contacted fb readers
-	uint16_t            cacheex_reader_count;       // count of contacted cacheex mode-1 readers
+	uint16_t            readers;                    // count of available used readers for ecm
 	uint16_t            reader_requested;           // count of real requested readers
+	uint16_t            localreader_count;          // count of selected local readers
+	uint16_t            cacheex_reader_count;       // count of selected cacheex mode-1 readers
+	uint16_t            fallback_reader_count;      // count of selected fb readers
+	uint16_t            reader_count;               // count of selected not fb readers
+	int8_t          preferlocalcards;
 	int8_t          checked;                //for doublecheck
 	uchar           cw_checked[16];     //for doublecheck
 	int8_t          readers_timeout_check;  // set to 1 after ctimeout occurs and readers not answered are checked
@@ -859,8 +861,8 @@ typedef struct ecm_request_t
 	uint8_t         csp_answered;               // =1 if er get answer by csp
 	LLIST           *csp_lastnodes;             // last 10 Cacheex nodes atm cc-proto-only
 	uint32_t        cacheex_wait_time;          // cacheex wait time in ms
-	struct timeb    cacheex_wait;               // incoming time stamp (tps) + cacheex wait time
 	uint8_t         cacheex_wait_time_expired;  // =1 if cacheex wait_time expires
+	uint16_t        cacheex_mode1_delay;        // cacheex mode 1 delay
 	uint8_t         cacheex_hitcache;           // =1 if wait_time due hitcache
 	void            *cw_cache;					//pointer to cw stored in cache
 #endif
@@ -1236,6 +1238,7 @@ struct s_reader                                     //contains device info, read
 	uint64_t        grp;
 	int8_t          fallback;
 	FTAB            fallback_percaid;
+	FTAB            localcards;
 #ifdef MODULE_CAMD35
 	int8_t			via_emm_global;					// to enable global emm viaccess on camd35
 #endif
@@ -1268,6 +1271,7 @@ struct s_reader                                     //contains device info, read
 	uchar           atr[64];
 	uchar           card_atr[64];                   // ATR readed from card
 	int8_t          card_atr_length;                // length of ATR
+	int8_t          seca_nagra_card;                // seca nagra card 
 	int32_t         atrlen;
 	SIDTABS         sidtabs;
 	SIDTABS         lb_sidtabs;
@@ -1472,6 +1476,7 @@ struct s_auth
 	FTAB            ftab;                           // user [caid] and ident filter
 	CLASSTAB        cltab;
 	TUNTAB          ttab;
+	int8_t          preferlocalcards;
 #ifdef CS_ANTICASC
 	int32_t         ac_fakedelay;                   // When this is -1, the global ac_fakedelay is used
 	int32_t         ac_users;                       // 0 - unlimited
@@ -1520,6 +1525,7 @@ struct s_auth
 	int32_t         cwcycledok;     // count pos checked cwcycles per client
 	int32_t         cwcyclednok;        // count neg checked cwcycles per client
 	int32_t         cwcycledign;        // count ign cwcycles per client
+	int8_t			cwc_disable;			// disable cwc checking for this Client
 #endif
 	int32_t         emmok;
 	int32_t         emmnok;
@@ -1668,6 +1674,7 @@ struct s_config
 	int32_t         http_prepend_embedded_css;
 	char            *http_jscript;
 	char            *http_tpl;
+	char            *http_piconpath;
 	char            *http_script;
 #ifndef WEBIF_JQUERY
 	char            *http_extern_jquery;
@@ -1867,7 +1874,8 @@ struct s_config
 	CWCHECKTAB  cacheex_cwcheck_tab;
 	IN_ADDR_T   csp_srvip;
 	int32_t     csp_port;
-	CECSPVALUETAB   cacheex_wait_timetab;
+	CECSPVALUETAB  cacheex_wait_timetab;
+	CAIDVALUETAB   cacheex_mode1_delay_tab;
 	CECSP       csp; //CSP Settings
 	uint8_t     cacheex_enable_stats;   //enable stats
 	struct s_cacheex_matcher *cacheex_matcher;

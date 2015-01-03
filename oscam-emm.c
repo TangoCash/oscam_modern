@@ -186,7 +186,7 @@ int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid
 		}
 		if(!caid_found)
 		{
-			rdr_debug_mask(reader, D_EMM, "reader_caid %04X != caid %04X", reader->caid, caid);
+			rdr_debug_mask(reader, D_EMM, "reader_caid %04X != emmpid caid %04X -> SKIP!", reader->caid, caid);
 			return 0;
 		}
 	}
@@ -198,32 +198,33 @@ int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid
 
 	if(!provid)
 	{
-		rdr_debug_mask(reader, D_EMM, "caid %04X has no provider", caid);
+		rdr_debug_mask(reader, D_EMM, "reader %04X match since emmpid has no provid -> SEND!", caid);
 		return 1;
 	}
 
-	if(reader->auprovid && reader->auprovid == provid)
+	if(reader->auprovid == provid)
 	{
-		rdr_debug_mask(reader, D_EMM, "matched auprovid %06X", reader->auprovid);
-		return 1;
-	}
-
-	if(!reader->nprov)
-	{
-		rdr_debug_mask(reader, D_EMM, "no provider is set");
+		rdr_debug_mask(reader, D_EMM, "reader auprovid = %06X matching with emm provid = %06X -> SEND!", reader->auprovid, provid);
 		return 1;
 	}
 
 	for(i = 0; i < reader->nprov; i++)
 	{
 		uint32_t prid = b2i(4, reader->prid[i]);
-		if(prid == provid || ((reader->typ == R_CAMD35 || reader->typ == R_CS378X) && (prid & 0xFFFF) == (provid & 0xFFFF)))
+		
+		if(prid == provid)
 		{
-			rdr_debug_mask(reader, D_EMM, "provider match %04X:%06X", caid, provid);
+			rdr_debug_mask(reader, D_EMM, "reader provid %06X matching with emm provid %06X -> SEND!", prid, provid);
 			return 1;
 		}
+		if(!reader->auprovid && ((reader->typ == R_CAMD35 || reader->typ == R_CS378X) && (prid & 0xFFFF) == (provid & 0xFFFF)))
+		{
+			rdr_debug_mask(reader, D_EMM, "CS378: Match after fixing reader provid %06X to ??%04X and emm provid %06X to ??%04X -> SEND!", prid, prid&0xFFFF, provid, provid&0xFFFF);
+			return 1;
+		}
+		
+		rdr_debug_mask(reader, D_EMM, "reader provid %06X no match with emm provid %06X -> SKIP!", prid, provid);
 	}
-	rdr_debug_mask(reader, D_EMM, "skip provider %04X:%06X", caid, provid);
 	return 0;
 }
 
@@ -247,11 +248,9 @@ static char *get_emmlog_filename(char *dest, size_t destlen, const char *basefil
 static void saveemm(struct s_reader *aureader, EMM_PACKET *ep, const char *proceded)
 {
 	FILE *fp_log;
-	FILE *fp_bin;
 	char tmp[17];
 	char buf[80];
 	char token_log[256];
-	char token_bin[256];
 	char *tmp2;
 	time_t rawtime;
 	uint32_t emmtype;
@@ -271,20 +270,16 @@ static void saveemm(struct s_reader *aureader, EMM_PACKET *ep, const char *proce
 		{
 			case GLOBAL:
 				fp_log = fopen(get_emmlog_filename(token_log, sizeof(token_log), aureader->label, "global", "log"), "a");
-				fp_bin = fopen(get_emmlog_filename(token_bin, sizeof(token_bin), aureader->label, "global", "bin"), "ab");
 				break;
 			case SHARED:
 				fp_log = fopen(get_emmlog_filename(token_log, sizeof(token_log), aureader->label, "shared", "log"), "a");
-				fp_bin = fopen(get_emmlog_filename(token_bin, sizeof(token_bin), aureader->label, "shared", "bin"), "ab");
 				break;
 			case UNIQUE:
 				fp_log = fopen(get_emmlog_filename(token_log, sizeof(token_log), aureader->label, "unique", "log"), "a");
-				fp_bin = fopen(get_emmlog_filename(token_bin, sizeof(token_bin), aureader->label, "unique", "bin"), "ab");
 				break;
 			case UNKNOWN:
 			default:
 				fp_log = fopen(get_emmlog_filename(token_log, sizeof(token_log), aureader->label, "unknown", "log"), "a");
-				fp_bin = fopen(get_emmlog_filename(token_bin, sizeof(token_bin), aureader->label, "unknown", "bin"), "ab");
 		}			
 		
 		if(!fp_log)
@@ -301,22 +296,6 @@ static void saveemm(struct s_reader *aureader, EMM_PACKET *ep, const char *proce
 				rdr_log(aureader, "Successfully added EMM to %s", token_log);
 			}
 			fclose(fp_log);
-		}
-		if(!fp_bin)
-		{
-			rdr_log(aureader, "ERROR: Cannot open file '%s' (errno=%d: %s)\n", token_bin, errno, strerror(errno));
-		}
-		else
-		{
-			if((int)fwrite(ep->emm, 1, emm_length + 3, fp_bin) == emm_length + 3)
-			{
-				rdr_log(aureader, "Successfully added binary EMM to %s", token_bin);
-			}
-			else
-			{
-				rdr_log(aureader, "ERROR: Cannot write binary EMM to %s (errno=%d: %s)\n", token_bin, errno, strerror(errno));
-			}
-			fclose(fp_bin);
 		}
 	}
 }
@@ -437,7 +416,7 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 
 		int32_t is_blocked = 0;
 
-		if (aureader->fix_07 == 1 && (caid == 0x098C || caid == 0x9C4) && ep->type == UNIQUE)
+		if (aureader->fix_07 == 1 && (caid == 0x098C || caid == 0x09C4) && ep->type == UNIQUE)
 		{
 			if(ep->emm[1] == 0x70 && (ep->emm[8] * 0x100 + ep->emm[9] != 0x200))
 			{

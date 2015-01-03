@@ -31,21 +31,34 @@ function gotosite(Action) {
 	window.location.href = Action;
 }
 
-/* Function for add new reader in readers.html */
-function addreader() {
+/* Function for add new reader/user in readers.html/userconfig.html */
+function addinsert() {
 	cdpause();
 	$("#searchTable").fadeOut('slow', function() {
-		$("#newreader").fadeIn('slow');
+		$("#newinsert").fadeIn('slow');
 	});
 }
 
-/* Function for add new user in userconfig.html */
-function adduser() {
-	cdpause();
-	$("#searchTable").fadeOut('slow', function() {
-		$("#newuser").fadeIn('slow');
-	});
-};
+/* Function for add new reader/user in readers.html/userconfig.html  */
+function chkinsert(chkvalue) {
+	if(existing_inserts.indexOf(encodeURIComponent(chkvalue))!=-1){
+		alert('Entry "' + chkvalue + '" already exists!');
+		return false;
+	}
+}
+
+/* Function for del entry in readers.html/userconfig.html  */
+function cleaninsert(deleteinsert) {
+	var tmp_array = existing_inserts.slice();
+	existing_inserts.length = 0;
+	var i2 = 0;
+ 	for (i = 0; i < tmp_array.length; i++) {
+ 		if (tmp_array[i] != deleteinsert){
+			existing_inserts[i2] = tmp_array[i];
+			i2++; 
+		}
+	}
+}
 
 String.prototype.toHHMMSS = function () {
 	if (this.length < 1) {
@@ -256,6 +269,7 @@ $(function () {
 		if (confirm("Delete Reader " + $(this).data('reader-name') + "?")) {
 			var parameters_old = parameters;
 			parameters += '&label=' + $(this).data('reader-name') + '&action=' + $(this).data('next-action');
+			cleaninsert($(this).data('reader-name'));
 			waitForMsg();
 			parameters = parameters_old;
 			$('#' + $(this).data('md5')).fadeOut('slow');
@@ -301,6 +315,7 @@ $(function () {
 		if (confirm("Delete User " + $(this).data('user-name') + "?")) {
 			var parameters_old = parameters;
 			parameters += '&user=' + $(this).data('user-name') + '&action=' + $(this).data('next-action');
+			cleaninsert($(this).data('user-name'));
 			waitForMsg();
 			parameters = parameters_old;
 			$('#' + $(this).data('md5')).fadeOut('slow');
@@ -313,7 +328,7 @@ $(function () {
 		$("#dataTable tr").each(function (index) {
 			if (!index) return;
 			$(this).find("td").each(function () {
-				var id = $(this).text().toLowerCase().trim();
+				var id = (($(this).data('sort-value') == undefined || $(this).hasClass("usercol2")) ? $(this).text() : $(this).data('sort-value').toString()).toLowerCase().trim();
 				var not_found = (id.indexOf(value) == -1);
 				$(this).closest('tr').toggle(!not_found);
 				return not_found;
@@ -999,12 +1014,8 @@ function updateSysinfo(data) {
 function updateStatuspage(data) {
 
 	var updatedclients = "";
-	var cardokreader = 0;
-	var connectedproxys = 0;
 	// update status lines
 	$.each(data.oscam.status.client, function (i, item) {
-		if (item.connection.status == 'CARDOK') cardokreader++;
-		if (item.connection.status == 'CONNECTED') connectedproxys++;
 		var newrow;
 
 		//add ID's for type c and m to list of existing elements. We need this to delete all not longer existing
@@ -1274,7 +1285,7 @@ function updateStatuspage(data) {
 					// cccam
 					var entobj = item.connection.entitlements[0];
 					entitlement += '<br><a href="entitlements.html?label=' + item.rname_enc + '" class="tooltip' + entobj.cccreshare + '">';
-					entitlement += '(' + entobj.locals + ' of ' + entobj.cccount + ' cards)';
+					entitlement += '(' + entobj.locals + ' of ' + entobj.cccount + ' card' + (entobj.cccount > 1 ? "s" : "") + ')';
 					entitlement += '<span>card_count=' + entobj.cccount + '<br>';
 					entitlement += 'hop1=' + entobj.ccchop1 + '<br>';
 					entitlement += 'hop2=' + entobj.ccchop2 + '<br>';
@@ -1347,10 +1358,10 @@ function updateStatuspage(data) {
 	}
 
 	//update reader-headline
-	$("#rcc").text(cardokreader);
+	$("#rcc").text(data.oscam.status.rcc);
 
 	//update proxy-headline
-	$("#pcc").text(connectedproxys);
+	$("#pcc").text(data.oscam.status.pcc);
 
 	// update footer
 	updateFooter(data);
@@ -1844,6 +1855,8 @@ $(document).ready(function () {
 					n.children("tbody").append(l);
 					n.find("th.sorting-desc, th.sorting-asc").data("sort-dir", null).removeClass("sorting-desc sorting-asc").addClass("sortable");
 					r.data("sort-dir", o).removeClass("sortable").addClass("sorting-" + o);
+					$('tr').find('td.td-sorting').removeClass('td-sorting');
+					$('tr').find('td:eq(' + i + ')').addClass('td-sorting');
 					n.trigger("aftertablesort", {
 						column: i,
 						direction: o

@@ -590,6 +590,40 @@ int32_t chk_ctab_ex(uint16_t caid, CAIDTAB *ctab)
 	return 0;
 }
 
+uint8_t is_localreader(struct s_reader *rdr, ECM_REQUEST *er) //to be used for LB/reader selections checks only
+{
+	if(!rdr) return 0;
+
+	if(!is_network_reader(rdr)){
+		return 1;
+	}
+
+	if(!rdr->localcards.nfilts) { return 0; }
+
+	int32_t i, k;
+	for(i = 0; i < rdr->localcards.nfilts; i++)
+	{
+		uint16_t tcaid = rdr->localcards.filts[i].caid;
+		if(tcaid && tcaid == er->caid)    //caid match
+		{
+			int32_t nprids = rdr->localcards.filts[i].nprids;
+			if(!nprids)  // No Provider ->Ok
+				{ return 1; }
+
+			for(k = 0; k < nprids; k++)
+			{
+				uint32_t prid = rdr->localcards.filts[i].prids[k];
+				if(prid == er->prid)    //Provider matches
+				{
+					return 1;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
 uint8_t chk_is_fixed_fallback(struct s_reader *rdr, ECM_REQUEST *er)
 {
 

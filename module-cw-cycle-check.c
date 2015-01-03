@@ -81,43 +81,22 @@ static uint8_t countCWpart(ECM_REQUEST *er, struct s_cw_cycle_check *cwc)
 	return ret;
 }
 
-static uint8_t checkvalidCW(ECM_REQUEST *er, char *reader, uint8_t nds)
+static uint8_t checkvalidCW(ECM_REQUEST *er)
 {
 	uint8_t ret = 1;	
-	if(chk_is_null_CW(er->cw)) { er->rc = E_NOTFOUND; }
+	if(chk_is_null_CW(er->cw)) 
+	{ er->rc = E_NOTFOUND; }
 
 	if(er->rc == E_NOTFOUND)
 	{ return 0; } //wrong  leave the check
 
-	if(nds)   
-	{
-		if(get_odd_even(er)) // use the odd/even Byte
-	{
-			if (get_odd_even(er) == 0x80 && checkCWpart(er->cw, 1)) { ret++; } // wrong: even ecm should only have even part of cw used 
-			if (get_odd_even(er) == 0x81 && checkCWpart(er->cw, 0)) { ret++; } // wrong: odd ecm should only have odd part of cw used 
-		}
-		else
-		{
-			if(((checkCWpart(er->cw, 0)^checkCWpart(er->cw, 1)) == 0)) { ret = 0; }
-		}
-	}
-	else // non NDS Part
-	{
-		if(((checkCWpart(er->cw, 0) && checkCWpart(er->cw, 1)) == 0))  { ret = 0; }
-	}
+	if(checkCWpart(er->cw, 0) && checkCWpart(er->cw, 1))
+	{ return 1; } //cw1 and cw2 is filled -> we can check for cwc
 
-	if(ret > 1) //something wrong with the NDS cw
+	if((!checkCWpart(er->cw, 0) || !checkCWpart(er->cw, 1)) && er->caid >> 8 == 0x09)
 	{
-		if ((get_odd_even(er) == 0x80 && checkCWpart(er->cw, 0)) || (get_odd_even(er) == 0x81 && checkCWpart(er->cw, 1)))
-		{ ret = 0; } // wrong: odd and even Part is filled
-		else
-		{ ret = 2; } // cw is swapp
-
-		if(cfg.cwcycle_allowbadfromffb)
-		{
-			if(chk_is_pos_fallback(er, reader))
-			{ ret = 5; } // allow the bad NDS cw from ffb
-		}
+		cs_log("CAID: %04X uses obviously half cycle cw's : NO need to check it with CWC! Remove CAID: %04X from CWC Config!", er->caid, er->caid);
+		ret = 0;  // cw1 or cw2 is null 
 	}
 
 	return ret;
@@ -190,6 +169,9 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 
 	}*/
 
+	if(!checkvalidCW(er))
+	{ return 3; } //cwc ign	
+
 	//read lock
 	cs_readlock(&cwcycle_lock);
 	for(currentnode = cw_cc_list; currentnode; currentnode = currentnode->next)
@@ -248,7 +230,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 						if(now - cwc->time >= cwc->cycletime - cwc->dyncycletime)
 						{
 							cs_debug_mask(D_CWC, "cyclecheck [Same CW but much too late] Client: %s EA: %s CW: %s Time: %ld Timediff: %ld", user, er_ecmf, cwstr, now, now - cwc->time);
-							ret = 2; // declare it as bad(old)
+							ret = cfg.cwcycle_dropold ? 2 : 4;
 						}
 						else
 						{				
@@ -265,8 +247,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 				/*for (k=0; k<15; k++) { // debug md5
 				            cs_debug_mask(D_CWC, "cyclecheck [checksumlist[%i]]: ecm_md5: %s csp-hash: %d Entry: %i", k, cs_hexdump(0, cwc->ecm_md5[k].md5, 16, ecm_md5, sizeof(ecm_md5)), cwc->ecm_md5[k].csp_hash, cwc->cwc_hist_entry);
 				} */
-				if(checkvalidCW(er, reader, 0))
-				{
+
 					// first we check if the store cw the same like the current
 					if(memcmp(cwc->cw, cw, 16) == 0)
 					{
@@ -275,7 +256,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 						if(now - cwc->time >= cwc->cycletime - cwc->dyncycletime)
 						{
 							cs_debug_mask(D_CWC, "cyclecheck [Same CW but much too late] Client: %s EA: %s CW: %s Time: %ld Timediff: %ld", user, er_ecmf, cwstr, now, now - cwc->time);
-							ret = 2; // declare it as bad(old)
+							ret = cfg.cwcycle_dropold ? 2 : 4;
 						}
 						else
 						{				
@@ -292,7 +273,6 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 							if(cwc->cw[i] == cw[i])
 							{
 								cycleok = 0; //means CW0 Cycle OK
-
 							}
 							else
 							{
@@ -316,13 +296,12 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 							}
 						}
 					}
+
 					if(cycleok >= 0 && cfg.cwcycle_sensitive && countCWpart(er, cwc) >= cfg.cwcycle_sensitive)  //2,3,4, 0 = off
 					{
 						cycleok = -2;
 					}
-				}
-				else
-					{ cycleok = -2; }
+
 				if(cycleok >= 0)
 				{
 					ret = 0;  // return Code 0 Cycle OK
@@ -685,6 +664,8 @@ uint8_t checkcwcycle(struct s_client *client, ECM_REQUEST *er, struct s_reader *
 {
 
 	if(!cfg.cwcycle_check_enable)
+		{ return 3; }
+	if(client && client->account && client->account->cwc_disable)
 		{ return 3; }
 	//  if (!(rc == E_FOUND) && !(rc == E_CACHEEX))
 	if(rc >= E_NOTFOUND)

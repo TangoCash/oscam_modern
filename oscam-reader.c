@@ -507,13 +507,6 @@ bool hexserialset(struct s_reader *rdr)
 
 void hexserial_to_newcamd(uchar *source, uchar *dest, uint16_t caid)
 {
-	if(caid == 0x5581 || caid == 0x4aee)    // Bulcrypt
-	{
-		dest[0] = 0x00;
-		dest[1] = 0x00;
-		memcpy(dest + 2, source, 4);
-		return;
-	}
 	caid = caid >> 8;
 	if(caid == 0x17 || caid == 0x06)    // Betacrypt or Irdeto
 	{
@@ -1013,7 +1006,7 @@ void reader_get_ecm(struct s_reader *reader, ECM_REQUEST *er)
 		{
 			//check if ask this reader
 			ea = get_ecm_answer(reader, ecm);
-			if(ea && !ea->is_pending && (ea->status & REQUEST_SENT)) { break; }
+			if(ea && !ea->is_pending && (ea->status & REQUEST_SENT) && ea->rc!=E_TIMEOUT) { break; }
 			ea = NULL;
 		}
 	}
