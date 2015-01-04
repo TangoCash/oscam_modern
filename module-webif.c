@@ -4697,7 +4697,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 #endif
 							}
 						}
-						if(cl->last_caid != NO_CAID_VALUE && cl->last_srvid != NO_SRVID_VALUE)
+						if(cl->last_caid != NO_CAID_VALUE || cl->last_srvid != NO_SRVID_VALUE)
 						{
 							char channame[32];
 							tpl_printf(vars, TPLADD, "CLIENTCAID", "%04X", cl->last_caid);
