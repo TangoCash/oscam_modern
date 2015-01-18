@@ -216,10 +216,10 @@ void *work_thread(void *ptr)
 
 			struct timeb actualtime;
 			cs_ftime(&actualtime);
-			int32_t gone = comp_timeb(&actualtime, &data->time);
+			int64_t gone = comp_timeb(&actualtime, &data->time);
 			if(data != &tmp_data && gone > (int) cfg.ctimeout+1000)
 			{
-				cs_debug_mask(D_TRACE, "dropping client data for %s time %d ms", username(cl), gone);
+				cs_debug_mask(D_TRACE, "dropping client data for %s time %"PRId64" ms", username(cl), gone);
 				__free_job_data(cl, data);
 				continue;
 			}
@@ -264,9 +264,7 @@ void *work_thread(void *ptr)
 				}
 				break;
 			case ACTION_READER_RESET:
-#if WITH_CARDREADER == 1
 				cardreader_do_reset(reader);
-#endif
 				break;
 			case ACTION_READER_ECM_REQUEST:
 				reader_get_ecm(reader, data->ptr);
@@ -287,14 +285,10 @@ void *work_thread(void *ptr)
 				break;
 			case ACTION_READER_RESET_FAST:
 				reader->card_status = CARD_NEED_INIT;
-#if WITH_CARDREADER == 1
 				cardreader_do_reset(reader);
-#endif
 				break;
 			case ACTION_READER_CHECK_HEALTH:
-#if WITH_CARDREADER == 1
 				cardreader_do_checkhealth(reader);
-#endif
 				break;
 			case ACTION_READER_CAPMT_NOTIFY:
 				if(reader->ph.c_capmt) { reader->ph.c_capmt(cl, data->ptr); }
@@ -322,14 +316,10 @@ void *work_thread(void *ptr)
 				module->s_handler(cl, mbuf, n);
 				break;
 			case ACTION_CACHEEX1_DELAY:
-#ifdef CS_CACHEEX
 				cacheex_mode1_delay(data->ptr);
-#endif
 				break;
 			case ACTION_CACHEEX_TIMEOUT:
-#ifdef CS_CACHEEX
 				cacheex_timeout(data->ptr);
-#endif
 				break;
 			case ACTION_FALLBACK_TIMEOUT:
 				fallback_timeout(data->ptr);
@@ -390,10 +380,11 @@ void *work_thread(void *ptr)
 				break;
 			case ACTION_CLIENT_SEND_MSG:
 			{
-#ifdef MODULE_CCCAM
-				struct s_clientmsg *clientmsg = (struct s_clientmsg *)data->ptr;
-				cc_cmd_send(cl, clientmsg->msg, clientmsg->len, clientmsg->cmd);
-#endif
+				if (config_enabled(MODULE_CCCAM))
+				{
+					struct s_clientmsg *clientmsg = (struct s_clientmsg *)data->ptr;
+					cc_cmd_send(cl, clientmsg->msg, clientmsg->len, clientmsg->cmd);
+				}
 				break;
 			}
 			} // switch

@@ -214,7 +214,6 @@ int32_t cs_open_logfiles(void)
 		}
 		else
 		{
-			setvbuf(fp, NULL, _IOFBF, 8 * 1024);
 			char line[80];
 			memset(line, '-', sizeof(line));
 			line[(sizeof(line) / sizeof(char)) - 1] = '\0';
@@ -230,8 +229,8 @@ int32_t cs_open_logfiles(void)
 	// according to syslog docu: calling closelog is not necessary and calling openlog multiple times is safe
 	// We use openlog to set the default syslog settings so that it's possible to allow switching syslog on and off
 	openlog(syslog_ident, LOG_NDELAY | LOG_PID, LOG_DAEMON);
-
 	cs_log_nolock(">> OSCam <<  cardserver %s, version " CS_VERSION ", build r" CS_SVN_VERSION " (" CS_TARGET ")", starttext);
+
 	return (fp <= (FILE *)0);
 }
 
@@ -482,7 +481,7 @@ void cs_log_int(uint16_t mask, int8_t lock __attribute__((unused)), const uchar 
 						{ last_log_ts = log_ts; }
 					// Report duplicated lines when the new log line is different
 					// than the old or 60 seconds have passed.
-					int32_t gone = comp_timeb(&log_ts, &last_log_ts);
+					int64_t gone = comp_timeb(&log_ts, &last_log_ts);
 					if(!repeated_line || gone >= 60*1000)
 					{
 						dupl_header_len = get_log_header(2, dupl);
@@ -544,7 +543,7 @@ void cs_log_int_nospace(uint16_t mask, int8_t lock __attribute__((unused)), cons
 						{ last_log_ts = log_ts; }
 					// Report duplicated lines when the new log line is different
 					// than the old or 60 seconds have passed.
-					int32_t gone = comp_timeb(&log_ts, &last_log_ts);
+					int64_t gone = comp_timeb(&log_ts, &last_log_ts);
 					if(!repeated_line || gone >= 60*1000)
 					{
 						dupl_header_len = get_log_header(2, dupl);

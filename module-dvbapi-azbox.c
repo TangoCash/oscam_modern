@@ -29,7 +29,7 @@ static unsigned char openxcas_cw[16];
 static int32_t openxcas_seq, openxcas_filter_idx, openxcas_stream_id, openxcas_cipher_idx, openxcas_busy = 0;
 static uint16_t openxcas_video_pid, openxcas_audio_pid, openxcas_data_pid;
 
-void azbox_openxcas_ecm_callback(int32_t stream_id, uint32_t UNUSED(seq), int32_t cipher_index, uint32_t UNUSED(caid), unsigned char *ecm_data, int32_t l, uint16_t pid)
+static void azbox_openxcas_ecm_callback(int32_t stream_id, uint32_t UNUSED(seq), int32_t cipher_index, uint32_t UNUSED(caid), unsigned char *ecm_data, int32_t l, uint16_t pid)
 {
 	cs_debug_mask(D_DVBAPI, LOG_PREFIX "ecm callback received");
 
@@ -64,7 +64,7 @@ void azbox_openxcas_ecm_callback(int32_t stream_id, uint32_t UNUSED(seq), int32_
 }
 
 
-void azbox_openxcas_ex_callback(int32_t stream_id, uint32_t seq, int32_t idx, uint32_t pid, unsigned char *ecm_data, int32_t l)
+static void azbox_openxcas_ex_callback(int32_t stream_id, uint32_t seq, int32_t idx, uint32_t pid, unsigned char *ecm_data, int32_t l)
 {
 	cs_debug_mask(D_DVBAPI, LOG_PREFIX "ex callback received");
 
@@ -107,7 +107,7 @@ void azbox_openxcas_ex_callback(int32_t stream_id, uint32_t seq, int32_t idx, ui
 		{ cs_debug_mask(D_DVBAPI, LOG_PREFIX "ex filter started, pid = %x", openxcas_ecm_pid); }
 }
 
-void *azbox_main_thread(void *cli)
+static void *azbox_main_thread(void *cli)
 {
 	struct s_client *client = (struct s_client *) cli;
 	client->thread = pthread_self();
@@ -118,7 +118,7 @@ void *azbox_main_thread(void *cli)
 	int32_t ok = 0;
 	for(account = cfg.account; account; account = account->next)
 	{
-		if((ok = streq(cfg.dvbapi_usr, account->usr)))
+		if((ok = is_dvbapi_usr(account->usr)))
 			{ break; }
 	}
 	cs_auth_client(client, ok ? account : (struct s_auth *)(-1), "dvbapi");
@@ -343,6 +343,11 @@ void azbox_close(void)
 {
 	if(openxcas_close() < 0)
 		{ cs_log(LOG_PREFIX "could not close"); }
+}
+
+void *azbox_handler(struct s_client *cl, uchar *mbuf, int32_t module_idx)
+{
+	return dvbapi_start_handler(cl, mbuf, module_idx, azbox_main_thread);
 }
 
 #endif

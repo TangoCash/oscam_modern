@@ -2,11 +2,15 @@
 #ifdef READER_SECA
 #include "reader-common.h"
 #include "csctapi/icc_async.h"
+#include "cscrypt/idea.h"
 
 struct seca_data
 {
 	bool valid_provider[CS_MAXPROV];
+	IDEA_KEY_SCHEDULE ks;
+	IDEA_KEY_SCHEDULE ksSession;
 };
+
 
 static uint64_t get_pbm(struct s_reader *reader, uint8_t idx)
 {
@@ -230,6 +234,14 @@ static int32_t seca_card_init(struct s_reader *reader, ATR *newatr)
 	{
 		rdr_debug_mask(reader, D_IFD, "parental locked");
 	}
+	
+	struct seca_data *csystem_data = reader->csystem_data;
+	//init ideakeys
+	unsigned char IdeaKey[16];
+	memcpy(IdeaKey, reader->boxkey, 16);
+	idea_set_encrypt_key(IdeaKey, &csystem_data->ks);
+	idea_set_decrypt_key(&csystem_data->ks, &csystem_data->ksSession);
+	
 	return OK;
 }
 
@@ -328,12 +340,34 @@ static int32_t seca_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, struc
 		return ERROR;
 	};// exit if response not 90 00
 	//TODO: if response is 9027 ppv mode is possible!
-	if (er->ecm[5]==0x01 && ((reader->card_atr[9] & 0X0F) == 10)){ // seca3: nano 01 in effect?
-		rdr_log(reader, "Received an encrypted controlword from the card that needs postprocessing by the receiver!");
-		if(reader->disablecrccws == 0){
-			reader->disablecrccws = 1;
-			rdr_log(reader, "WARNING: Encrypted controlwords detected-> disabling controlword crc checking!");
+	
+	if (er->ecm[5]==0x01 && ((reader->card_atr[9] & 0X0F) == 10)) // seca3: nano 01 in effect?
+	{ 
+		
+		if(check_filled(reader->boxkey, 16) == 16)
+		{	
+			unsigned char v[8];
+			memset(v, 0, sizeof(v));
+			idea_cbc_encrypt(cta_res, ea->cw, 8, &csystem_data->ksSession, v, IDEA_DECRYPT);
+			memset(v, 0, sizeof(v));
+			idea_cbc_encrypt(cta_res + 8, ea->cw + 8, 8, &csystem_data->ksSession, v, IDEA_DECRYPT);
+			uint8_t c;
+			for(i = 0; i < 16; i += 4)
+			{
+				c = ((ea->cw[i] + ea->cw[i + 1] + ea->cw[i + 2]) & 0xff);
+				if(ea->cw[i + 3] != c)
+				{
+					break;
+				}
+			}
+			if(i == 16)
+			{
+				return OK;
+			}
 		}
+		memset(ea->cw, 0, 16);
+		snprintf(ea->msglog, MSGLOGSIZE, "need sessionkey");
+		return ERROR;
 	}
 	memcpy(ea->cw, cta_res, 16);
 	return OK;

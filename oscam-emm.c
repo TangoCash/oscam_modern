@@ -1,5 +1,6 @@
 #include "globals.h"
 #include "cscrypt/md5.h"
+#include "module-dvbapi.h"
 #include "module-led.h"
 #include "oscam-client.h"
 #include "oscam-config.h"
@@ -309,10 +310,8 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 	struct s_reader *aureader = NULL;
 	cs_ddump_mask(D_EMM, ep->emm, ep->emmlen, "emm:");
 
-	int8_t cl_dvbapi = 0, assemble = 0;
-#ifdef HAVE_DVBAPI
-	cl_dvbapi = streq(cfg.dvbapi_usr, client->account->usr);
-#endif
+	int8_t assemble = 0;
+	bool cl_dvbapi = is_dvbapi_usr(client->account->usr);
 	if(client->account->emm_reassembly > 1 || (client->account->emm_reassembly && cl_dvbapi))
 		{ assemble = 1; }
 
@@ -416,17 +415,29 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 
 		int32_t is_blocked = 0;
 
-		if (aureader->fix_07 == 1 && (caid == 0x098C || caid == 0x09C4) && ep->type == UNIQUE)
+		if (aureader->fix_07 == 1 && ep->type == UNIQUE)
 		{
-			if(ep->emm[1] == 0x70 && (ep->emm[8] * 0x100 + ep->emm[9] != 0x200))
+			if((caid == 0x098C || caid == 0x09C4) && ep->emm[1] == 0x70 && (ep->emm[8] * 0x100 + ep->emm[9] != 0x200))
 			{
 				rdr_log(aureader,"emmtype 0x%04X marked as unknown for caid 0x%04X", (ep->emm[8] * 0x100 + ep->emm[9]),caid);
 				ep->type = UNKNOWN;
 			}
 
-			if(ep->emm[1] == 0 && (ep->emm[4] *0x100 + ep->emm[5] != 0x200))
+			if((caid == 0x098C || caid == 0x09C4) && ep->emm[1] == 0 && (ep->emm[4] * 0x100 + ep->emm[5] != 0x200))
 			{
 				rdr_log(aureader,"emmtype 0x%04X marked as unknown for caid 0x%04X", (ep->emm[4] * 0x100 + ep->emm[5]),caid);
+				ep->type = UNKNOWN;
+			}
+
+			if(caid == 0x09AF && ep->emm[1] == 0x70 && ep->emm[11] != 2)
+			{
+				rdr_log(aureader,"emmtype 0x%02X marked as unknown for caid 0x%04X", ep->emm[11],caid);
+				ep->type = UNKNOWN;
+			}
+
+			if(caid == 0x09AF && ep->emm[1] == 0 && ep->emm[7] != 2)
+			{
+				rdr_log(aureader,"emmtype 0x%02X marked as unknown for caid 0x%04X", ep->emm[7],caid);
 				ep->type = UNKNOWN;
 			}
 		}
@@ -581,9 +592,7 @@ int32_t reader_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 		else
 		{
 			rdr_debug_mask(reader, D_READER, "local emm reader");
-#if WITH_CARDREADER == 1
 			rc = cardreader_do_emm(reader, ep);
-#endif
 		}
 		if(!ecs)
 			{ i = reader_store_emm(reader, ep->type, md5tmp); }
@@ -655,9 +664,7 @@ void do_emm_from_file(struct s_reader *reader)
 	reader->saveemm = 0;
 
     int32_t rc = 0;
-#if WITH_CARDREADER == 1
 	rc = cardreader_do_emm(reader, eptmp);
-#endif
 	if(rc == OK)
 		{ rdr_log(reader, "EMM from file %s was successfully written.", token); }
 	else

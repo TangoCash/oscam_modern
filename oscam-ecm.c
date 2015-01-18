@@ -662,6 +662,7 @@ void free_ecm(ECM_REQUEST *ecm)
 {
 	struct s_ecm_answer *ea, *nxt;
 	cacheex_free_csp_lastnodes(ecm);
+	gbox_free_cards_pending(ecm);
 	//remove this ecm from reader queue to avoid segfault on very late answers (when ecm is already disposed)
 	//first check for outstanding answers:
 	remove_ecm_from_reader(ecm);
@@ -684,6 +685,7 @@ void free_ecm(ECM_REQUEST *ecm)
 void free_push_in_ecm(ECM_REQUEST *ecm)
 {
 	cacheex_free_csp_lastnodes(ecm);
+	gbox_free_cards_pending(ecm);
 	if(ecm->src_data)
 		{ NULLFREE(ecm->src_data); }
 	NULLFREE(ecm);
@@ -702,6 +704,7 @@ ECM_REQUEST *get_ecmtask(void)
 
 #ifdef MODULE_GBOX
 	er->gbox_ecm_id = 0;
+	er->gbox_ecm_status = GBOX_ECM_NOT_ASKED;
 #endif
 	er->rc     = E_UNHANDLED;
 	er->client = cl;
@@ -849,11 +852,11 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 	static const char *stxtWh[16] = {"", "user ", "reader ", "server ", "lserver ", "", "", "", "", "", "", "", "" , "" , "", ""};
 	char sby[100] = "", sreason[32] = "", scwcinfo[32] = "", schaninfo[32] = "", srealecmtime[50]="";
 	char erEx[32] = "";
-	char uname[38] = "";
+	char usrname[38] = "";
 	char channame[32];
 	struct timeb tpe;
 
-	snprintf(uname, sizeof(uname) - 1, "%s", username(client));
+	snprintf(usrname, sizeof(usrname) - 1, "%s", username(client));
 
 #ifdef WITH_DEBUG
 	if(cs_dblevel & D_CLIENTECM)
@@ -1250,13 +1253,13 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 		if(er->reader_avail == 1 || er->stage == 0)
 		{
 			cs_log("%s (%s): %s (%d ms)%s%s%s%s",
-				   uname, buf,
+				   usrname, buf,
 				   er->rcEx ? erEx : stxt[er->rc], client->cwlastresptime, sby, schaninfo, sreason, scwcinfo);
 		}
 		else
 		{
 			cs_log("%s (%s): %s (%d ms)%s (%c/%d/%d/%d)%s%s%s%s",
-				   uname, buf,
+				   usrname, buf,
 				   er->rcEx ? erEx : stxt[er->rc],
 				   client->cwlastresptime, sby,
 				   stageTxt[er->stage], er->reader_requested, (er->reader_count + er->fallback_reader_count), er->reader_avail,
@@ -1850,9 +1853,7 @@ int32_t write_ecm_answer(struct s_reader *reader, ECM_REQUEST *er, int8_t rc, ui
 				reader->resetcounter = 0;
 				rdr_log(reader, "Resetting reader, resetcyle of %d ecms reached", reader->resetcycle);
 				reader->card_status = CARD_NEED_INIT;
-#if WITH_CARDREADER == 1
 				cardreader_reset(cl);
-#endif
 			}
 		}
 	}
@@ -2685,6 +2686,8 @@ int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size)
 	struct gbox_ecm_request_ext *ere = ecm->src_data;
 	if(ere && check_client(ecm->client) && get_module(ecm->client)->num == R_GBOX && ere->gbox_hops)
 		{ return ecmfmt(ecm->caid, ecm->onid, ecm->prid, ecm->chid, ecm->pid, ecm->srvid, ecm->ecmlen, ecmd5hex, csphash, cwhex, result, size, ere->gbox_peer, ere->gbox_hops); }
+	else if (ecm->selected_reader && ecm->selected_reader->typ == R_GBOX && ecm->gbox_ecm_id)
+		{ return ecmfmt(ecm->caid, ecm->onid, ecm->prid, ecm->chid, ecm->pid, ecm->srvid, ecm->ecmlen, ecmd5hex, csphash, cwhex, result, size, ecm->gbox_ecm_id, 0); }
 	else
 #endif
 		return ecmfmt(ecm->caid, ecm->onid, ecm->prid, ecm->chid, ecm->pid, ecm->srvid, ecm->ecmlen, ecmd5hex, csphash, cwhex, result, size, 0, 0);

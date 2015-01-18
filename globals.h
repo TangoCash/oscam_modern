@@ -33,6 +33,7 @@
 #include <dirent.h>
 #include <termios.h>
 #include <inttypes.h>
+#include <sys/utsname.h>
 
 /*
  * The following hack is taken from Linux: include/linux/kconfig.h
@@ -72,7 +73,7 @@
 #  define socklen_t unsigned long
 #endif
 
-#if defined(__SOLARIS__) || defined(__FreeBSD__)
+#if defined(__SOLARIS__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #  define BSD_COMP
 #endif
 
@@ -80,7 +81,7 @@
 #  define _XOPEN_SOURCE_EXTENDED
 #endif
 
-#if (defined(__APPLE__) || defined(__FreeBSD__)) && !defined(s6_addr32)
+#if (defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)) && !defined(s6_addr32)
 #define s6_addr32 __u6_addr.__u6_addr32
 #endif
 
@@ -119,7 +120,7 @@ typedef unsigned char uchar;
 #define __BYTE_ORDER __DARWIN_BYTE_ORDER
 #define __BIG_ENDIAN    __DARWIN_BIG_ENDIAN
 #define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>
 #define __BYTE_ORDER _BYTE_ORDER
 #define __BIG_ENDIAN    _BIG_ENDIAN
@@ -447,7 +448,7 @@ enum {E2_GLOBAL = 0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E
 
 #define LB_MAX_STAT_TIME        10
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #define OSCAM_SIGNAL_WAKEUP     SIGCONT
 #else
 #define OSCAM_SIGNAL_WAKEUP     SIGRTMAX-2
@@ -849,7 +850,8 @@ typedef struct ecm_request_t
 #if defined MODULE_GBOX
 	uint32_t        gbox_crc;       // rcrc for gbox, used to identify ECM task in peer responses
 	uint16_t        gbox_ecm_id;
-	uint8_t         gbox_ecm_ok;
+	uint8_t         gbox_ecm_status;
+	LLIST		*gbox_cards_pending; //type gbox_card_pending
 #endif
 
 	void            *src_data;
@@ -1265,7 +1267,7 @@ struct s_reader                                     //contains device info, read
 	CAIDTAB         ctab;
 	uint32_t        boxid;
 	int8_t          nagra_read;                     // read nagra ncmed records: 0 Disabled (default), 1 read all records, 2 read valid records only
-	uint8_t         boxkey[8];                      // n3 boxkey 8byte
+	uint8_t         boxkey[16];                      // n3 boxkey 8byte, seca sessionkey 16byte
 	int8_t          force_irdeto;
 	uchar           rsa_mod[120];                   // rsa modulus for nagra cards.
 	uchar           atr[64];
@@ -1779,8 +1781,10 @@ struct s_config
 
 
 	//Loadbalancer-Config:
-#ifdef WITH_LB
 	int32_t         lb_mode;                        // schlocke: reader loadbalancing mode
+	int32_t         lb_auto_betatunnel;             // automatic selection of betatunnel convertion based on learned data
+	int32_t         lb_auto_betatunnel_mode;        // automatic selection of betatunnel direction
+#ifdef WITH_LB
 	int32_t         lb_save;                        // schlocke: load/save statistics to file, save every x ecms
 	int32_t         lb_nbest_readers;               // count of best readers
 	int32_t         lb_nfb_readers;                 // count of fallback readers
@@ -1796,8 +1800,6 @@ struct s_config
 	char            *lb_savepath;                   // path where the stat file is save. Empty=default=/tmp/.oscam/stat
 	int32_t         lb_stat_cleanup;                // duration in hours for cleaning old statistics
 	int32_t         lb_max_readers;                 // limit the amount of readers during learning
-	int32_t         lb_auto_betatunnel;             // automatic selection of betatunnel convertion based on learned data
-	int32_t         lb_auto_betatunnel_mode;        // automatic selection of betatunnel direction
 	int32_t         lb_auto_betatunnel_prefer_beta; // prefer-beta-over-nagra factor
 	int32_t         lb_auto_timeout;                // Automatic timeout by loadbalancer statistics
 	int32_t         lb_auto_timeout_p;              // percent added to avg time as timeout time
@@ -1967,7 +1969,6 @@ struct s_write_from_cache
 	ECM_REQUEST *er_new;
 	ECM_REQUEST *er_cache;
 };
-
 
 /* ===========================
  *      global variables

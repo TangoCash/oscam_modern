@@ -4,11 +4,10 @@
 #define WEBIF 1
 #define WEBIF_LIVELOG 1
 #define WEBIF_JQUERY 1
-//#define TOUCH 1
+//
 //#define WITH_SSL 1
 #if defined(__linux__)
 #define HAVE_DVBAPI 1
-//#define DVBAPI_SAMYGO 1
 #endif
 #define CLOCKFIX 1
 //#define IRDETO_GUESSING 1
@@ -20,7 +19,7 @@
 //#define LCDSUPPORT 1
 //#define LEDSUPPORT 1
 //#define IPV6SUPPORT 1
-//#define MODULE_MONITOR 1
+#define MODULE_MONITOR 1
 
 //#define MODULE_CAMD33 1
 #define MODULE_CAMD35 1
@@ -31,10 +30,10 @@
 //#define MODULE_GBOX 1
 //#define MODULE_RADEGAST 1
 //#define MODULE_SERIAL 1
-//#define MODULE_CONSTCW 1
+#define MODULE_CONSTCW 1
 //#define MODULE_PANDORA 1
 //#define MODULE_GHTTP 1
-//#define MODULE_SCAM 1
+#define MODULE_SCAM 1
 
 #define WITH_CARDREADER 1
 
@@ -47,11 +46,11 @@
 #define READER_SECA 1
 #define READER_VIACCESS 1
 #define READER_VIDEOGUARD 1
-//#define READER_DRE 1
-//#define READER_TONGFANG 1
-//#define READER_BULCRYPT 1
-//#define READER_GRIFFIN 1
-//#define READER_DGCRYPT 1
+#define READER_DRE 1
+#define READER_TONGFANG 1
+#define READER_BULCRYPT 1
+#define READER_GRIFFIN 1
+#define READER_DGCRYPT 1
 
 #define CARDREADER_PHOENIX 1
 #define CARDREADER_INTERNAL 1

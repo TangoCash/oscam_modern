@@ -1984,9 +1984,12 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	}
 
 	// BoxKey
-	if(check_filled(rdr->boxkey, sizeof(rdr->boxkey)))
+	len = check_filled(rdr->boxkey, sizeof(rdr->boxkey));
+	if( len > 0)
 	{
-		for(i = 0; i < (int32_t)sizeof(rdr->boxkey) ; i++)
+		if(len > 8) { len = 16; }
+		else { len = 8; }
+		for(i = 0; i < len ; i++)
 			{ tpl_printf(vars, TPLAPPEND, "BOXKEY", "%02X", rdr->boxkey[i]); }
 	}
 
@@ -4268,8 +4271,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 
 		if(cl && is_valid_client(cl))
 		{
-#ifdef HAVE_DVBAPI
-			if(streq(cl->account->usr, cfg.dvbapi_usr))
+			if(is_dvbapi_usr(cl->account->usr))
 			{
 				cs_log("WebIF from %s requests to kill dvbapi client %s -> ignoring!",  cs_inet_ntoa(GET_IP()), cl->account->usr);
 			}
@@ -4279,11 +4281,6 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 				cs_log("Client %s killed by WebIF from %s", cl->account->usr, cs_inet_ntoa(GET_IP()));
 			}
 		}
-#else
-			kill_thread(cl);
-			cs_log("Client %s killed by WebIF from %s", cl->account->usr, cs_inet_ntoa(GET_IP()));
-		}
-#endif
 	}
 
 	if(strcmp(getParam(params, "action"), "resetserverstats") == 0)
@@ -4664,7 +4661,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					tpl_addVar(vars, TPLADD, "CLIENTLASTRESPONSETIMEHIST", value);
 					free_mk_t(value);
 
-					if((isec < cfg.hideclient_to || cfg.hideclient_to == 0) && (cl->typ == 'c' || cl->typ == 'p' || cl->typ == 'r'))
+					if((isec < cfg.hideclient_to || cfg.hideclient_to == 0 || is_dvbapi_usr(cl->account->usr)) && (cl->typ == 'c' || cl->typ == 'p' || cl->typ == 'r'))
 					{
 						if(((cl->typ == 'c')) && (cl->lastreader[0]))
 						{
@@ -4696,6 +4693,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 								tpl_printf(vars, TPLAPPEND, "CLIENTLBVALUE", "%s (%'d ms)", xml_encode(vars, cl->lastreader), cl->cwlastresptime);
 #endif
 							}
+							if(cl->last_caid == NO_CAID_VALUE) tpl_addVar(vars, TPLADD, "CLIENTLBVALUE", "");
 						}
 						if(cl->last_caid != NO_CAID_VALUE || cl->last_srvid != NO_SRVID_VALUE)
 						{
@@ -6019,7 +6017,7 @@ static char *send_oscam_failban(struct templatevars * vars, struct uriparams * p
 
 		tpl_printf(vars, TPLADD, "VIOLATIONCOUNT", "%d", v_ban_entry->v_count);
 
-		int32_t gone = comp_timeb(&now, &v_ban_entry->v_time);
+		int64_t gone = comp_timeb(&now, &v_ban_entry->v_time);
 		if(!apicall)
 		{
 			if(!v_ban_entry->acosc_entry)
@@ -6030,9 +6028,9 @@ static char *send_oscam_failban(struct templatevars * vars, struct uriparams * p
 		else
 		{
 			if(!v_ban_entry->acosc_entry)
-			{ tpl_printf(vars, TPLADD, "LEFTTIME", "%d", (cfg.failbantime * 60) - (gone / 1000)); }
+			{ tpl_printf(vars, TPLADD, "LEFTTIME", "%"PRId64"", (cfg.failbantime * 60) - (gone / 1000)); }
 			else
-				{ tpl_printf(vars, TPLADD, "LEFTTIME", "%d", v_ban_entry->acosc_penalty_dur - (gone / 1000)); }
+				{ tpl_printf(vars, TPLADD, "LEFTTIME", "%"PRId64"", v_ban_entry->acosc_penalty_dur - (gone / 1000)); }
 		}
 
 		tpl_addVar(vars, TPLADD, "INTIP", cs_inet_ntoa(v_ban_entry->v_ip));

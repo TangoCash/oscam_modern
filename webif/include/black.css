@@ -239,7 +239,7 @@ div.sidlistclose a {
 	display:inline-block;
 	position:relative;
 	margin-top:10px;
-	text-shadow:1px 1px 1px #000
+	text-shadow:2px 3px 2px #000
 }
 #mainmenu li {
 	display:inline;
@@ -397,7 +397,7 @@ table.statsbalance td:last-child img.icon {
 table.statsbalance td.subheadline {
 	background-color:#2F3133;
 	color:#FFF;
-	font-weight:bold
+	font-weight:bold;
 }
 table.statsbalance td.subheadline a {
 	color:#FF9700;
@@ -549,7 +549,8 @@ th {
 	height:10px;
 	padding:5px;
 	background-color:#2F3133;
-	color:#FFF
+	color:#FFF;
+	text-shadow: 2px 3px 2px #000000;
 }
 /* status_cacheexinfo.html, status_systeminfo.html, status_userinfo.html */
 th.nameinfo {
@@ -593,7 +594,8 @@ td.subheadline {
 	border:0;
 	padding:5px;
 	background-color:#CCC;
-	text-align:center
+	text-align:center;
+	text-shadow: 1px 3px 2px #000000;
 }
 /* default alignment for all rows status.html/userconfig.html/readers.html */
 td.centered,
@@ -842,8 +844,8 @@ input[type="button"], input[type="submit"]{
 input[type="submit"] {
 	cursor:pointer;
 	color: #FFF;
-	border-color:#BD0000;
-	border:2px solid #BD0000;
+	border:0;
+	border-radius:3px;
 	
 	/* GRADIENT */
 	/* Old browsers */
@@ -862,12 +864,11 @@ input[type="submit"] {
 	background-image: linear-gradient(to bottom, #FF4B45 0%, #BD0000 100%);
 
 	/* TEXT SHADOW */
-	text-shadow: 0px -1px 0px rgba(0, 0, 0, 0.25)
+	text-shadow: 0 -1px 0 #000000;
 }
 input[type="submit"]:hover {
-	background:#0B1219; 
+	background:#C00;
 	color:#FFF;
-	border:2px solid #000;
 	-webkit-transition: all .01s ease-out; 
 	-moz-transition: all .01s linear; 
 	transition: all .01s linear

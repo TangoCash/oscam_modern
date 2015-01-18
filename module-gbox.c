@@ -58,6 +58,7 @@ static int8_t	gbox_cw_received(struct s_client *cli, uchar *data, int32_t n);
 static int32_t	gbox_recv_chk(struct s_client *cli, uchar *dcw, int32_t *rc, uchar *data, int32_t n);
 static int32_t	gbox_checkcode_recv(struct s_client *cli, uchar *checkcode);
 static uint16_t	gbox_convert_password_to_id(uint32_t password);
+static int32_t	gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSED(buf));
 uint32_t	gbox_get_ecmchecksum(uchar *ecm, uint16_t ecmlen);
 static void	init_local_gbox(void);
 
@@ -223,7 +224,7 @@ void gbox_write_local_cards_info(void)
 		if(card->type == 4)
 		{crdtype = "Proxy_Card";}
 		fprintf(fhandle, "CardID:%2d %s %08X Sl:%2d id:%04X\n",
-				card_count, crdtype, card->provid_1,card->slot, card->peer_id);
+				card_count, crdtype, card->provid_1,card->id.slot, card->id.peer);
 		card_count++;		
 					
 	}
@@ -259,7 +260,7 @@ void gbox_write_shared_cards_info(void)
 			{
 				fprintf(fhandle, "CardID %2d at %s Card %08X Sl:%2d Lev:%1d dist:%1d id:%04X\n",
 						card_count, cl->reader->device, card->provid_1,
-						card->slot, card->lvl, card->dist, card->peer_id);
+						card->id.slot, card->lvl, card->dist, card->id.peer);
 				card_count++;
 			}
 		}
@@ -272,7 +273,8 @@ void gbox_write_stats(void)
 {
 	int32_t card_count = 0;
 	int32_t i = 0;
-	struct gbox_srvid *srvid = NULL;
+	struct gbox_good_srvid *srvid_good = NULL;
+	struct gbox_bad_srvid *srvid_bad = NULL;	
 	char *fext= FILE_STATS; 
 	char *fname = get_gbox_tmp_fname(fext); 
 	FILE *fhandle;
@@ -297,15 +299,15 @@ void gbox_write_stats(void)
 			while((card = ll_iter_next(&it)))
 			{
 				fprintf(fhandle, "CardID %4d Card %08X id:%04X #CWs:%d AVGtime:%d ms\n",
-						card_count, card->provid_1, card->peer_id, card->no_cws_returned, card->average_cw_time);
+						card_count, card->provid_1, card->id.peer, card->no_cws_returned, card->average_cw_time);
 				fprintf(fhandle, "Good SIDs:\n");
 				LL_ITER it2 = ll_iter_create(card->goodsids);
-				while((srvid = ll_iter_next(&it2)))
-					{ fprintf(fhandle, "%04X\n", srvid->sid); }
+				while((srvid_good = ll_iter_next(&it2)))
+					{ fprintf(fhandle, "%04X\n", srvid_good->srvid.sid); }
 				fprintf(fhandle, "Bad SIDs:\n");				
 				it2 = ll_iter_create(card->badsids);
-				while((srvid = ll_iter_next(&it2)))
-					{ fprintf(fhandle, "%04X\n", srvid->sid); }				
+				while((srvid_bad = ll_iter_next(&it2)))
+					{ fprintf(fhandle, "%04X #%d\n", srvid_bad->srvid.sid, srvid_bad->bad_strikes); }				
 				card_count++;
 			} // end of while ll_iter_next
 		} // end of if cl->gbox INSERTED && 'p'
@@ -324,16 +326,48 @@ static uint16_t gbox_convert_password_to_id(uint32_t password)
 	return (((password >> 24) & 0xff) ^ ((password >> 8) & 0xff)) << 8 | (((password >> 16) & 0xff) ^ (password & 0xff));
 }
 
+static int8_t gbox_remove_all_bad_sids(struct gbox_peer *peer, ECM_REQUEST *er, uint16_t sid)
+{
+	if (!peer || !er) { return -1; }
+
+	struct gbox_card *card = NULL;
+	struct gbox_bad_srvid *srvid = NULL;
+	struct gbox_card_pending *pending = NULL;
+	LL_ITER it = ll_iter_create(er->gbox_cards_pending);
+	while ((pending = ll_iter_next(&it)))
+	{
+		LL_ITER it2 = ll_iter_create(peer->gbox.cards);
+		while((card = ll_iter_next(&it2)))
+		{
+			if(card->id.peer == pending->id.peer && card->id.slot == pending->id.slot)
+			{
+				LL_ITER it3 = ll_iter_create(card->badsids);
+				while((srvid = ll_iter_next(&it3)))
+				{
+					if(srvid->srvid.sid == sid)
+					{
+						ll_iter_remove_data(&it3); // remove sid_ok from badsids
+						break;
+					}
+				}
+			}	
+		}
+	}
+	return 0;
+}
+
 void gbox_add_good_card(struct s_client *cl, uint16_t id_card, uint16_t caid, uint8_t slot, uint16_t sid_ok, uint32_t cw_time)
 {
+	if (!cl || !cl->gbox) { return; }
+
 	struct gbox_peer *peer = cl->gbox;
 	struct gbox_card *card = NULL;
-	struct gbox_srvid *srvid = NULL;
+	struct gbox_good_srvid *srvid = NULL;
 	uint8_t factor = 0;
 	LL_ITER it = ll_iter_create(peer->gbox.cards);
 	while((card = ll_iter_next(&it)))
 	{
-		if(card->peer_id == id_card && card->caid == caid && card->slot == slot)
+		if(card->id.peer == id_card && card->caid == caid && card->id.slot == slot)
 		{
 			card->no_cws_returned++;
 			if (!card->no_cws_returned)
@@ -347,27 +381,17 @@ void gbox_add_good_card(struct s_client *cl, uint16_t id_card, uint16_t caid, ui
 			LL_ITER it2 = ll_iter_create(card->goodsids);
 			while((srvid = ll_iter_next(&it2)))
 			{
-				if(srvid->sid == sid_ok)
+				if(srvid->srvid.sid == sid_ok)
 				{
 					srvid->last_cw_received = time(NULL);
 					return; // sid_ok is already in the list of goodsids
 				}
 			}
 
-			LL_ITER it3 = ll_iter_create(card->badsids);
-			while((srvid = ll_iter_next(&it3)))
-			{
-				if(srvid->sid == sid_ok)
-				{
-					ll_iter_remove_data(&it3); // remove sid_ok from badsids
-					break;
-				}
-			}
-
-			if(!cs_malloc(&srvid, sizeof(struct gbox_srvid)))
+			if(!cs_malloc(&srvid, sizeof(struct gbox_good_srvid)))
 				{ return; }
-			srvid->sid = sid_ok;
-			srvid->provid_id = card->provid;
+			srvid->srvid.sid = sid_ok;
+			srvid->srvid.provid_id = card->provid;
 			srvid->last_cw_received = time(NULL);
 			cs_debug_mask(D_READER, "GBOX Adding good SID: %04X for CAID: %04X Provider: %04X on CardID: %04X\n", sid_ok, caid, card->provid, id_card);
 			ll_append(card->goodsids, srvid);
@@ -424,9 +448,7 @@ struct s_client *get_gbox_proxy(uint16_t gbox_id)
 	for(cl = first_client; cl; cl = cl->next)
 	{
 		if(cl->typ == 'p' && cl->gbox && cl->gbox_peer_id == gbox_id)
-		{
-			return cl;
-		}
+			{ return cl; }
 	}
 	return NULL;
 }
@@ -434,6 +456,8 @@ struct s_client *get_gbox_proxy(uint16_t gbox_id)
 // if input client is typ proxy get client and vice versa
 struct s_client *switch_client_proxy(struct s_client *cli, uint16_t gbox_id)
 {
+	if (!cli) { return cli; }
+	
 	struct s_client *cl;
 	int8_t typ;
 	if(cli->typ == 'c')
@@ -443,9 +467,7 @@ struct s_client *switch_client_proxy(struct s_client *cli, uint16_t gbox_id)
 	for(cl = first_client; cl; cl = cl->next)
 	{
 		if(cl->typ == typ && cl->gbox && cl->gbox_peer_id == gbox_id)
-		{
-			return cl;
-		}
+			{ return cl; }
 	}
 	return cli;
 }
@@ -529,6 +551,8 @@ static int8_t gbox_disconnect_double_peers(struct s_client *cli)
 
 static int8_t gbox_auth_client(struct s_client *cli, uint32_t gbox_password)
 {
+	if (!cli) { return -1; }
+
 	uint16_t gbox_id = gbox_convert_password_to_id(gbox_password);
 	struct s_client *cl = switch_client_proxy(cli, gbox_id);
 
@@ -596,7 +620,7 @@ int8_t get_card_action(struct gbox_card *card, uint32_t provid1, uint16_t peer_i
 	struct gbox_card *card_s;
 	if (!card) { return 1; }	//insert
 	if (card->provid_1 < provid1) { return -1; }	//remove
-	if (card->peer_id == peer_id && card->provid_1 == provid1 && card->slot == slot)
+	if (card->id.peer == peer_id && card->provid_1 == provid1 && card->id.slot == slot)
 		{ return 0; }	//keep
 	else
 	{ 
@@ -604,11 +628,30 @@ int8_t get_card_action(struct gbox_card *card, uint32_t provid1, uint16_t peer_i
 		while ((card_s = ll_iter_next(&it)))
 		{
 			//card is still somewhere else we need to remove current
-			if (card_s->peer_id == peer_id && card_s->provid_1 == provid1 && card_s->slot == slot)
+			if (card_s->id.peer == peer_id && card_s->provid_1 == provid1 && card_s->id.slot == slot)
 				{ return -1; } //remove		
 		}
 		return 1; //insert
 	}	
+}
+
+static int8_t gbox_init_card(struct gbox_card *card, uint16_t caid, uint32_t provid, uint32_t provid1, uint8_t *ptr)
+{
+	if (!card || !ptr) { return -1; }
+
+	card->caid = caid;
+	card->provid = provid;
+	card->provid_1 = provid1;
+	card->id.slot = ptr[0];
+	card->dist = ptr[1] & 0xf;
+	card->lvl = ptr[1] >> 4;
+	card->id.peer = ptr[2] << 8 | ptr[3];
+	card->badsids = ll_create("badsids");
+	card->goodsids = ll_create("goodsids");
+	card->no_cws_returned = 0;
+	card->average_cw_time = 0;
+
+	return 0;
 }
 
 int32_t gbox_cmd_hello(struct s_client *cli, uchar *data, int32_t n)
@@ -683,7 +726,6 @@ int32_t gbox_cmd_hello(struct s_client *cli, uchar *data, int32_t n)
 		}
 
 		ncards_in_msg += ptr[4];
-
 		//caid check
 		if(chk_ctab(caid, &cli->reader->ctab))
 		{
@@ -695,54 +737,52 @@ int32_t gbox_cmd_hello(struct s_client *cli, uchar *data, int32_t n)
 			// for all cards of current caid/provid,
 			while (ptr < current_ptr + 5 + current_ptr[4] * 4)
 			{
-				previous_it = it;
-				card_s = ll_iter_next(&it);
-				switch (get_card_action(card_s,provid1,ptr[2] << 8 | ptr[3],ptr[0],peer))
+				if ((ptr[1] & 0xf) <= cli->reader->gbox_maxdist)
 				{
-				case -1:
-					//IDEA: Later put card to a list of temporary not available cards
-					//reason: not loose good/bad sids
-					//can be later removed by daily garbage collector for example
-					cs_debug_mask(D_READER, "delete card: caid=%04X, provid=%06X, slot=%d, level=%d, dist=%d, peer=%04X",
-								  card_s->caid, card_s->provid, card_s->slot, card_s->lvl, card_s->dist, card_s->peer_id);
-					//delete card because not send anymore 
-					ll_iter_remove(&it);
-					gbox_free_card(card_s);				
-					break;
-				case 0:
-					ptr += 4;	
-					break;
-				case 1:	
-					// create card info from data and add card to peer.cards
-					if(!cs_malloc(&card, sizeof(struct gbox_card)))
-						{ continue; }
-					card->caid = caid;
-					card->provid = provid;
-					card->provid_1 = provid1;
-					card->slot = ptr[0];
-					card->dist = ptr[1] & 0xf;
-					card->lvl = ptr[1] >> 4;
-					card->peer_id = ptr[2] << 8 | ptr[3];
-					card->badsids = ll_create("badsids");
-					card->goodsids = ll_create("goodsids");
-					card->no_cws_returned = 0;
-					card->average_cw_time = 0;
-				
-					if (!card_s)
-						{ ll_append(peer->gbox.cards, card); }
-					else
-					{ 
-						ll_iter_insert(&previous_it, card); 
-						it = previous_it;
-					}
-					ll_iter_next(&it);
-					cs_debug_mask(D_READER, "new card: caid=%04X, provid=%06X, slot=%d, level=%d, dist=%d, peer=%04X",
-								  card->caid, card->provid, card->slot, card->lvl, card->dist, card->peer_id);			
-					ptr += 4;
-					break;
-				default:
-					break;	
-				}	//switch	
+					previous_it = it;
+					card_s = ll_iter_next(&it);
+					switch (get_card_action(card_s,provid1,ptr[2] << 8 | ptr[3],ptr[0],peer))
+					{
+					case -1:
+						//IDEA: Later put card to a list of temporary not available cards
+						//reason: not loose good/bad sids
+						//can be later removed by daily garbage collector for example
+						cs_debug_mask(D_READER, "delete card: caid=%04X, provid=%06X, slot=%d, level=%d, dist=%d, peer=%04X",
+									  card_s->caid, card_s->provid, card_s->id.slot, card_s->lvl, card_s->dist, card_s->id.peer);
+						//delete card because not send anymore 
+						ll_iter_remove(&it);
+						gbox_free_card(card_s);				
+						break;
+					case 0:
+						ptr += 4;	
+						break;
+					case 1:	
+						// create card info from data and add card to peer.cards
+						if(!cs_malloc(&card, sizeof(struct gbox_card)))
+						{ 
+							cs_log("[gbx]: Can't allocate gbox card");
+							continue;	
+						}
+						gbox_init_card(card,caid,provid,provid1,ptr);
+						if (!card_s)
+							{ ll_append(peer->gbox.cards, card); }
+						else
+						{ 
+							ll_iter_insert(&previous_it, card); 
+							it = previous_it;
+						}
+						ll_iter_next(&it);
+						cs_debug_mask(D_READER, "new card: caid=%04X, provid=%06X, slot=%d, level=%d, dist=%d, peer=%04X",
+									  card->caid, card->provid, card->id.slot, card->lvl, card->dist, card->id.peer);			
+						ptr += 4;
+						break;
+					default:
+						ptr += 4;
+						break;	
+					}	//switch
+				} // if <= maxdist
+				else
+					{ ptr += 4; }	//ignore because of maxdist
 			} // end while cards for provider
 		}
 		else
@@ -784,7 +824,7 @@ int32_t gbox_cmd_hello(struct s_client *cli, uchar *data, int32_t n)
 			while ((card_s = ll_iter_next(&it)))
 			{
 				cs_debug_mask(D_READER, "delete card: caid=%04X, provid=%06X, slot=%d, level=%d, dist=%d, peer=%04X",
-							  card_s->caid, card_s->provid, card_s->slot, card_s->lvl, card_s->dist, card_s->peer_id);
+							  card_s->caid, card_s->provid, card_s->id.slot, card_s->lvl, card_s->dist, card_s->id.peer);
 				//delete card because not send anymore 
 				ll_iter_remove(&it);
 				gbox_free_card(card_s);									
@@ -830,6 +870,8 @@ static int8_t is_blocked_peer(uint16_t peer)
 
 static int8_t gbox_incoming_ecm(struct s_client *cli, uchar *data, int32_t n)
 {
+	if (!cli || !cli->gbox || !data) { return -1; }
+
 	struct gbox_peer *peer;
 	struct s_client *cl;
 	int32_t diffcheck = 0;
@@ -1115,9 +1157,9 @@ static void gbox_calc_checkcode(void)
 		local_gbox.checkcode[1] ^= (0xFF & (card->provid_1 >> 16));
 		local_gbox.checkcode[2] ^= (0xFF & (card->provid_1 >> 8));
 		local_gbox.checkcode[3] ^= (0xFF & (card->provid_1));
-		local_gbox.checkcode[4] ^= (0xFF & (card->slot));
-		local_gbox.checkcode[5] ^= (0xFF & (card->peer_id >> 8));
-		local_gbox.checkcode[6] ^= (0xFF & (card->peer_id));
+		local_gbox.checkcode[4] ^= (0xFF & (card->id.slot));
+		local_gbox.checkcode[5] ^= (0xFF & (card->id.peer >> 8));
+		local_gbox.checkcode[6] ^= (0xFF & (card->id.peer));
 	}
 	for(i = 0, cl = first_client; cl; cl = cl->next, i++)
 	{
@@ -1131,9 +1173,9 @@ static void gbox_calc_checkcode(void)
 				local_gbox.checkcode[1] ^= (0xFF & (card->provid_1 >> 16));
 				local_gbox.checkcode[2] ^= (0xFF & (card->provid_1 >> 8));
 				local_gbox.checkcode[3] ^= (0xFF & (card->provid_1));
-				local_gbox.checkcode[4] ^= (0xFF & (card->slot));
-				local_gbox.checkcode[5] ^= (0xFF & (card->peer_id >> 8));
-				local_gbox.checkcode[6] ^= (0xFF & (card->peer_id));
+				local_gbox.checkcode[4] ^= (0xFF & (card->id.slot));
+				local_gbox.checkcode[5] ^= (0xFF & (card->id.peer >> 8));
+				local_gbox.checkcode[6] ^= (0xFF & (card->id.peer));
 			}
 		}	
 	}
@@ -1277,12 +1319,12 @@ static void gbox_send_hello(struct s_client *cli)
 				*(++ptr) = card->provid_1 >> 8;
 				*(++ptr) = card->provid_1 & 0xff;
 				*(++ptr) = 1;       //note: original gbx is more efficient and sends all cards of one caid as package
-				*(++ptr) = card->slot;
+				*(++ptr) = card->id.slot;
 				//If you modify the next line you are going to destroy the community
 				//It will be recognized by original gbx and you will get banned
 				*(++ptr) = ((card->lvl - 1) << 4) + card->dist + 1;
-				*(++ptr) = card->peer_id >> 8;
-				*(++ptr) = card->peer_id & 0xff;
+				*(++ptr) = card->id.peer >> 8;
+				*(++ptr) = card->id.peer & 0xff;
 				nbcards++;
 				if(nbcards == 100)    //check if 100 is good or we need more sophisticated algorithm
 				{
@@ -1371,7 +1413,10 @@ static int32_t gbox_recv(struct s_client *cli, uchar *buf, int32_t l)
 
 static void gbox_send_dcw(struct s_client *cl, ECM_REQUEST *er)
 {
+	if (!cl || !er) { return; }
+
 	struct s_client *cli = switch_client_proxy(cl, cl->gbox_peer_id);
+	if (!cli->gbox) { return; }
 	struct gbox_peer *peer = cli->gbox;
 
 	if(er->rc >= E_NOTFOUND)
@@ -1450,8 +1495,8 @@ static uint8_t gbox_next_free_slot(uint16_t id)
 
 	while((c = ll_iter_next(&it)))
 	{
-		if(id == c->peer_id && c->slot > lastslot)
-			{ lastslot = c->slot; }
+		if(id == c->id.peer && c->id.slot > lastslot)
+			{ lastslot = c->id.slot; }
 	}
 	return ++lastslot;
 }
@@ -1492,8 +1537,8 @@ static void gbox_add_local_card(uint16_t id, uint16_t caid, uint32_t prid, uint8
 		break;
 	}
 	c->provid = prid;
-	c->peer_id = id;
-	c->slot = slot;
+	c->id.peer = id;
+	c->id.slot = slot;
 	c->lvl = card_reshare;
 	c->dist = dist;
 	c->type = type;
@@ -1705,6 +1750,21 @@ static int32_t gbox_client_init(struct s_client *cli)
 	return 0;
 }
 
+static uint32_t gbox_get_pending_time(ECM_REQUEST *er, uint16_t peer_id, uint8_t slot)
+{
+	if (!er) { return 0; }
+	
+	struct gbox_card_pending *pending = NULL;
+	LL_ITER it = ll_iter_create(er->gbox_cards_pending);
+	while ((pending = ll_iter_next(&it)))
+	{
+		if ((pending->id.peer == peer_id) && (pending->id.slot == slot))
+			{ return pending->pending_time; }
+	}
+	
+	return 0;
+}
+
 static int32_t gbox_recv_chk(struct s_client *cli, uchar *dcw, int32_t *rc, uchar *data, int32_t n)
 {
     if(gbox_decode_cmd(data) == MSG_CW && n > 43)
@@ -1713,13 +1773,9 @@ static int32_t gbox_recv_chk(struct s_client *cli, uchar *dcw, int32_t *rc, ucha
         uint16_t id_card = 0;
         struct s_client *proxy;
         if(cli->typ != 'p')
-        {
-            proxy = switch_client_proxy(cli, cli->gbox_peer_id);
-        }
+        	{ proxy = switch_client_proxy(cli, cli->gbox_peer_id); }
         else
-        {
-            proxy = cli;
-        }
+        	{ proxy = cli; }
         proxy->last = time((time_t *)0);
         *rc = 1;
         memcpy(dcw, data + 14, 16);
@@ -1730,19 +1786,25 @@ static int32_t gbox_recv_chk(struct s_client *cli, uchar *dcw, int32_t *rc, ucha
                       data[10] << 8 | data[11], data[6] << 8 | data[7], data[8] << 8 | data[9], crc, data[41], data[42] & 0x0f, data[42] >> 4, data[43], data[37] << 8 | data[38]);
         struct timeb t_now;             
         cs_ftime(&t_now);
+        int64_t cw_time = GBOX_DEFAULT_CW_TIME;
         for(i = 0; i < cfg.max_pending; i++)
         {
-            if(proxy->ecmtask[i].gbox_crc == crc)
-            {
-                id_card = data[10] << 8 | data[11];
-                gbox_add_good_card(proxy, id_card, proxy->ecmtask[i].caid, data[36], proxy->ecmtask[i].srvid, comp_timeb(&t_now, &proxy->ecmtask[i].tps));
-                if(proxy->ecmtask[i].gbox_ecm_ok == 0 || proxy->ecmtask[i].gbox_ecm_ok == 2)
-                    { return -1; }
-                proxy->ecmtask[i].gbox_ecm_ok = 2;
-                *rc = 1;
-                return proxy->ecmtask[i].idx;
-            }
-        }
+        	if(proxy->ecmtask[i].gbox_crc == crc)
+        	{
+        		id_card = data[10] << 8 | data[11];
+        		cw_time = comp_timeb(&t_now, &proxy->ecmtask[i].tps) - gbox_get_pending_time(&proxy->ecmtask[i], id_card, data[36]);
+        		gbox_add_good_card(proxy, id_card, proxy->ecmtask[i].caid, data[36], proxy->ecmtask[i].srvid, cw_time);
+        		gbox_remove_all_bad_sids(proxy->gbox, &proxy->ecmtask[i], proxy->ecmtask[i].srvid);
+        		if(proxy->ecmtask[i].gbox_ecm_status == GBOX_ECM_NOT_ASKED || proxy->ecmtask[i].gbox_ecm_status == GBOX_ECM_ANSWERED)
+        			{ return -1; }
+			proxy->ecmtask[i].gbox_ecm_status = GBOX_ECM_ANSWERED;
+			proxy->ecmtask[i].gbox_ecm_id = id_card;
+			*rc = 1;
+			return proxy->ecmtask[i].idx;
+		}
+	}
+        //late answers from other peers,timing not possible
+        gbox_add_good_card(proxy, id_card, data[34] << 8 | data[35], data[36], data[8] << 8 | data[9], GBOX_DEFAULT_CW_TIME);
         cs_debug_mask(D_READER, "gbox: no task found for crc=%08x", crc);
     }
     return -1;
@@ -1769,38 +1831,71 @@ static int8_t gbox_cw_received(struct s_client *cli, uchar *data, int32_t n)
 	return -1;
 }
 
+void *gbox_rebroadcast_thread(struct gbox_rbc_thread_args *args)
+{
+	if (!args) { return NULL; }
+	
+	struct s_client *cli = args->cli;
+	ECM_REQUEST *er = args->er;
+	uint32_t waittime = args->waittime;
+
+	if (!cli) { return NULL; }
+	pthread_setspecific(getclient, cli);
+	set_thread_name(__func__);
+
+	cs_sleepms(waittime);
+	if (!cli || !cli->gbox || !er) { return NULL; }
+
+	struct gbox_peer *peer = cli->gbox;
+
+	//ecm is not answered yet
+	if (er->rc >= E_NOTFOUND)
+	{
+ 		cs_writelock(&peer->lock);
+		gbox_send_ecm(cli, er, NULL);
+ 		cs_writeunlock(&peer->lock);
+	}
+
+	return NULL;
+}
+
+static int8_t is_already_pending(ECM_REQUEST *er, struct gbox_card_id *searched_id)
+{
+	if (!er || !searched_id)
+		{ return -1; }
+		
+	LL_ITER it = ll_iter_create(er->gbox_cards_pending);
+	struct gbox_card_id *current_id;
+	while ((current_id = ll_iter_next(&it)))
+	{
+		if (current_id->peer == searched_id->peer &&
+			current_id->slot == searched_id->slot)
+			{ return 1; }
+	}
+	
+	return 0;	
+}
+
 static int32_t gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSED(buf))
 {
-	struct gbox_peer *peer = cli->gbox;
-	int32_t cont_1;
-	uint32_t sid_verified = 0;
-//	uint32_t time_since_lastcw = 0;
-/*	struct gbox_ecm_request_ext *ere;
+	if(!cli || !er || !cli->reader)
+		{ return -1; }
 
-	if (!er->src_data) {
-                if(!cs_malloc(&ere, sizeof(struct gbox_ecm_request_ext)))
-                {
-                	cs_writeunlock(&gbox->lock);
-                	return -1;
-                }
-		er->src_data = ere;
-		gbox_init_ecm_request_ext(ere);
-	}
-	else
-		ere = er->src_data;
-*/
-	if(!peer || !cli->reader->tcp_connected)
+	if(!cli->gbox || !cli->reader->tcp_connected)
 	{
 		cs_debug_mask(D_READER, "gbox: %s server not init!", cli->reader->label);
 		write_ecm_answer(cli->reader, er, E_NOTFOUND, 0x27, NULL, NULL);
-
 		return -1;
 	}
+
+	struct gbox_peer *peer = cli->gbox;
+	int32_t cont_1;
+	uint32_t sid_verified = 0;
 
 	if(!ll_count(peer->gbox.cards))
 	{
 		cs_debug_mask(D_READER, "gbox: %s NO CARDS!", cli->reader->label);
-		write_ecm_answer(cli->reader, er, E_NOTFOUND, 0x27, NULL, NULL);
+		write_ecm_answer(cli->reader, er, E_NOTFOUND, E2_CCCAM_NOCARD, NULL, NULL);
 		return -1;
 	}
 
@@ -1812,10 +1907,11 @@ static int32_t gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSE
 		return -1;
 	}
 
-	if(er->gbox_ecm_ok == 2)
-	{
-		cs_debug_mask(D_READER, "gbox: %s replied to this ecm already", cli->reader->label);
-	}
+	if(er->gbox_ecm_status == GBOX_ECM_ANSWERED)
+		{ cs_debug_mask(D_READER, "gbox: %s replied to this ecm already", cli->reader->label); }
+
+	if(er->gbox_ecm_status == GBOX_ECM_NOT_ASKED)
+		{ er->gbox_cards_pending = ll_create("pending_gbox_cards"); }
 
 	if(er->gbox_ecm_id == peer->gbox.id)
 	{
@@ -1826,11 +1922,6 @@ static int32_t gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSE
 
 	uint16_t ercaid = er->caid;
 	uint32_t erprid = er->prid;
-
-	if(cli->reader->gbox_maxecmsend == 0)
-	{
-		cli->reader->gbox_maxecmsend = DEFAULT_GBOX_MAX_ECM_SEND;
-	}
 
 	switch(ercaid >> 8)
 	{
@@ -1860,10 +1951,12 @@ static int32_t gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSE
 	memset(send_buf_1, 0, sizeof(send_buf_1));
 
 	LL_ITER it = ll_iter_create(peer->gbox.cards);
+	LL_ITER it2;
 	struct gbox_card *card;
 
 	int32_t cont_send = 0;
 	uint32_t cont_card_1 = 0;
+	uint8_t max_ecm_reached = 0;
 
 	gbox_message_header(send_buf_1, MSG_ECM , peer->gbox.password, local_gbox.password);
 
@@ -1894,101 +1987,210 @@ static int32_t gbox_send_ecm(struct s_client *cli, ECM_REQUEST *er, uchar *UNUSE
 	send_buf_1[len2 + 9] = 0x00;
 	cont_1 = len2 + 10;
 
-	struct gbox_srvid *srvid1 = NULL;
+	struct gbox_good_srvid *srvid_good = NULL;
+	struct gbox_bad_srvid *srvid_bad = NULL;
+	struct gbox_card_id current_id;
+	uint8_t enough = 0;
+	time_t time_since_lastcw;
+	uint32_t current_avg_card_time = 0;
+	//loop over good only
 	while((card = ll_iter_next(&it)))
 	{
-		if(card->caid == er->caid && card->provid == er->prid)
+		current_id.peer = card->id.peer;
+		current_id.slot = card->id.slot;					
+		if(card->caid == er->caid && card->provid == er->prid && !is_already_pending(er, &current_id))
 		{
 			sid_verified = 0;
-
-			LL_ITER it2 = ll_iter_create(card->goodsids);
-			while((srvid1 = ll_iter_next(&it2)))
+			
+			//check if sid is good
+			it2 = ll_iter_create(card->goodsids);
+			while((srvid_good = ll_iter_next(&it2)))
 			{
-				if(srvid1->provid_id == er->prid && srvid1->sid == er->srvid)
+				if(srvid_good->srvid.provid_id == er->prid && srvid_good->srvid.sid == er->srvid)
 				{
-//					time_since_lastcw = abs(srvid1->last_cw_received - time(NULL));
-//					if (time_since_lastcw > ECM_BROADCAST_PAUSE || !cont_card_1)
-//					{
-						send_buf_1[cont_1] = card->peer_id >> 8;
-						send_buf_1[cont_1 + 1] = card->peer_id;
-						send_buf_1[cont_1 + 2] = card->slot;
+					if (!enough || current_avg_card_time > card->average_cw_time)
+					{
+						time_since_lastcw = abs(srvid_good->last_cw_received - time(NULL));
+						current_avg_card_time = card->average_cw_time;
+				
+						if (enough)
+							{ cont_1 = cont_1 - 3; }
+						else
+						{
+							cont_card_1++;
+							cont_send++;
+							if (time_since_lastcw < GBOX_SID_CONFIRM_TIME && er->gbox_ecm_status == GBOX_ECM_NOT_ASKED)
+								{ enough = 1; }						
+						}	
+						send_buf_1[cont_1] = card->id.peer >> 8;
+						send_buf_1[cont_1 + 1] = card->id.peer;
+						send_buf_1[cont_1 + 2] = card->id.slot;
 						cont_1 = cont_1 + 3;
-						cont_card_1++;
-						cont_send++;
 						sid_verified = 1;
-						break;
-//					}	
+						break;						
+					}	
 				}
 			}
 
 			if(cont_send == cli->reader->gbox_maxecmsend)
-				{ break; }
-
-			if(sid_verified == 0)
+			{ 
+				max_ecm_reached = 1;
+				break;
+			}
+		}
+	}
+	
+	//loop over bad and unknown cards
+	it = ll_iter_create(peer->gbox.cards);	
+	while((card = ll_iter_next(&it)))
+	{
+		current_id.peer = card->id.peer;
+		current_id.slot = card->id.slot;					
+		if(card->caid == er->caid && card->provid == er->prid && !is_already_pending(er, &current_id) && !enough)
+		{
+			sid_verified = 0;
+			
+			//check if sid is good
+			it2 = ll_iter_create(card->goodsids);
+			while((srvid_good = ll_iter_next(&it2)))
 			{
-				LL_ITER itt = ll_iter_create(card->badsids);
-				while((srvid1 = ll_iter_next(&itt)))
+				if(srvid_good->srvid.provid_id == er->prid && srvid_good->srvid.sid == er->srvid)
 				{
-					if(srvid1->provid_id == er->prid && srvid1->sid == er->srvid)
+					sid_verified = 1; 
+					cs_debug_mask(D_READER, "ID: %04X SL: %02X SID: %04X is good", card->id.peer, card->id.slot, srvid_good->srvid.sid); 
+				}
+			}
+			if(!sid_verified)
+			{
+				//check if sid is bad
+				LL_ITER itt = ll_iter_create(card->badsids);
+				while((srvid_bad = ll_iter_next(&itt)))
+				{
+					if(srvid_bad->srvid.provid_id == er->prid && srvid_bad->srvid.sid == er->srvid)
 					{
-						sid_verified = 1;
+						if (srvid_bad->bad_strikes < 3)
+						{ 
+							sid_verified = 2;
+							srvid_bad->bad_strikes++;
+						}
+						else	
+							{ sid_verified = 1; }
+						cs_debug_mask(D_READER, "ID: %04X SL: %02X SID: %04X is bad %d", card->id.peer, card->id.slot, srvid_bad->srvid.sid, srvid_bad->bad_strikes); 
 						break;
 					}
 				}
-
+				
+				//sid is neither good nor bad
 				if(sid_verified != 1)
 				{
-					send_buf_1[cont_1] = card->peer_id >> 8;
-					send_buf_1[cont_1 + 1] = card->peer_id;
-					send_buf_1[cont_1 + 2] = card->slot;
+					send_buf_1[cont_1] = card->id.peer >> 8;
+					send_buf_1[cont_1 + 1] = card->id.peer;
+					send_buf_1[cont_1 + 2] = card->id.slot;
 					cont_1 = cont_1 + 3;
 					cont_card_1++;
 					cont_send++;
+					
+					if (!sid_verified)
+					{ 
+						if(!cs_malloc(&srvid_bad, sizeof(struct gbox_bad_srvid)))
+							{ return 0; }
 
-					if(!cs_malloc(&srvid1, sizeof(struct gbox_srvid)))
-						{ return 0; }
-
-					srvid1->sid = er->srvid;
-					srvid1->provid_id = card->provid;
-					ll_append(card->badsids, srvid1);
-
-					if(cont_send == cli->reader->gbox_maxecmsend)
-						{ break; }
+						srvid_bad->srvid.sid = er->srvid;
+						srvid_bad->srvid.provid_id = card->provid;
+						srvid_bad->bad_strikes = 1;
+						ll_append(card->badsids, srvid_bad);
+						cs_debug_mask(D_READER, "ID: %04X SL: %02X SID: %04X is not checked", card->id.peer, card->id.slot, srvid_bad->srvid.sid);
+					}	 
 				}
 			}
 
 			if(cont_send == cli->reader->gbox_maxecmsend)
-				{ break; }
+			{ 
+				max_ecm_reached = 1;
+				break;
+			}
 		}
 	}
 
-	if(!cont_card_1)
+	if(!cont_card_1 && er->gbox_ecm_status == GBOX_ECM_NOT_ASKED)
 	{
 		cs_debug_mask(D_READER, "GBOX: no valid card found for CAID: %04X PROVID: %04X", er->caid, er->prid);
-		write_ecm_answer(cli->reader, er, E_NOTFOUND, 0x27, NULL, NULL);
+		write_ecm_answer(cli->reader, er, E_NOTFOUND, E2_CCCAM_NOCARD, NULL, NULL);
 		return -1;
 	}
+	if(cont_card_1)
+	{
+		send_buf_1[16] = cont_card_1;
 
-	send_buf_1[16] = cont_card_1;
+		//Hops
+		send_buf_1[cont_1] = 0;
+		cont_1++;		
 
-	//Hops
-	send_buf_1[cont_1] = 0;
-	cont_1++;
+		memcpy(&send_buf_1[cont_1], local_gbox.checkcode, 7);
+		cont_1 = cont_1 + 7;
+		memcpy(&send_buf_1[cont_1], peer->gbox.checkcode, 7);
+		cont_1 = cont_1 + 7;
 
-	memcpy(&send_buf_1[cont_1], local_gbox.checkcode, 7);
-	cont_1 = cont_1 + 7;
-	memcpy(&send_buf_1[cont_1], peer->gbox.checkcode, 7);
-	cont_1 = cont_1 + 7;
-
-	cs_debug_mask(D_READER, "gbox sending ecm for %04X:%06X:%04X to %d cards -> %s", er->caid, er->prid , er->srvid, cont_card_1, cli->reader->label);
-	uint32_t i = 0;
-	for (i = 0; i < cont_card_1; i++)
-		{ cs_debug_mask(D_READER, "gbox card %d: ID: %04X, Slot: %02X", i+1, (send_buf_1[len2+10+i*3] << 8) | send_buf_1[len2+11+i*3], send_buf_1[len2+12+i*3]); }
-	er->gbox_ecm_ok = 1;
-	gbox_send(cli, send_buf_1, cont_1);
-	cli->pending++;
-	cli->reader->last_s = time((time_t *) 0);
-
+		cs_debug_mask(D_READER, "gbox sending ecm for %04X:%06X:%04X to %d cards -> %s", er->caid, er->prid , er->srvid, cont_card_1, cli->reader->label);
+		uint32_t i = 0;
+		struct gbox_card_pending *pending = NULL;
+		struct timeb t_now;             
+		cs_ftime(&t_now);
+		for (i = 0; i < cont_card_1; i++)
+		{	 			
+			if(!cs_malloc(&pending, sizeof(struct gbox_card_pending)))
+			{
+				cs_log("[gbx]: Can't allocate gbox card pending");
+				return -1;
+			}
+			pending->id.peer = (send_buf_1[len2+10+i*3] << 8) | send_buf_1[len2+11+i*3];
+			pending->id.slot = send_buf_1[len2+12+i*3];
+			pending->pending_time = comp_timeb(&t_now, &er->tps);
+			ll_append(er->gbox_cards_pending, pending);		
+			cs_debug_mask(D_READER, "gbox card %d: ID: %04X, Slot: %02X", i+1, (send_buf_1[len2+10+i*3] << 8) | send_buf_1[len2+11+i*3], send_buf_1[len2+12+i*3]); 
+		}
+	
+		it = ll_iter_create(er->gbox_cards_pending);
+		while ((pending = ll_iter_next(&it)))
+			{ cs_debug_mask(D_READER, "[gbx]: Pending Card ID: %04X Slot: %02X Time: %d", pending->id.peer, pending->id.slot, pending->pending_time); }
+	
+		if(er->gbox_ecm_status > GBOX_ECM_NOT_ASKED)
+			{ er->gbox_ecm_status++; }
+		else 
+		{
+			if(max_ecm_reached)
+				{ er->gbox_ecm_status = GBOX_ECM_SENT; }
+			else
+				{ er->gbox_ecm_status = GBOX_ECM_SENT_ALL; }
+			cli->pending++;		
+		}	  	
+		gbox_send(cli, send_buf_1, cont_1);
+		cli->reader->last_s = time((time_t *) 0);
+	
+		if(er->gbox_ecm_status < GBOX_ECM_ANSWERED)
+		{ 
+			//Create thread to rebroacast ecm after time
+			pthread_t rbc_thread;
+			struct gbox_rbc_thread_args args;
+			args.cli = cli;
+			args.er = er;
+			if ((current_avg_card_time > 0) && (cont_card_1 == 1))
+				{ args.waittime = current_avg_card_time + (current_avg_card_time / 2); }
+			else
+				{ args.waittime = GBOX_REBROADCAST_TIMEOUT; }
+			cs_debug_mask(D_READER, "[gbx]: Creating rebroadcast thread with waittime: %d", args.waittime);
+			int32_t ret = pthread_create(&rbc_thread, NULL, (void *)gbox_rebroadcast_thread, &args);
+			if(ret)
+			{
+				cs_log("[gbx]: Can't create gbox rebroadcast thread (errno=%d %s)", ret, strerror(ret));
+				return -1;
+			}
+			else
+				{ pthread_detach(rbc_thread); }
+		}
+		else
+			{ er->gbox_ecm_status--; }
+	}	
 	return 0;
 }
 
@@ -2089,24 +2291,10 @@ static int8_t gbox_send_peer_good_night(struct s_client *proxy)
 	return 0;	
 }
 
-void gbox_send_good_night(void)
-{
-	struct s_client *cli;
-	for(cli = first_client; cli; cli = cli->next)
-	{
-		if(cli->gbox && cli->typ == 'p')
-		{
-			gbox_send_peer_good_night(cli);
-		}	
-	}
-}
-
 void gbox_cleanup(struct s_client *cl)
 {
-	 if(cl->gbox && cl->typ == 'p')
-	 {
-	 	gbox_send_peer_good_night(cl);
-	 }
+	 if(cl && cl->gbox && cl->typ == 'p')
+	 	{ gbox_send_peer_good_night(cl); }
 }
 
 /*

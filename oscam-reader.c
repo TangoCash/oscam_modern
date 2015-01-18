@@ -39,10 +39,10 @@ static int32_t ecm_ratelimit_findspace(struct s_reader *reader, ECM_REQUEST *er,
 	for(h = 0; h < MAXECMRATELIMIT; h++)    // release slots with srvid that are overtime, even if not called from reader module to maximize available slots!
 	{
 		if(reader->rlecmh[h].last.time == -1) { continue; }
-		int32_t gone = comp_timeb(&actualtime, &reader->rlecmh[h].last);
+		int64_t gone = comp_timeb(&actualtime, &reader->rlecmh[h].last);
 		if( gone >= (reader->rlecmh[h].ratelimittime + reader->rlecmh[h].srvidholdtime) || gone < 0) // gone <0 fixup for bad systemtime on dvb receivers while changing transponders
 		{
-			cs_debug_mask(D_CLIENT, "ratelimiter srvid %04X released from slot #%d/%d of reader %s (%d>=%d ratelimit ms + %d ms srvidhold!)",
+			cs_debug_mask(D_CLIENT, "ratelimiter srvid %04X released from slot #%d/%d of reader %s (%"PRId64">=%d ratelimit ms + %d ms srvidhold!)",
 						  reader->rlecmh[h].srvid, h + 1, MAXECMRATELIMIT, reader->label, gone,
 						  reader->rlecmh[h].ratelimittime, reader->rlecmh[h].srvidholdtime);
 			reader->rlecmh[h].last.time = -1;
@@ -64,8 +64,8 @@ static int32_t ecm_ratelimit_findspace(struct s_reader *reader, ECM_REQUEST *er,
 		if(reader->rlecmh[h].srvid == er->srvid && reader->rlecmh[h].caid == rl.caid && reader->rlecmh[h].provid == rl.provid
 				&& (!reader->rlecmh[h].chid || (reader->rlecmh[h].chid == rl.chid)))
 		{
-			int32_t gone = comp_timeb(&actualtime, &reader->rlecmh[h].last);
-			cs_debug_mask(D_CLIENT, "ratelimiter found srvid %04X for %d ms in slot #%d/%d of reader %s", er->srvid,
+			int64_t gone = comp_timeb(&actualtime, &reader->rlecmh[h].last);
+			cs_debug_mask(D_CLIENT, "ratelimiter found srvid %04X for %"PRId64" ms in slot #%d/%d of reader %s", er->srvid,
 						  gone, h + 1, MAXECMRATELIMIT, reader->label);
 
 			// check ecmunique if enabled and ecmunique time is done
@@ -175,8 +175,8 @@ static int32_t ecm_ratelimit_findspace(struct s_reader *reader, ECM_REQUEST *er,
 			return h; // free slot found -> assign it!
 		}
 		else { 
-			int32_t gone = comp_timeb(&actualtime, &reader->rlecmh[h].last);
-		cs_debug_mask(D_CLIENT, "ratelimiter srvid %04X for %d ms present in slot #%d/%d of reader %s", reader->rlecmh[h].srvid, gone , h + 1,
+			int64_t gone = comp_timeb(&actualtime, &reader->rlecmh[h].last);
+		cs_debug_mask(D_CLIENT, "ratelimiter srvid %04X for %"PRId64" ms present in slot #%d/%d of reader %s", reader->rlecmh[h].srvid, gone , h + 1,
 			maxecms, reader->label); }  //occupied slots
 	}
 
@@ -184,8 +184,8 @@ static int32_t ecm_ratelimit_findspace(struct s_reader *reader, ECM_REQUEST *er,
 	/* Overide ratelimit priority for dvbapi request */
 
 	foundspace = -1;
-	int32_t gone = 0;
-	if((cfg.dvbapi_enabled == 1) && streq(er->client->account->usr, cfg.dvbapi_usr))
+	int64_t gone = 0;
+	if((cfg.dvbapi_enabled == 1) && is_dvbapi_usr(er->client->account->usr))
 	{
 		if(reader->lastdvbapirateoverride.time == 0) { // fixup for first run!
 			gone = comp_timeb(&actualtime, &reader->lastdvbapirateoverride);
@@ -507,6 +507,13 @@ bool hexserialset(struct s_reader *rdr)
 
 void hexserial_to_newcamd(uchar *source, uchar *dest, uint16_t caid)
 {
+	if(caid == 0x5581 || caid == 0x4aee)    // Bulcrypt
+	{
+		dest[0] = 0x00;
+		dest[1] = 0x00;
+		memcpy(dest + 2, source, 4);
+		return;
+	}
 	caid = caid >> 8;
 	if(caid == 0x17 || caid == 0x06)    // Betacrypt or Irdeto
 	{
@@ -534,6 +541,13 @@ void hexserial_to_newcamd(uchar *source, uchar *dest, uint16_t caid)
 
 void newcamd_to_hexserial(uchar *source, uchar *dest, uint16_t caid)
 {
+	if(caid == 0x5581 || caid == 0x4aee)    // Bulcrypt
+	{
+		memcpy(dest, source + 2, 4);
+		dest[4] = 0x00;
+		dest[5] = 0x00;
+		return;
+	}
 	caid = caid >> 8;
 	if(caid == 0x17 || caid == 0x06)    // Betacrypt or Irdeto
 	{
@@ -1055,16 +1069,12 @@ void reader_get_ecm(struct s_reader *reader, ECM_REQUEST *er)
 		return;
 	}
 
-#if WITH_CARDREADER == 1
 	cardreader_process_ecm(reader, cl, er);  // forward request to physical reader
-#endif
 }
 
 void reader_do_card_info(struct s_reader *reader)
 {
-#if WITH_CARDREADER == 1
 	cardreader_get_card_info(reader);
-#endif
 	if(reader->ph.c_card_info)
 		{ reader->ph.c_card_info(); }
 }
@@ -1148,9 +1158,7 @@ int32_t reader_init(struct s_reader *reader)
 	}
 	else
 	{
-#if WITH_CARDREADER == 1
 		if(!cardreader_init(reader))
-#endif
 			{ return 0; }
 	}
 
@@ -1372,9 +1380,7 @@ void init_cardreader(void)
 	cs_writelock(&system_lock);
 	struct s_reader *rdr;
 
-#if WITH_CARDREADER == 1
 	cardreader_init_locks();
-#endif
 	LL_ITER itr = ll_iter_create(configured_readers);
 	while((rdr = ll_iter_next(&itr)))
 	{

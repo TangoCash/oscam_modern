@@ -9,8 +9,10 @@
 #include "module-anticasc.h"
 #include "module-cacheex.h"
 #include "module-cccam.h"
+#include "module-dvbapi.h"
 #include "module-dvbapi-azbox.h"
 #include "module-dvbapi-mca.h"
+#include "module-dvbapi-chancache.h"
 #include "module-ird-guess.h"
 #include "module-lcd.h"
 #include "module-led.h"
@@ -91,6 +93,7 @@ struct  s_config  cfg;
 int log_remove_sensitive = 1;
 
 static char *prog_name;
+char *stb_boxtype = NULL;
 
 /*****************************************************************************
         Statics
@@ -332,7 +335,6 @@ static void write_versionfile(bool use_stdout)
 		write_conf(WITH_MCA, "DVB API with MCA support");
 		write_conf(WITH_COOLAPI, "DVB API with COOLAPI support");
 		write_conf(WITH_STAPI, "DVB API with STAPI support");
-		write_conf(DVBAPI_SAMYGO, "DVB API with Samsung TV support");
 	}
 	write_conf(IRDETO_GUESSING, "Irdeto guessing");
 	write_conf(CS_ANTICASC, "Anti-cascading support");
@@ -661,6 +663,94 @@ void cs_exit(int32_t sig)
 
 	if(!exit_oscam)
 		{ exit_oscam = sig ? sig : 1; }
+}
+
+static char *read_line_from_file(char *fname, char *buf, int bufsz)
+{
+	memset(buf, 0, bufsz);
+	FILE *f = fopen(fname, "r");
+	if (!f)
+		return NULL;
+	if (fgets(buf, bufsz, f)) { // only the first line is needed
+		char *p = strchr(buf, '\n');
+		*p = '\0';
+	}
+	fclose(f);
+	if (buf[0])
+		return buf;
+	return NULL;
+}
+
+static void init_machine_info(void)
+{
+	struct utsname buffer;
+	if (uname(&buffer) == 0)
+	{
+		cs_log("System name    = %s", buffer.sysname);
+		cs_log("Host name      = %s", buffer.nodename);
+		cs_log("Release        = %s", buffer.release);
+		cs_log("Version        = %s", buffer.version);
+		cs_log("Machine        = %s", buffer.machine);
+	} else {
+		cs_log("ERROR: uname call failed: %s", strerror(errno));
+	}
+
+#if !defined(__linux__)
+	return;
+#endif
+
+	// Linux only functionality
+	char boxtype[128];
+	char model[128];
+	char vumodel[128];
+
+	read_line_from_file("/proc/stb/info/model", model, sizeof(model));
+	read_line_from_file("/proc/stb/info/boxtype", boxtype, sizeof(boxtype));
+	if (read_line_from_file("/proc/stb/info/vumodel", vumodel, sizeof(vumodel)))
+		snprintf(boxtype, sizeof(boxtype), "vu%s", vumodel);
+
+	// Detect dreambox type
+	if (strcasecmp(buffer.machine, "ppc") == 0 && !model[0] && !boxtype[0])
+	{
+		FILE *f;
+		char line[128], *p;
+		int have_dreambox = 0;
+		if ((f = fopen("/proc/cpuinfo", "r")))
+		{
+			while (fgets(line, sizeof(line), f))
+			{
+				if (strstr(line, "STBx25xx")) have_dreambox++;
+				if (strstr(line, "pvr"     )) have_dreambox++;
+				if (strstr(line, "Dreambox")) have_dreambox++;
+				if (strstr(line, "9.80"    )) have_dreambox++;
+				if (strstr(line, "63MHz"   )) have_dreambox++;
+			}
+			fclose(f);
+			have_dreambox = have_dreambox == 5 ? 1 : 0; // Need to find all 5 strings
+		}
+		if (have_dreambox)
+		{
+			if (read_line_from_file("/proc/meminfo", line, sizeof(line)) && (p = strchr(line, ' ')))
+			{
+				unsigned long memtotal = strtoul(p, NULL, 10);
+				if (memtotal > 40000)
+					snprintf(boxtype, sizeof(boxtype), "%s", "dm600pvr");
+				else
+					snprintf(boxtype, sizeof(boxtype), "%s", "dm500");
+			}
+		}
+	}
+
+	if (model[0])
+		cs_log("Stb model      = %s", model);
+
+	if (boxtype[0])
+		cs_log("Stb boxtype    = %s", boxtype);
+
+	if (boxtype[0])
+		stb_boxtype = cs_strdup(boxtype);
+	else if (model[0])
+		stb_boxtype = cs_strdup(model);
 }
 
 /* Checks if the date of the system is correct and waits if necessary. */
@@ -1328,11 +1418,10 @@ int32_t main(int32_t argc, char *argv[])
 	cs_lock_create(&readdir_lock, "readdir_lock", 5000);
 	cs_lock_create(&cwcycle_lock, "cwcycle_lock", 5000);
 	init_cache();
-#ifdef CS_CACHEEX
 	init_hitcache();
-#endif
 	init_config();
 	cs_init_log();
+	init_machine_info();
 	init_check();
 	if(!oscam_pidfile && cfg.pidfile)
 		{ oscam_pidfile = cfg.pidfile; }
@@ -1410,9 +1499,7 @@ int32_t main(int32_t argc, char *argv[])
 
 	start_thread((void *) &reader_check, "reader check");
 	cw_process_thread_start();
-#ifdef CS_CACHEEX
 	checkcache_process_thread_start();
-#endif
 
 	lcd_thread_start();
 
@@ -1440,7 +1527,6 @@ int32_t main(int32_t argc, char *argv[])
 	pthread_cond_signal(&reader_check_sleep_cond); // Stop reader_check thread
 
 	// Cleanup
-	gbox_send_good_night();		
 	webif_close();
 	azbox_close();
 	coolapi_close_all();
@@ -1453,6 +1539,9 @@ int32_t main(int32_t argc, char *argv[])
 	remove_versionfile();
 
 	stat_finish();
+	
+	dvbapi_save_channel_cache();
+	
 	cccam_done_share();
 
 	kill_all_clients();
@@ -1493,6 +1582,7 @@ int32_t main(int32_t argc, char *argv[])
 
 	NULLFREE(first_client->account);
 	NULLFREE(first_client);
+	free(stb_boxtype);
 
 	// This prevents the compiler from removing config_mak from the final binary
 	syslog_ident = config_mak;

@@ -129,7 +129,7 @@ ICENT                         images/ICENT.svg
 ICHID                         images/ICHID.svg
 ICKIL                         images/ICKIL.svg
 LOGOBITSVG                    images/ICMLOGO.svg
-ICREF                         images/ICREF.svg
+IC_LOGOW                      images/ICMLOGOW.svgICREF                         images/ICREF.svg
 ICRES                         images/ICRES.svg
 ICSTA                         images/ICSTA.svg
 ICSPAC                        images/ICSPAC.gif
@@ -176,7 +176,7 @@ READERCONFIGGBOXBIT           readerconfig/readerconfig_gboxbit.html            
 READERCONFIGGHTTPBIT          readerconfig/readerconfig_ghttpbit.html                     MODULE_GHTTP
 READERCONFIGHOPBIT            readerconfig/readerconfig_hopbit.html                       MODULE_CCCAM
 READERCONFIGSTDHWREADERBIT    readerconfig/readerconfig_hwreader.html                     WITH_CARDREADER
-READERCONFIGBOXKEY            readerconfig/readerconfig_hwreader_boxkey.html              READER_NAGRA,READER_IRDETO
+READERCONFIGBOXKEY            readerconfig/readerconfig_hwreader_boxkey.html              READER_NAGRA,READER_IRDETO,READER_SECA
 READERCONFIGIRDETO            readerconfig/readerconfig_hwreader_irdeto.html              READER_IRDETO
 READERCONFIGNAGRA             readerconfig/readerconfig_hwreader_nagra.html               READER_NAGRA
 READERCONFIGNANO              readerconfig/readerconfig_hwreader_nano.html                WITH_CARDREADER

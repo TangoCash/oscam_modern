@@ -240,6 +240,7 @@ SRC-$(CONFIG_WITH_MCA) += module-dvbapi-mca.c
 SRC-$(CONFIG_WITH_COOLAPI) += module-dvbapi-coolapi.c
 SRC-$(CONFIG_WITH_SU980) += module-dvbapi-coolapi.c
 SRC-$(CONFIG_WITH_STAPI) += module-dvbapi-stapi.c
+SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi-chancache.c
 SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox-helper.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox-sms.c
@@ -497,7 +498,7 @@ OSCam build system documentation\n\
                      Using USE_LIBUSB=1 adds to '-libusb' to PLUS_TARGET.\n\
                      To build with static libusb, set the variable LIBUSB_LIB\n\
                      to contain full path of libusb library. For example:\n\
-                      make USR_LIBUSB=1 LIBUSB_LIB=/usr/lib/libusb-1.0.a\n\
+                      make USE_LIBUSB=1 LIBUSB_LIB=/usr/lib/libusb-1.0.a\n\
 \n\
    USE_PCSC=1      - Request linking with PCSC. The variables that control\n\
                      USE_PCSC=1 build are:\n\

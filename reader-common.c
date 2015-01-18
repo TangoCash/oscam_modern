@@ -17,6 +17,7 @@
 
 extern struct s_cardsystem cardsystems[CS_MAX_MOD];
 extern char *RDR_CD_TXT[];
+extern char *stb_boxtype;
 
 int32_t check_sct_len(const uchar *data, int32_t off)
 {
@@ -301,12 +302,13 @@ bool cardreader_init(struct s_reader *reader)
 	{
 		if((reader->cardmhz > 2000) && (reader->typ != R_SMART))
 		{
-			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, pll max=%.2f MHz, wanted mhz=%.2f MHz",
+			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, pll max=%.2f MHz, wanted mhz=%.2f MHz)",
 					reader->device,
 					reader->detect & 0x80 ? "!" : "",
 					RDR_CD_TXT[reader->detect & 0x7f],
 					(float)reader->cardmhz / 100,
 					(float)reader->mhz / 100);
+			rdr_log(reader,"Reader sci internal, detected box type: %s", stb_boxtype ? stb_boxtype : "generic");
 		}
 		else
 		{

@@ -26,9 +26,12 @@
 			<TR><TD><A>AU Provid:</A></TD><TD><input name="auprovid" class="short" type="text" maxlength="6" value="##AUPROVID##"></TD></TR>
 			<TR><TD><A>Ratelimit ECM:</A></TD>
 				<TD CLASS="invisible">
-					<input name="ratelimitecm" class="short" type="text" maxlength="5" value="##RATELIMITECM##"><label></label>
-					<A data-p="ecmunique">ECM Unique:</A><input name="ecmunique" type="hidden" value="0">
-					<input name="ecmunique" type="checkbox" value="1" ##ECMUNIQUECHECKED##><label></label>
+					<TABLE>
+						<TR>
+							<TD><input name="ratelimitecm" class="short" type="text" maxlength="5" value="##RATELIMITECM##"><label></label></TD>
+							<TD><A data-p="ecmunique">ECM Unique:</A><input name="ecmunique" type="hidden" value="0"></TD><TD><input name="ecmunique" type="checkbox" value="1" ##ECMUNIQUECHECKED##><label></label></TD>
+						</TR>
+					</TABLE>
 				</TD>
 			</TR>
 			<TR><TD><A>Ratelimittime:</A></TD><TD><input name="ratelimittime" class="withunit short" type="text" maxlength="5" value="##RATELIMITTIME##"> ms</TD></TR>
@@ -43,17 +46,25 @@
 			<TR><TD><A>Emmcache:</A></TD><TD><input name="emmcache" class="medium" type="text" maxlength="10" value="##EMMCACHE##"></TD></TR>
 			<TR><TD><A data-p="saveemm-u">Saveemm:</A></TD>
 				<TD CLASS="invisible">
-					<input name="saveemm-unknown" type="hidden" value="0"><input name="saveemm-unknown" type="checkbox" value="1" ##SAVEEMMUNKNOWNCHK##><label>unknown</label>
-					<input name="saveemm-u" type="hidden" value="0"><input name="saveemm-u" type="checkbox" value="1" ##SAVEEMMUNIQCHK##><label>unique</label>
-					<input name="saveemm-s" type="hidden" value="0"><input name="saveemm-s" type="checkbox" value="1" ##SAVEEMMSHAREDCHK##><label>shared</label>
-					<input name="saveemm-g" type="hidden" value="0"><input name="saveemm-g" type="checkbox" value="1" ##SAVEEMMGLOBALCHK##><label>global</label>
+					<TABLE>
+						<TR>
+							<TD><input name="saveemm-unknown" type="hidden" value="0"><input name="saveemm-unknown" type="checkbox" value="1" ##SAVEEMMUNKNOWNCHK##><label>unknown</label></TD>
+							<TD><input name="saveemm-u" type="hidden" value="0"><input name="saveemm-u" type="checkbox" value="1" ##SAVEEMMUNIQCHK##><label>unique</label></TD>
+							<TD><input name="saveemm-s" type="hidden" value="0"><input name="saveemm-s" type="checkbox" value="1" ##SAVEEMMSHAREDCHK##><label>shared</label></TD>
+							<TD><input name="saveemm-g" type="hidden" value="0"><input name="saveemm-g" type="checkbox" value="1" ##SAVEEMMGLOBALCHK##><label>global</label></TD>
+						</TR>
+					</TABLE>
 				</TD>
 			<TR><TD><A data-p="blockemm-u">Blockemm:</A></TD>
 				<TD CLASS="invisible">
-					<input name="blockemm-unknown" type="hidden" value="0"><input name="blockemm-unknown" type="checkbox" value="1" ##BLOCKEMMUNKNOWNCHK##><label>unknown</label>
-					<input name="blockemm-u" type="hidden" value="0"><input name="blockemm-u" type="checkbox" value="1" ##BLOCKEMMUNIQCHK##><label>unique</label>
-					<input name="blockemm-s" type="hidden" value="0"><input name="blockemm-s" type="checkbox" value="1" ##BLOCKEMMSHAREDCHK##><label>shared</label>
-					<input name="blockemm-g" type="hidden" value="0"><input name="blockemm-g" type="checkbox" value="1" ##BLOCKEMMGLOBALCHK##><label>global</label>
+					<TABLE>
+						<TR>
+							<TD><input name="blockemm-unknown" type="hidden" value="0"><input name="blockemm-unknown" type="checkbox" value="1" ##BLOCKEMMUNKNOWNCHK##><label>unknown</label></TD>
+							<TD><input name="blockemm-u" type="hidden" value="0"><input name="blockemm-u" type="checkbox" value="1" ##BLOCKEMMUNIQCHK##><label>unique</label></TD>
+							<TD><input name="blockemm-s" type="hidden" value="0"><input name="blockemm-s" type="checkbox" value="1" ##BLOCKEMMSHAREDCHK##><label>shared</label></TD>
+							<TD><input name="blockemm-g" type="hidden" value="0"><input name="blockemm-g" type="checkbox" value="1" ##BLOCKEMMGLOBALCHK##><label>global</label></TD>
+						</TR>
+					</TABLE>
 				</TD>
 			<TR><TD><A>Block EMM by Len:</A></TD><TD><input name="blockemm-bylen" type="text" maxlength="256" value="##BLOCKEMMBYLEN##"></TD></TR>
 ##READERCONFIGSIDINS##
