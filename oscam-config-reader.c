@@ -1,6 +1,10 @@
+#define MODULE_LOG_PREFIX "config"
+
 #include "globals.h"
 #include "module-gbox.h"
+#include "module-stat.h"
 #include "oscam-aes.h"
+#include "oscam-array.h"
 #include "oscam-conf.h"
 #include "oscam-conf-chk.h"
 #include "oscam-conf-mk.h"
@@ -12,7 +16,7 @@
 
 #define cs_srvr "oscam.server"
 
-extern struct s_cardreader cardreaders[CS_MAX_MOD];
+extern const struct s_cardreader *cardreaders[];
 extern char *RDR_CD_TXT[];
 
 static void reader_label_fn(const char *token, char *value, void *setting, FILE *f)
@@ -44,127 +48,14 @@ static void ecmwhitelist_fn(const char *token, char *value, void *setting, FILE 
 	struct s_reader *rdr = setting;
 	if(value)
 	{
-		char *ptr, *ptr2, *ptr3, *saveptr1 = NULL;
-		struct s_ecmWhitelist *tmp, *last;
-		struct s_ecmWhitelistIdent *tmpIdent, *lastIdent;
-		struct s_ecmWhitelistLen *tmpLen, *lastLen;
-		for(tmp = rdr->ecmWhitelist; tmp; tmp = tmp->next)
-		{
-			for(tmpIdent = tmp->idents; tmpIdent; tmpIdent = tmpIdent->next)
-			{
-				for(tmpLen = tmpIdent->lengths; tmpLen; tmpLen = tmpLen->next)
-				{
-					add_garbage(tmpLen);
-				}
-				add_garbage(tmpIdent);
-			}
-			add_garbage(tmp);
-		}
-		rdr->ecmWhitelist = NULL;
-		if(strlen(value) > 0)
-		{
-			saveptr1 = NULL;
-			char *saveptr2 = NULL;
-			for(ptr = strtok_r(value, ";", &saveptr1); ptr; ptr = strtok_r(NULL, ";", &saveptr1))
-			{
-				int16_t caid = 0, len;
-				uint32_t ident = 0;
-				ptr2 = strchr(ptr, ':');
-				if(ptr2 != NULL)
-				{
-					ptr2[0] = '\0';
-					++ptr2;
-					ptr3 = strchr(ptr, '@');
-					if(ptr3 != NULL)
-					{
-						ptr3[0] = '\0';
-						++ptr3;
-						ident = (uint32_t)a2i(ptr3, 6);
-					}
-					caid = (int16_t)dyn_word_atob(ptr);
-				}
-				else { ptr2 = ptr; }
-				for(ptr2 = strtok_r(ptr2, ",", &saveptr2); ptr2; ptr2 = strtok_r(NULL, ",", &saveptr2))
-				{
-					len = (int16_t)dyn_word_atob(ptr2);
-					last = NULL, tmpIdent = NULL, lastIdent = NULL, tmpLen = NULL, lastLen = NULL;
-					for(tmp = rdr->ecmWhitelist; tmp; tmp = tmp->next)
-					{
-						last = tmp;
-						if(tmp->caid == caid)
-						{
-							for(tmpIdent = tmp->idents; tmpIdent; tmpIdent = tmpIdent->next)
-							{
-								lastIdent = tmpIdent;
-								if(tmpIdent->ident == ident)
-								{
-									for(tmpLen = tmpIdent->lengths; tmpLen; tmpLen = tmpLen->next)
-									{
-										lastLen = tmpLen;
-										if(tmpLen->len == len) { break; }
-									}
-									break;
-								}
-							}
-						}
-					}
-					if(tmp == NULL)
-					{
-						if(cs_malloc(&tmp, sizeof(struct s_ecmWhitelist)))
-						{
-							tmp->caid = caid;
-							tmp->idents = NULL;
-							tmp->next = NULL;
-							if(last == NULL)
-							{
-								rdr->ecmWhitelist = tmp;
-							}
-							else
-							{
-								last->next = tmp;
-							}
-						}
-					}
-					if(tmp != NULL && tmpIdent == NULL)
-					{
-						if(cs_malloc(&tmpIdent, sizeof(struct s_ecmWhitelistIdent)))
-						{
-							tmpIdent->ident = ident;
-							tmpIdent->lengths = NULL;
-							tmpIdent->next = NULL;
-							if(lastIdent == NULL)
-							{
-								tmp->idents = tmpIdent;
-							}
-							else
-							{
-								lastIdent->next = tmpIdent;
-							}
-						}
-					}
-					if(tmp != NULL && tmpIdent != NULL && tmpLen == NULL)
-					{
-						if(cs_malloc(&tmpLen, sizeof(struct s_ecmWhitelistLen)))
-						{
-							tmpLen->len = len;
-							tmpLen->next = NULL;
-							if(lastLen == NULL)
-							{
-								tmpIdent->lengths = tmpLen;
-							}
-							else
-							{
-								lastLen->next = tmpLen;
-							}
-						}
-					}
-				}
-			}
-		}
+		if(strlen(value))
+			chk_ecm_whitelist(value, &rdr->ecm_whitelist);
+		else
+			ecm_whitelist_clear(&rdr->ecm_whitelist);
 		return;
 	}
 
-	value = mk_t_ecmwhitelist(rdr->ecmWhitelist);
+	value = mk_t_ecm_whitelist(&rdr->ecm_whitelist);
 	if(strlen(value) > 0 || cfg.http_full_cfg)
 		{ fprintf_conf(f, token, "%s\n", value); }
 	free_mk_t(value);
@@ -175,128 +66,14 @@ static void ecmheaderwhitelist_fn(const char *token, char *value, void *setting,
 	struct s_reader *rdr = setting;
 	if(value)
 	{
-		char *ptr, *ptr2, *ptr3;
-		struct s_ecmHeaderwhitelist *tmp, *last = NULL;
-
-		if(strlen(value) == 0)
-		{
-			for(tmp = rdr->ecmHeaderwhitelist; tmp; tmp = tmp->next)
-				{ add_garbage(tmp); }
-			rdr->ecmHeaderwhitelist = NULL;
-		}
+		if(strlen(value))
+			chk_ecm_hdr_whitelist(value, &rdr->ecm_hdr_whitelist);
 		else
-		{
-			char *ptr4, *ptr5, *ptr6, *saveptr = NULL, *saveptr4 = NULL, *saveptr5 = NULL, *saveptr6 = NULL;
-			uint16_t caid = 0;
-			uint32_t provid = 0;
-			int16_t len = 0;
-			for(ptr = strtok_r(value, ";", &saveptr); ptr; ptr = strtok_r(NULL, ";", &saveptr))
-			{
-				caid = 0;
-				provid = 0;
-				ptr2 = strchr(ptr, '@');
-				ptr3 = strchr(ptr, ':');
-				if(ptr2 == NULL && ptr3 == NULL)    //no Caid no Provid
-				{
-					for(ptr4 = strtok_r(ptr, ",", &saveptr4); ptr4; ptr4 = strtok_r(NULL, ",", &saveptr4))
-					{
-						if(cs_malloc(&tmp, sizeof(struct s_ecmHeaderwhitelist)))
-						{
-							ptr4 = trim(ptr4);
-							len = strlen(ptr4);
-							key_atob_l(ptr4, tmp->header, len);
-							tmp->len = len;
-							tmp->caid = 0;
-							tmp->provid = 0;
-							tmp->next = NULL;
-							if(last == NULL)
-							{
-								rdr->ecmHeaderwhitelist = tmp;
-							}
-							else
-							{
-								last->next = tmp;
-							}
-							last = tmp;
-						}
-					}
-				}
-
-				if(ptr3 != NULL && ptr2 == NULL)    // only with Caid
-				{
-					ptr3[0] = '\0';
-					++ptr3;
-					caid = (int16_t)dyn_word_atob(ptr);
-					for(ptr5 = strtok_r(ptr3, ",", &saveptr5); ptr5; ptr5 = strtok_r(NULL, ",", &saveptr5))
-					{
-						if(cs_malloc(&tmp, sizeof(struct s_ecmHeaderwhitelist)))
-						{
-							tmp->caid = caid;
-							tmp->provid = 0;
-							ptr5 = trim(ptr5);
-							len = strlen(ptr5);
-							key_atob_l(ptr5, tmp->header, len);
-							tmp->len = len;
-							tmp->next = NULL;
-							if(last == NULL)
-							{
-								rdr->ecmHeaderwhitelist = tmp;
-							}
-							else
-							{
-								last->next = tmp;
-							}
-							last = tmp;
-						}
-					}
-				}
-
-				if(ptr3 != NULL && ptr2 != NULL)    // with Caid & Provid
-				{
-					ptr2[0] = '\0';
-					++ptr2; // -> provid
-					ptr3[0] = '\0';
-					++ptr3; // -> headers
-					caid = (int16_t)dyn_word_atob(ptr);
-					provid = (uint32_t)a2i(ptr2, 6);
-					for(ptr6 = strtok_r(ptr3, ",", &saveptr6); ptr6; ptr6 = strtok_r(NULL, ",", &saveptr6))
-					{
-						if(cs_malloc(&tmp, sizeof(struct s_ecmHeaderwhitelist)))
-						{
-							tmp->caid = caid;
-							tmp->provid = provid;
-							ptr6 = trim(ptr6);
-							len = strlen(ptr6);
-							key_atob_l(ptr6, tmp->header, len);
-							tmp->len = len;
-							tmp->next = NULL;
-							if(last == NULL)
-							{
-								rdr->ecmHeaderwhitelist = tmp;
-							}
-							else
-							{
-								last->next = tmp;
-							}
-							last = tmp;
-						}
-					}
-				}
-			}
-		}
-		/*  if (rdr->ecmHeaderwhitelist != NULL) { // debug
-		        cs_log("**********Begin ECM Header List for Reader: %s **************", rdr->label);
-
-		        struct s_ecmHeaderwhitelist *tmp;
-		        for(tmp = rdr->ecmHeaderwhitelist; tmp; tmp=tmp->next){
-		            cs_log("Caid: %i Provid: %i Header: %02X Len: %i", tmp->caid, tmp->provid, tmp->header[0], tmp->len);
-		        }
-		        cs_log("***********End ECM Header List for Reader: %s ***************", rdr->label);
-		    } */
+			ecm_hdr_whitelist_clear(&rdr->ecm_hdr_whitelist);
 		return;
 	}
 
-	value = mk_t_ecmheaderwhitelist(rdr->ecmHeaderwhitelist);
+	value = mk_t_ecm_hdr_whitelist(&rdr->ecm_hdr_whitelist);
 	if(strlen(value) > 0 || cfg.http_full_cfg)
 		{ fprintf_conf(f, token, "%s\n", value); }
 	free_mk_t(value);
@@ -334,12 +111,12 @@ static void protocol_fn(const char *token, char *value, void *setting, FILE *f)
 		}, *p;
 		int i;
 		// Parse card readers
-		for(i = 0; i < CS_MAX_MOD; i++)
+		for(i = 0; cardreaders[i]; i++)
 		{
-			if(streq(value, cardreaders[i].desc))
+			if(streq(value, cardreaders[i]->desc))
 			{
 				rdr->crdr = cardreaders[i];
-				rdr->typ  = cardreaders[i].typ;
+				rdr->typ  = cardreaders[i]->typ;
 				return;
 			}
 		}
@@ -608,46 +385,24 @@ static void detect_fn(const char *token, char *value, void *setting, FILE *f)
 
 void ftab_fn(const char *token, char *value, void *setting, long ftab_type, FILE *f)
 {
-	const char *zType = NULL, *zName = NULL, *zFiltNamef = NULL;
-	struct s_reader *rdr = NULL;
 	FTAB *ftab = setting;
-
-	if(ftab_type & FTAB_ACCOUNT)
+	if(value)
 	{
-		struct s_auth *account = NULL;
-		zType = "account";
-		if(ftab_type & FTAB_PROVID) { account = container_of(setting, struct s_auth, ftab); }
-		if(ftab_type & FTAB_CHID)   { account = container_of(setting, struct s_auth, fchid); }
-		if(account) { zName = account->usr; }
+		if(strlen(value))
+			chk_ftab(value, ftab);
+		else
+			ftab_clear(ftab);
+		return;
 	}
 	if(ftab_type & FTAB_READER)
 	{
-		zType = "reader";
+		struct s_reader *rdr = NULL;
 		if(ftab_type & FTAB_PROVID)     { rdr = container_of(setting, struct s_reader, ftab); }
 		if(ftab_type & FTAB_CHID)       { rdr = container_of(setting, struct s_reader, fchid); }
 		if(ftab_type & FTAB_FBPCAID)    { rdr = container_of(setting, struct s_reader, fallback_percaid); }
 		if(ftab_type & FTAB_LOCALCARDS) { rdr = container_of(setting, struct s_reader, localcards); }
-		if(rdr) { zName = rdr->label; }
-	}
-	if(ftab_type & FTAB_PROVID) { zFiltNamef = "provid"; }
-	if(ftab_type & FTAB_CHID)   { zFiltNamef = "chid"; }
-	if(ftab_type & FTAB_FBPCAID) { zFiltNamef = "fallback_percaid"; }
-	if(ftab_type & FTAB_LOCALCARDS) { zFiltNamef = "localcards"; }
-
-	if(value)
-	{
-		if(strlen(value))
-		{
-			strtolower(value);
-			chk_ftab(value, ftab, zType, zName, zFiltNamef);
-		}
-		else
-		{
-			clear_ftab(ftab);
-		}
 		if(rdr)
 			{ rdr->changes_since_shareupdate = 1; }
-		return;
 	}
 	value = mk_t_ftab(ftab);
 	if(strlen(value) > 0 || cfg.http_full_cfg)
@@ -677,11 +432,12 @@ static void emmcache_fn(const char *token, char *value, void *setting, FILE *f)
 		rdr->cachemm   = 0;
 		rdr->rewritemm = 0;
 		rdr->logemm    = 0;
+		rdr->deviceemm = 0;
 		if(strlen(value))
 		{
 			int i;
 			char *ptr, *saveptr1 = NULL;
-			for(i = 0, ptr = strtok_r(value, ",", &saveptr1); (i < 3) && (ptr); ptr = strtok_r(NULL, ",", &saveptr1), i++)
+			for(i = 0, ptr = strtok_r(value, ",", &saveptr1); (i < 4) && (ptr); ptr = strtok_r(NULL, ",", &saveptr1), i++)
 			{
 				switch(i)
 				{
@@ -694,13 +450,15 @@ static void emmcache_fn(const char *token, char *value, void *setting, FILE *f)
 				case 2:
 					rdr->logemm = atoi(ptr);
 					break;
+				case 3:
+					rdr->deviceemm = atoi(ptr);
 				}
 			}
 			if(rdr->rewritemm <= 0)
 			{
-				fprintf(stderr, "Setting reader \"emmcache\" to %i,%d,%i instead of %i,%i,%i.",
-						rdr->cachemm, 1, rdr->logemm,
-						rdr->cachemm, rdr->rewritemm, rdr->logemm);
+				fprintf(stderr, "Setting reader \"emmcache\" to %i,%d,%i,%i instead of %i,%i,%i,%i.",
+						rdr->cachemm, 1, rdr->logemm, rdr->deviceemm,
+						rdr->cachemm, rdr->rewritemm, rdr->logemm, rdr->deviceemm);
 				fprintf(stderr, "Zero or negative number of rewrites is silly\n");
 				rdr->rewritemm = 1;
 			}
@@ -708,7 +466,7 @@ static void emmcache_fn(const char *token, char *value, void *setting, FILE *f)
 		return;
 	}
 	if(rdr->cachemm || cfg.http_full_cfg)
-		{ fprintf_conf(f, token, "%d,%d,%d\n", rdr->cachemm, rdr->rewritemm, rdr->logemm); }
+		{ fprintf_conf(f, token, "%d,%d,%d,%d\n", rdr->cachemm, rdr->rewritemm, rdr->logemm,rdr->deviceemm); }
 }
 
 static void blockemm_bylen_fn(const char *token, char *value, void *setting, FILE *f)
@@ -722,11 +480,7 @@ static void blockemm_bylen_fn(const char *token, char *value, void *setting, FIL
 
 		if(!strlen(value))
 		{
-			if(rdr->blockemmbylen)
-			{
-				ll_destroy_data(rdr->blockemmbylen);
-				rdr->blockemmbylen = NULL;
-			}
+			ll_destroy_data(&rdr->blockemmbylen);
 			return;
 		}
 
@@ -995,9 +749,10 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_SSTR("password"             , OFS(r_pwd),                   "", SIZEOF(r_pwd)),
 	DEF_OPT_SSTR("pincode"              , OFS(pincode),                 "none", SIZEOF(pincode)),
 #ifdef MODULE_GBOX
-	DEF_OPT_INT8("gbox_max_distance"    , OFS(gbox_maxdist),            DEFAULT_GBOX_MAX_DIST),
-	DEF_OPT_INT8("gbox_max_ecm_send"    , OFS(gbox_maxecmsend),         DEFAULT_GBOX_MAX_ECM_SEND),
-	DEF_OPT_INT8("gbox_reshare"         , OFS(gbox_reshare),            0),
+	DEF_OPT_UINT8("gbox_max_distance"	, OFS(gbox_maxdist),		DEFAULT_GBOX_MAX_DIST),
+	DEF_OPT_UINT8("gbox_max_ecm_send"	, OFS(gbox_maxecmsend),		DEFAULT_GBOX_MAX_ECM_SEND),
+	DEF_OPT_UINT8("gbox_reshare"		, OFS(gbox_reshare),		DEFAULT_GBOX_RESHARE),
+	DEF_OPT_UINT8("cccam_reshare"		, OFS(gbox_cccam_reshare),	DEFAULT_GBOX_RESHARE),
 #endif
 	DEF_OPT_STR("readnano"              , OFS(emmfile),                 NULL),
 	DEF_OPT_FUNC("services"             , OFS(sidtabs),                 reader_services_fn),
@@ -1008,7 +763,7 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_INT32("resetcycle"          , OFS(resetcycle),              0),
 	DEF_OPT_INT8("disableserverfilter"  , OFS(ncd_disable_server_filt), 0),
 	DEF_OPT_INT8("connectoninit"        , OFS(ncd_connect_on_init),     0),
-	DEF_OPT_INT8("keepalive"			, OFS(keepalive),				0),
+	DEF_OPT_UINT8("keepalive"           , OFS(keepalive),               0),
 	DEF_OPT_INT8("smargopatch"          , OFS(smargopatch),             0),
 	DEF_OPT_INT8("autospeed"            , OFS(autospeed),               1),
 	DEF_OPT_UINT8("sc8in1_dtrrts_patch" , OFS(sc8in1_dtrrts_patch),     0),
@@ -1033,6 +788,7 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_FUNC_X("ins2e06"            , OFS(ins2e06),                 ins7E_fn, SIZEOF(ins2e06)),
 	DEF_OPT_INT8("fix07"                , OFS(fix_07),                  1),
 	DEF_OPT_INT8("fix9993"              , OFS(fix_9993),                0),
+	DEF_OPT_INT8("readtiers"           	, OFS(readtiers),              	1),
 	DEF_OPT_INT8("force_irdeto"         , OFS(force_irdeto),            0),
 	DEF_OPT_INT8("needsemmfirst"        , OFS(needsemmfirst),           0),
 	DEF_OPT_UINT32("ecmnotfoundlimit"   , OFS(ecmnotfoundlimit),        0),
@@ -1062,7 +818,7 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_FUNC("blockemm-bylen"       , 0,                            blockemm_bylen_fn),
 #ifdef WITH_LB
 	DEF_OPT_INT32("lb_weight"           , OFS(lb_weight),               100),
-	DEF_OPT_INT32("lb_force_fallback"   , OFS(lb_force_fallback),       0),
+	DEF_OPT_INT8("lb_force_fallback"    , OFS(lb_force_fallback),       0),
 #endif
 	DEF_OPT_FUNC("savenano"             , OFS(s_nano),                  nano_fn),
 	DEF_OPT_FUNC("blocknano"            , OFS(b_nano),                  nano_fn),
@@ -1096,9 +852,7 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_FUNC("cooldown"             , 0,                            cooldown_fn),
 	DEF_OPT_FUNC("cooldowndelay"        , 0,                            cooldowndelay_fn),
 	DEF_OPT_FUNC("cooldowntime"         , 0,                            cooldowntime_fn),
-#ifdef MODULE_CAMD35
-	DEF_OPT_INT8("via_emm_global"       , OFS(via_emm_global),          0),
-#endif
+	DEF_OPT_UINT8("read_old_classes"    , OFS(read_old_classes),        0),
 	DEF_LAST_OPT
 };
 
@@ -1121,7 +875,7 @@ static bool reader_check_setting(const struct config_list *UNUSED(clist), void *
 	{
 		"readnano", "resetcycle", "smargopatch", "autospeed", "sc8in1_dtrrts_patch", "boxid","fix07",
 		"fix9993", "rsakey", "ins7e", "ins7e11", "ins2e06", "force_irdeto", "needsemmfirst", "boxkey",
-		"atr", "detect", "nagra_read", "mhz", "cardmhz",
+		"atr", "detect", "nagra_read", "mhz", "cardmhz", "readtiers", "read_old_classes",
 #ifdef WITH_AZBOX
 		"mode",
 #endif
@@ -1162,16 +916,6 @@ static bool reader_check_setting(const struct config_list *UNUSED(clist), void *
 	};
 	if(reader->typ != R_NEWCAMD && in_list(setting, newcamd_settings))
 		{ return false; }
-#ifdef MODULE_CAMD35
-	// Special settings for CAMD35 or CS357X only written if rader is CAMD35/CS357X
-	static const char *camd35_settings[] =
-	{
-		"via_emm_global",
-		0
-	};
-	if(reader->typ != R_CAMD35 && in_list(setting, camd35_settings))
-		{ return false; }
-#endif
 #ifdef MODULE_CCCAM
 	// These are written only when the reader is CCCAM
 	static const char *cccam_settings[] =
@@ -1281,55 +1025,32 @@ void free_reader(struct s_reader *rdr)
 {
 	NULLFREE(rdr->emmfile);
 
-	struct s_ecmWhitelist *tmp;
-	struct s_ecmWhitelistIdent *tmpIdent;
-	struct s_ecmWhitelistLen *tmpLen;
-	for(tmp = rdr->ecmWhitelist; tmp; tmp = tmp->next)
-	{
-		for(tmpIdent = tmp->idents; tmpIdent; tmpIdent = tmpIdent->next)
-		{
-			for(tmpLen = tmpIdent->lengths; tmpLen; tmpLen = tmpLen->next)
-			{
-				add_garbage(tmpLen);
-			}
-			add_garbage(tmpIdent);
-		}
-		add_garbage(tmp);
-	}
-	rdr->ecmWhitelist = NULL;
+	ecm_whitelist_clear(&rdr->ecm_whitelist);
+	ecm_hdr_whitelist_clear(&rdr->ecm_hdr_whitelist);
 
-	struct s_ecmHeaderwhitelist *tmp1;
-	for(tmp1 = rdr->ecmHeaderwhitelist; tmp1; tmp1 = tmp1->next)
-	{
-		add_garbage(tmp1);
-	}
-	rdr->ecmHeaderwhitelist = NULL;
+	ftab_clear(&rdr->fallback_percaid);
+	ftab_clear(&rdr->localcards);
+	ftab_clear(&rdr->fchid);
+	ftab_clear(&rdr->ftab);
 
-	clear_ftab(&rdr->ftab);
+	caidtab_clear(&rdr->ctab);
 
-#ifdef WITH_LB
-	if(rdr->lb_stat)
-	{
-		cs_lock_destroy(&rdr->lb_stat_lock);
-		ll_destroy_data(rdr->lb_stat);
-		rdr->lb_stat = NULL;
-	}
+	lb_destroy_stats(rdr);
 
-#endif
 	cs_clear_entitlement(rdr);
-	if(rdr->ll_entitlements)
-	{
-		ll_destroy(rdr->ll_entitlements);
-		rdr->ll_entitlements = NULL;
-	}
+	ll_destroy(&rdr->ll_entitlements);
+
+	if(rdr->csystem && rdr->csystem->card_done)
+		rdr->csystem->card_done(rdr);
 	NULLFREE(rdr->csystem_data);
 
-	if(rdr->blockemmbylen)
-	{
-		ll_destroy_data(rdr->blockemmbylen);
-		rdr->blockemmbylen = NULL;
-	}
+	ll_destroy_data(&rdr->blockemmbylen);
 
+	ll_destroy_data(&rdr->emmstat);
+
+	aes_clear_entries(&rdr->aes_list);
+	
+	config_list_gc_values(reader_opts, rdr);
 	add_garbage(rdr);
 }
 
@@ -1344,8 +1065,7 @@ int32_t free_readerdb(void)
 		count++;
 	}
 	cs_log("readerdb %d readers freed", count);
-	ll_destroy(configured_readers);
-	configured_readers = NULL;
+	ll_destroy(&configured_readers);
 	return count;
 }
 

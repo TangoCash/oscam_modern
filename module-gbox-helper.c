@@ -1,8 +1,67 @@
+#define MODULE_LOG_PREFIX "gbox"
+
 #include "globals.h"
 
 #ifdef MODULE_GBOX
 #include "minilzo/minilzo.h"
 #include "oscam-string.h"
+
+
+uint16_t gbox_get_caid(uint32_t caprovid)
+{
+        if ((caprovid >> 24) == 0x05)
+                { return 0x0500; }
+        else
+                { return caprovid >> 16; }
+}
+
+uint32_t gbox_get_provid(uint32_t caprovid)
+{
+        uint32_t provid = 0;
+
+        switch(caprovid >> 24)
+        {
+                //ViXS
+        case 0x05:
+                provid = caprovid & 0xFFFFFF;
+                break;
+                //Cryptoworx
+        case 0x0D:
+                provid = (caprovid >> 8) & 0xFF;
+                break;
+        default:
+                provid = caprovid & 0xFFFF;
+                break;
+        }
+        return provid;
+}
+
+uint32_t gbox_get_caprovid(uint16_t caid, uint32_t prid)
+{
+        uint32_t caprovid = 0;
+
+        switch(caid >> 8)
+        {
+                // ViXS
+        case 0x05:
+                caprovid = (caid >> 8) << 24 | (prid & 0xFFFFFF);
+                break;
+                // Cryptoworx
+        case 0x0D:
+                caprovid = (caid >> 8) << 24 | (caid & 0xFF) << 16 |
+                        ((prid << 8) & 0xFF00);
+                break;
+                // N@gr@
+        case 0x18:
+                caprovid = (caid >> 8) << 24 | (caid & 0xFF) << 16;
+                break;
+        default:
+                caprovid = (caid >> 8) << 24 | (caid & 0xFF) << 16 |
+                        (prid & 0xFFFF);
+                break;
+        }
+        return caprovid;
+}
 
 static void gbox_convert_pw(uchar *password, uint32_t pw)
 {
@@ -11,6 +70,27 @@ static void gbox_convert_pw(uchar *password, uint32_t pw)
         {
                 password[3 - i] = (pw >> (8 * i)) & 0xff;
         }
+}
+
+uint32_t gbox_get_ecmchecksum(uchar *ecm, uint16_t ecmlen)
+{
+        uint8_t checksum[4];
+        int32_t counter;
+
+        checksum[3] = ecm[0];
+        checksum[2] = ecm[1];
+        checksum[1] = ecm[2];
+        checksum[0] = ecm[3];
+
+        for(counter = 1; counter < (ecmlen / 4) - 4; counter++)
+        {
+                checksum[3] ^= ecm[counter * 4];
+                checksum[2] ^= ecm[counter * 4 + 1];
+                checksum[1] ^= ecm[counter * 4 + 2];
+                checksum[0] ^= ecm[counter * 4 + 3];
+        }
+
+        return checksum[3] << 24 | checksum[2] << 16 | checksum[1] << 8 | checksum[0];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +240,7 @@ void gbox_compress(uchar *buf, int32_t unpacked_len, int32_t *packed_len)
         lzo_init();
         lzo_uint pl = 0;
         if(lzo1x_1_compress(tmp2, unpacked_len, tmp, &pl, wrkmem) != LZO_E_OK)
-                { cs_log("gbox: compression failed!"); }
+                { cs_log("compression failed!"); }
         memcpy(buf + 12, tmp, pl);
         pl += 12;
         NULLFREE(tmp);
@@ -178,9 +258,9 @@ void gbox_decompress(uchar *buf, int32_t *unpacked_len)
         int len = *unpacked_len - 12;
         *unpacked_len = 0x40000;
         lzo_init();
-        cs_debug_mask(D_READER, "decompressing %d bytes", len);
+        cs_log_dbg(D_READER, "decompressing %d bytes", len);
         if((err = lzo1x_decompress_safe(buf + 12, len, tmp, (lzo_uint *)unpacked_len, NULL)) != LZO_E_OK)
-                { cs_debug_mask(D_READER, "gbox: decompression failed! errno=%d", err); }
+                { cs_log_dbg(D_READER, "gbox: decompression failed! errno=%d", err); }
         memcpy(buf + 12, tmp, *unpacked_len);
         *unpacked_len += 12;
         NULLFREE(tmp);

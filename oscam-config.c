@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "config"
+
 //FIXME Not checked on threadsafety yet; after checking please remove this line
 
 #include "globals.h"
@@ -179,6 +181,7 @@ void init_free_sidtab(void)
 	++cfg_sidtab_generation;
 }
 
+//#define DEBUG_SIDTAB 1
 #ifdef DEBUG_SIDTAB
 static void show_sidtab(struct s_sidtab *sidtab)
 {
@@ -202,6 +205,8 @@ static void show_sidtab(struct s_sidtab *sidtab)
 		cs_log("%s", buf);
 	}
 }
+#else
+static void show_sidtab(struct s_sidtab *UNUSED(sidtab)) { }
 #endif
 
 int32_t init_sidtab(void)
@@ -264,9 +269,7 @@ int32_t init_sidtab(void)
 	NULLFREE(token);
 	fclose(fp);
 
-#ifdef DEBUG_SIDTAB
 	show_sidtab(cfg.sidtab);
-#endif
 	++cfg_sidtab_generation;
 	cs_log("services reloaded: %d services freed, %d services loaded, rejected %d", nro, nr, nrr);
 	return (0);
@@ -473,7 +476,7 @@ int32_t init_srvid(void)
 		{
 			srvid->caid[i] = dyn_word_atob(ptr1);
 			srvid->ncaid = i + 1;
-			//cs_debug_mask(D_CLIENT, "ld caid: %04X srvid: %04X Prov: %s Chan: %s",srvid->caid[i],srvid->srvid,srvid->prov,srvid->name);
+			//cs_log_dbg(D_CLIENT, "ld caid: %04X srvid: %04X Prov: %s Chan: %s",srvid->caid[i],srvid->srvid,srvid->prov,srvid->name);
 		}
 		nr++;
 
@@ -584,7 +587,7 @@ static struct s_rlimit *ratelimit_read_int(void)
 		entry->rl.ratelimittime = ratelimittime;
 		entry->rl.srvidholdtime = srvidholdtime;
 
-		cs_debug_mask(D_TRACE, "ratelimit: %04X:%06X:%04X:%04X:%d:%d:%d", entry->rl.caid, entry->rl.provid, entry->rl.srvid, entry->rl.chid,
+		cs_log_dbg(D_TRACE, "ratelimit: %04X:%06X:%04X:%04X:%d:%d:%d", entry->rl.caid, entry->rl.provid, entry->rl.srvid, entry->rl.chid,
 					  entry->rl.ratelimitecm, entry->rl.ratelimittime, entry->rl.srvidholdtime);
 
 		if(!new_rlimit)
@@ -752,7 +755,7 @@ int32_t chk_global_whitelist(ECM_REQUEST *er, uint32_t *line)
 				{
 					er->caid = entry->mapcaid;
 					er->prid = entry->mapprovid;
-					cs_debug_mask(D_TRACE, "whitelist: mapped %04X:%06X to %04X:%06X", er->caid, er->prid, entry->mapcaid, entry->mapprovid);
+					cs_log_dbg(D_TRACE, "whitelist: mapped %04X:%06X to %04X:%06X", er->caid, er->prid, entry->mapcaid, entry->mapprovid);
 					break;
 				}
 			}
@@ -872,7 +875,7 @@ static struct s_global_whitelist *global_whitelist_read_int(void)
 			char *p = strstr(token + 4, " ");
 			if(!p || sscanf(p + 1, "%4x:%6x", &mapcaid, &mapprovid) < 2)
 			{
-				cs_debug_mask(D_TRACE, "whitelist: wrong mapping: %s", token);
+				cs_log_dbg(D_TRACE, "whitelist: wrong mapping: %s", token);
 				continue;
 			}
 			str1[0] = 0;
@@ -909,10 +912,10 @@ static struct s_global_whitelist *global_whitelist_read_int(void)
 					{ cfg.global_whitelist_use_l = 1; }
 
 				if(type == 'm')
-					cs_debug_mask(D_TRACE,
+					cs_log_dbg(D_TRACE,
 								  "whitelist: %c: %04X:%06X:%04X:%04X:%04X:%02X map to %04X:%06X", entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen, entry->mapcaid, entry->mapprovid);
 				else
-					cs_debug_mask(D_TRACE,
+					cs_log_dbg(D_TRACE,
 								  "whitelist: %c: %04X:%06X:%04X:%04X:%04X:%02X", entry->type, entry->caid, entry->provid, entry->srvid, entry->pid, entry->chid, entry->ecmlen);
 
 				if(!new_whitelist)

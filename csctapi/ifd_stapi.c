@@ -70,30 +70,25 @@ static int32_t stapi_setprotocol(struct s_reader *reader, unsigned char *params,
 	return STReader_SetProtocol(crdr_data->stapi_handle, params, length, len_request);
 }
 
-static int32_t stapi_writesettings(struct s_reader *reader, uint32_t ETU, uint32_t EGT, unsigned char P, unsigned char I, uint16_t Fi, unsigned char Di, unsigned char Ni)
+static int32_t stapi_writesettings(struct s_reader *reader, struct s_cardreader_settings *s)
 {
-	(void)ETU;
-	(void)EGT;
-	(void)P;
-	(void)I;
-	(void)Fi;
-	(void)Di;
-	(void)Ni;
+	(void)s;
 	struct stapi_data *crdr_data = reader->crdr_data;
 	return STReader_SetClockrate(crdr_data->stapi_handle);
 }
 
-void cardreader_stapi(struct s_cardreader *crdr)
+const struct s_cardreader cardreader_stapi =
 {
-	crdr->desc      = "stapi";
-	crdr->reader_init   = stapi_init;
-	crdr->get_status    = stapi_getstatus;
-	crdr->activate  = stapi_reset;
-	crdr->transmit  = stapi_transmit;
-	crdr->receive       = stapi_receive;
-	crdr->close     = stapi_close;
-	crdr->set_protocol  = stapi_setprotocol;
-	crdr->write_settings = stapi_writesettings;
-	crdr->typ       = R_INTERNAL;
-}
+	.desc           = "stapi",
+	.typ            = R_INTERNAL,
+	.reader_init    = stapi_init,
+	.get_status     = stapi_getstatus,
+	.activate       = stapi_reset,
+	.transmit       = stapi_transmit,
+	.receive        = stapi_receive,
+	.close          = stapi_close,
+	.set_protocol   = stapi_setprotocol,
+	.write_settings = stapi_writesettings,
+};
+
 #endif

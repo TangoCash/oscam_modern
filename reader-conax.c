@@ -20,15 +20,18 @@ static int32_t RSA_CNX(struct s_reader *reader, unsigned char *msg, unsigned cha
 	if(cta_lr > (pre_size + size) &&
 			size >= modbytes && size < 128)
 	{
-		bn_mod = BN_new();
-		bn_exp = BN_new();
-		bn_data = BN_new();
-		bn_res = BN_new();
 		ctx = BN_CTX_new();
+
 		if(ctx == NULL)
 		{
-			rdr_debug_mask(reader, D_READER, "RSA Error in RSA_CNX");
+			rdr_log_dbg(reader, D_READER, "RSA Error in RSA_CNX");
 		}
+
+		BN_CTX_start(ctx);
+		bn_mod = BN_CTX_get(ctx);
+		bn_exp = BN_CTX_get(ctx);
+		bn_data = BN_CTX_get(ctx);
+		bn_res = BN_CTX_get(ctx);
 
 		/*RSA first round*/
 		BN_bin2bn(mod, modbytes, bn_mod);  // rsa modulus
@@ -64,6 +67,7 @@ static int32_t RSA_CNX(struct s_reader *reader, unsigned char *msg, unsigned cha
 
 		if(0 == ret)
 			{ memcpy(msg, data, n); }
+		BN_CTX_end(ctx);
 		BN_CTX_free(ctx);
 	}
 	else
@@ -211,7 +215,7 @@ static int32_t conax_send_pin(struct s_reader *reader)
 	memcpy(insPIN + 8, reader->pincode, 4);
 
 	write_cmd(insPIN, insPIN + 5);
-	rdr_debug_mask(reader, D_READER, "Sent pincode to card.");
+	rdr_log_dbg(reader, D_READER, "Sent pincode to card.");
 
 	return OK;
 }
@@ -340,7 +344,7 @@ static int32_t conax_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)
 	int32_t i, ok = 0;
 	char tmp_dbg[17];
 
-	rdr_debug_mask(rdr, D_EMM, "Entered conax_get_emm_type ep->emm[2]=%02x", ep->emm[2]);
+	rdr_log_dbg(rdr, D_EMM, "Entered conax_get_emm_type ep->emm[2]=%02x", ep->emm[2]);
 
 	for(i = 0; i < rdr->nprov; i++)
 	{
@@ -353,7 +357,7 @@ static int32_t conax_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)
 		ep->type = SHARED;
 		memset(ep->hexserial, 0, 8);
 		memcpy(ep->hexserial, &ep->emm[6], 4);
-		rdr_debug_mask_sensitive(rdr, D_EMM, "SHARED, ep->hexserial = {%s}", cs_hexdump(1, ep->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)));
+		rdr_log_dbg_sensitive(rdr, D_EMM, "SHARED, ep->hexserial = {%s}", cs_hexdump(1, ep->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)));
 		return 1;
 	}
 	else
@@ -363,13 +367,13 @@ static int32_t conax_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)
 			ep->type = UNIQUE;
 			memset(ep->hexserial, 0, 8);
 			memcpy(ep->hexserial + 2, &ep->emm[6], 4);
-			rdr_debug_mask_sensitive(rdr, D_EMM, "UNIQUE, ep->hexserial = {%s}", cs_hexdump(1, ep->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)));
+			rdr_log_dbg_sensitive(rdr, D_EMM, "UNIQUE, ep->hexserial = {%s}", cs_hexdump(1, ep->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)));
 			return 1;
 		}
 		else
 		{
 			ep->type = GLOBAL;
-			rdr_debug_mask(rdr, D_EMM, "GLOBAL");
+			rdr_log_dbg(rdr, D_EMM, "GLOBAL");
 			memset(ep->hexserial, 0, 8);
 			return 1;
 		}
@@ -497,7 +501,7 @@ static int32_t conax_card_info(struct s_reader *reader)
 								rdr_log(reader, "%s: %d, id: %04X%s, date: %s - %s, name: %s", txt[type], ++n, provid, chid, pdate, pdate + 16, trim(provname));
 
 								// add entitlements to list
-								cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), provid, cxclass, start_t, end_t, type + 1);
+								cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), provid, cxclass, start_t, end_t, type + 1, 1);
 
 								k = 0;
 								chid[0] = '\0';
@@ -516,7 +520,7 @@ static int32_t conax_card_info(struct s_reader *reader)
 					rdr_log(reader, "%s: %d, id: %04X%s, date: %s - %s, name: %s", txt[type], ++n, provid, chid, pdate, pdate + 16, trim(provname));
 
 					// add entitlements to list
-					cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), provid, cxclass, start_t, end_t, type + 1);
+					cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), provid, cxclass, start_t, end_t, type + 1, 1);
 				}
 			}
 		}
@@ -525,15 +529,16 @@ static int32_t conax_card_info(struct s_reader *reader)
 	return OK;
 }
 
-void reader_conax(struct s_cardsystem *ph)
+const struct s_cardsystem reader_conax =
 {
-	ph->do_emm = conax_do_emm;
-	ph->do_ecm = conax_do_ecm;
-	ph->card_info = conax_card_info;
-	ph->card_init = conax_card_init;
-	ph->get_emm_type = conax_get_emm_type;
-	ph->get_emm_filter = conax_get_emm_filter;
-	ph->caids[0] = 0x0B;
-	ph->desc = "conax";
-}
+	.desc           = "conax",
+	.caids          = (uint16_t[]){ 0x0B, 0 },
+	.do_emm         = conax_do_emm,
+	.do_ecm         = conax_do_ecm,
+	.card_info      = conax_card_info,
+	.card_init      = conax_card_init,
+	.get_emm_type   = conax_get_emm_type,
+	.get_emm_filter = conax_get_emm_filter,
+};
+
 #endif

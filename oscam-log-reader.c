@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "reader"
+
 #include "globals.h"
 
 #include "oscam-log.h"
@@ -23,12 +25,12 @@ static char *debug_mask_txt(int mask)
 	}
 }
 
-static char *reader_desc_txt(struct s_reader *reader)
+static const char *reader_desc_txt(struct s_reader *reader)
 {
-	if(reader->csystem.desc)
-		{ return reader->csystem.desc; }
-	else if(reader->crdr.desc)
-		{ return reader->crdr.desc; }
+	if(reader->csystem && reader->csystem->desc)
+		{ return reader->csystem->desc; }
+	else if(reader->crdr && reader->crdr->desc)
+		{ return reader->crdr->desc; }
 	else if(reader->ph.desc)
 		{ return reader->ph.desc; }
 	else
@@ -89,7 +91,7 @@ void rdr_log_sensitive(struct s_reader *reader, char *fmt, ...)
 	rdr_log(reader, "%s", txt);
 }
 
-void rdr_debug_mask(struct s_reader *reader, uint16_t mask, char *fmt, ...)
+void rdr_log_dbg(struct s_reader *reader, uint16_t mask, char *fmt, ...)
 {
 	if(config_enabled(WITH_DEBUG))
 	{
@@ -98,11 +100,11 @@ void rdr_debug_mask(struct s_reader *reader, uint16_t mask, char *fmt, ...)
 		va_start(args, fmt);
 		vsnprintf(txt, sizeof(txt), fmt, args);
 		va_end(args);
-		cs_debug_mask(mask, "%s [%s] %s%s", reader->label, reader_desc_txt(reader), debug_mask_txt(mask), txt);
+		cs_log_dbg(mask, "%s [%s] %s%s", reader->label, reader_desc_txt(reader), debug_mask_txt(mask), txt);
 	}
 }
 
-void rdr_debug_mask_sensitive(struct s_reader *reader, uint16_t mask, char *fmt, ...)
+void rdr_log_dbg_sensitive(struct s_reader *reader, uint16_t mask, char *fmt, ...)
 {
 	if(config_enabled(WITH_DEBUG))
 	{
@@ -112,31 +114,21 @@ void rdr_debug_mask_sensitive(struct s_reader *reader, uint16_t mask, char *fmt,
 		vsnprintf(txt, sizeof(txt), fmt, args);
 		va_end(args);
 		format_sensitive(txt, log_remove_sensitive);
-		rdr_debug_mask(reader, mask, "%s", txt);
+		rdr_log_dbg(reader, mask, "%s", txt);
 	}
 }
 
-void rdr_dump(struct s_reader *reader, const uint8_t *buf, int n, char *fmt, ...)
+void rdr_log_dump(struct s_reader *reader, const uint8_t *buf, int n, char *fmt, ...)
 {
 	char txt[2048];
 	va_list args;
 	va_start(args, fmt);
 	vsnprintf(txt, sizeof(txt), fmt, args);
 	va_end(args);
-	cs_dump(buf, n, "%s [%s] %s", reader->label, reader_desc_txt(reader), txt);
+	cs_log_dump(buf, n, "%s [%s] %s", reader->label, reader_desc_txt(reader), txt);
 }
 
-void rdr_dump_nospace(struct s_reader *reader, const uint8_t *buf, int n, char *fmt, ...)
-{
-	char txt[2048];
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf(txt, sizeof(txt), fmt, args);
-	va_end(args);
-	cs_dump_nospace(buf, n, "%s [%s] %s", reader->label, reader_desc_txt(reader), txt);
-}
-
-void rdr_ddump_mask(struct s_reader *reader, uint16_t mask, const uint8_t *buf, int n, char *fmt, ...)
+void rdr_log_dump_dbg(struct s_reader *reader, uint16_t mask, const uint8_t *buf, int n, char *fmt, ...)
 {
 	if(config_enabled(WITH_DEBUG))
 	{
@@ -145,6 +137,6 @@ void rdr_ddump_mask(struct s_reader *reader, uint16_t mask, const uint8_t *buf, 
 		va_start(args, fmt);
 		vsnprintf(txt, sizeof(txt), fmt, args);
 		va_end(args);
-		cs_ddump_mask(mask, buf, n, "%s [%s] %s%s", reader->label, reader_desc_txt(reader), debug_mask_txt(mask), txt);
+		cs_log_dump_dbg(mask, buf, n, "%s [%s] %s%s", reader->label, reader_desc_txt(reader), debug_mask_txt(mask), txt);
 	}
 }

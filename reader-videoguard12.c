@@ -88,7 +88,7 @@ static void read_tiers(struct s_reader *reader)
 		struct tm timeinfo;
 		memset(&timeinfo, 0, sizeof(struct tm));
 		rev_date_calc_tm(&cta_res[4], &timeinfo, csystem_data->card_baseyear);
-		cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), tier_id, 0, 0, mktime(&timeinfo), 4);
+		cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), tier_id, 0, 0, mktime(&timeinfo), 4, 1);
 		char tiername[83];
 		rdr_log(reader, "tier: %04x, expiry date: %04d/%02d/%02d-%02d:%02d:%02d %s", tier_id, timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, get_tiername(tier_id, reader->caid, tiername));
 	}
@@ -101,10 +101,10 @@ static int32_t videoguard12_card_init(struct s_reader *reader, ATR *newatr)
 
 	if((hist_size < 7) || (hist[1] != 0xB0) || (hist[4] != 0xFF) || (hist[5] != 0x4A) || (hist[6] != 0x50))
 	{
-		rdr_debug_mask(reader, D_READER, "failed history check");
+		rdr_log_dbg(reader, D_READER, "failed history check");
 		return ERROR;
 	}
-	rdr_debug_mask(reader, D_READER, "passed history check");
+	rdr_log_dbg(reader, D_READER, "passed history check");
 
 	get_atr;
 	def_resp;
@@ -253,7 +253,7 @@ static int32_t videoguard12_card_init(struct s_reader *reader, ATR *newatr)
 	      }//while
 	    }//ele
 
-	  rdr_debug_mask(reader, D_READER, "calculated BoxID: %02X%02X%02X%02X", boxID[0], boxID[1], boxID[2], boxID[3]);
+	  rdr_log_dbg(reader, D_READER, "calculated BoxID: %02X%02X%02X%02X", boxID[0], boxID[1], boxID[2], boxID[3]);
 	*/
 
 	/* the boxid is specified in the config */
@@ -264,7 +264,7 @@ static int32_t videoguard12_card_init(struct s_reader *reader, ATR *newatr)
 		{
 			boxID[i] = (reader->boxid >> (8 * (3 - i))) % 0x100;
 		}
-		rdr_debug_mask(reader, D_READER, "oscam.server BoxID: %02X%02X%02X%02X", boxID[0], boxID[1], boxID[2], boxID[3]);
+		rdr_log_dbg(reader, D_READER, "oscam.server BoxID: %02X%02X%02X%02X", boxID[0], boxID[1], boxID[2], boxID[3]);
 	}
 
 	if(!boxidOK)
@@ -399,14 +399,16 @@ static int32_t videoguard12_card_info(struct s_reader *reader)
 	return OK;
 }
 
-void reader_videoguard12(struct s_cardsystem *ph)
+const struct s_cardsystem reader_videoguard12 =
 {
-	ph->do_emm = videoguard12_do_emm;
-	ph->do_ecm = videoguard12_do_ecm;
-	ph->card_info = videoguard12_card_info;
-	ph->card_init = videoguard12_card_init;
-	ph->get_emm_type = videoguard_get_emm_type;
-	ph->get_emm_filter = videoguard_get_emm_filter;
-	ph->caids[0] = 0x09;
-}
+	.desc           = "videoguard12",
+	.caids          = (uint16_t[]){ 0x09, 0 },
+	.do_emm         = videoguard12_do_emm,
+	.do_ecm         = videoguard12_do_ecm,
+	.card_info      = videoguard12_card_info,
+	.card_init      = videoguard12_card_init,
+	.get_emm_type   = videoguard_get_emm_type,
+	.get_emm_filter = videoguard_get_emm_filter,
+};
+
 #endif

@@ -1,6 +1,9 @@
+#define MODULE_LOG_PREFIX "config"
+
 #include "globals.h"
 #include "module-dvbapi.h"
 #include "module-gbox.h"
+#include "oscam-array.h"
 #include "oscam-conf.h"
 #include "oscam-conf-chk.h"
 #include "oscam-conf-mk.h"
@@ -132,13 +135,14 @@ void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f)
 	CAIDTAB *caid_table = setting;
 	if(value)
 	{
-		if(strlen(value) == 0)
-			{ clear_caidtab(caid_table); }
-		else
-			{ chk_caidtab(value, caid_table); }
+		if(strlen(value)) {
+			chk_caidtab(value, caid_table);
+		} else {
+			caidtab_clear(caid_table);
+		}
 		return;
 	}
-	if(caid_table->caid[0] || cfg.http_full_cfg)
+	if(caid_table->ctnum || cfg.http_full_cfg)
 	{
 		value = mk_t_caidtab(caid_table);
 		fprintf_conf(f, token, "%s\n", value);
@@ -147,16 +151,28 @@ void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f)
 }
 
 
-static void caidvaluetab_fn(const char *token, char *value, void *setting, FILE *f)
+void caidvaluetab_fn(const char *token, char *value, void *setting, FILE *f)
 {
 	CAIDVALUETAB *caid_value_table = setting;
-	int limit = streq(token, "lb_retrylimits") ? 50 : 1;
 	if(value)
 	{
-		chk_caidvaluetab(value, caid_value_table, limit);
+		if (strlen(value)) {
+			chk_caidvaluetab(value, caid_value_table);
+			if (streq(token, "lb_retrylimits"))
+			{
+				int32_t i;
+				for (i = 0; i < caid_value_table->cvnum; i++)
+				{
+					if (caid_value_table->cvdata[i].value < 50)
+						caid_value_table->cvdata[i].value = 50;
+				}
+			}
+		} else {
+			caidvaluetab_clear(caid_value_table);
+		}
 		return;
 	}
-	if(caid_value_table->n > 0 || cfg.http_full_cfg)
+	if(caid_value_table->cvnum || cfg.http_full_cfg)
 	{
 		value = mk_t_caidvaluetab(caid_value_table);
 		fprintf_conf(f, token, "%s\n", value);
@@ -494,11 +510,11 @@ static const struct config_list webif_opts[] =
 	DEF_OPT_STR("httppiconpath"             , OFS(http_piconpath),          NULL),
 	DEF_OPT_STR("httphelplang"              , OFS(http_help_lang),          "en"),
 	DEF_OPT_STR("httplocale"                , OFS(http_locale),             NULL),
-	DEF_OPT_INT32("http_prepend_embedded_css"   , OFS(http_prepend_embedded_css), 0),
+	DEF_OPT_INT8("http_prepend_embedded_css"   , OFS(http_prepend_embedded_css), 0),
 	DEF_OPT_INT32("httprefresh"             , OFS(http_refresh),            0),
 	DEF_OPT_INT32("httppollrefresh"         , OFS(poll_refresh),            60),
 	DEF_OPT_INT8("httphideidleclients"      , OFS(http_hide_idle_clients),  0),
-	DEF_OPT_STR("httphidetype"              , OFS(http_hide_type),          NULL),
+	DEF_OPT_STR("httphidetype"              , OFS(http_hide_type),          "sh"),
 	DEF_OPT_INT8("httpshowpicons"           , OFS(http_showpicons),         0),
 	DEF_OPT_INT8("httppiconsize"            , OFS(http_picon_size),         0),
 	DEF_OPT_INT8("httpshowmeminfo"          , OFS(http_showmeminfo),        0),
@@ -516,6 +532,9 @@ static const struct config_list webif_opts[] =
 	DEF_OPT_INT32("aulow"                   , OFS(aulow),                   30),
 	DEF_OPT_INT32("hideclient_to"           , OFS(hideclient_to),           25),
 	DEF_OPT_STR("httposcamlabel"            , OFS(http_oscam_label),        "OSCam"),
+	DEF_OPT_INT32("httpemmuclean"           , OFS(http_emmu_clean),         256),
+	DEF_OPT_INT32("httpemmsclean"           , OFS(http_emms_clean),         -1),
+	DEF_OPT_INT32("httpemmgclean"           , OFS(http_emmg_clean),         -1),
 #ifdef WEBIF_LIVELOG
  	DEF_OPT_INT8("http_status_log"          , OFS(http_status_log),         0),
 #else
@@ -569,7 +588,7 @@ static bool cache_should_save_fn(void *UNUSED(var))
 		   || cfg.cacheex_wait_timetab.n || cfg.cacheex_enable_stats > 0 || cfg.csp_port || cfg.csp.filter_caidtab.n || cfg.csp.allow_request == 0 || cfg.csp.allow_reforward > 0
 #endif
 #ifdef CW_CYCLE_CHECK
-		   || cfg.cwcycle_check_enable || cfg.cwcycle_check_caidtab.caid[0] || cfg.maxcyclelist != 500 || cfg.keepcycletime || cfg.onbadcycle || cfg.cwcycle_dropold || cfg.cwcycle_sensitive || cfg.cwcycle_allowbadfromffb || cfg.cwcycle_usecwcfromce
+		   || cfg.cwcycle_check_enable || cfg.cwcycle_check_caidtab.ctnum || cfg.maxcyclelist != 500 || cfg.keepcycletime || cfg.onbadcycle || cfg.cwcycle_dropold || cfg.cwcycle_sensitive || cfg.cwcycle_allowbadfromffb || cfg.cwcycle_usecwcfromce
 #endif
 		   ;
 }
@@ -579,9 +598,9 @@ static const struct config_list cache_opts[] =
 	DEF_OPT_SAVE_FUNC(cache_should_save_fn),
 	DEF_OPT_FIXUP_FUNC(cache_fixups_fn),
 	DEF_OPT_UINT32("delay"			, OFS(delay),			CS_DELAY),
-	DEF_OPT_UINT32("max_time"		, OFS(max_cache_time),		DEFAULT_MAX_CACHE_TIME),
+	DEF_OPT_INT32("max_time"		, OFS(max_cache_time),		DEFAULT_MAX_CACHE_TIME),
 #ifdef CS_CACHEEX
-	DEF_OPT_UINT32("max_hit_time"		, OFS(max_hitcache_time),	DEFAULT_MAX_HITCACHE_TIME),
+	DEF_OPT_INT32("max_hit_time"		, OFS(max_hitcache_time),	DEFAULT_MAX_HITCACHE_TIME),
 	DEF_OPT_FUNC("wait_time"		, OFS(cacheex_wait_timetab),	cacheex_valuetab_fn),
 	DEF_OPT_FUNC("cacheex_mode1_delay"  , OFS(cacheex_mode1_delay_tab), caidvaluetab_fn),
 	DEF_OPT_UINT8("cacheexenablestats"	, OFS(cacheex_enable_stats),	0),
@@ -878,8 +897,7 @@ static const struct config_list gbox_opts[] =
 	DEF_OPT_SSTR("my_password"	, OFS(gbox_my_password),	"", SIZEOF(gbox_my_password)),
 	DEF_OPT_SSTR("my_vers"		, OFS(gbox_my_vers),		"25", SIZEOF(gbox_my_vers)),
 	DEF_OPT_SSTR("my_cpu_api"	, OFS(gbox_my_cpu_api),		"40", SIZEOF(gbox_my_cpu_api)),
-	DEF_OPT_INT8("gsms_disable"	, OFS(gsms_dis),		0),
-	DEF_OPT_INT8("ccc_reshare"	, OFS(ccc_reshare),		0),
+	DEF_OPT_UINT8("gsms_disable"	, OFS(gsms_dis),		0),
 	DEF_OPT_STR("tmp_dir"		, OFS(gbox_tmp_dir),		NULL),
 	DEF_LAST_OPT
 };
@@ -1049,6 +1067,19 @@ void config_set(char *section, const char *token, char *value)
 void config_free(void)
 {
 	config_sections_free(oscam_conf, &cfg);
+	caidvaluetab_clear(&cfg.ftimeouttab);
+	caidtab_clear(&cfg.double_check_caid);
+#ifdef WITH_LB
+	caidvaluetab_clear(&cfg.lb_retrylimittab);
+	caidvaluetab_clear(&cfg.lb_nbest_readers_tab);
+	caidtab_clear(&cfg.lb_noproviderforcaid);
+#endif
+#ifdef CS_CACHEEX
+	caidvaluetab_clear(&cfg.cacheex_mode1_delay_tab);
+#endif
+#ifdef CW_CYCLE_CHECK
+	caidtab_clear(&cfg.cwcycle_check_caidtab);
+#endif
 }
 
 int32_t init_config(void)
@@ -1074,7 +1105,12 @@ int32_t init_config(void)
 		// no oscam.conf but webif is included in build, set it up for lan access and tweak defaults
 #ifdef WEBIF
 		cfg.http_port = DEFAULT_HTTP_PORT;
-		chk_iprange(cs_strdup(DEFAULT_HTTP_ALLOW), &cfg.http_allowed);
+		char *default_allowed;
+		if ((default_allowed = cs_strdup(DEFAULT_HTTP_ALLOW)))
+		{
+			chk_iprange(default_allowed, &cfg.http_allowed);
+			free(default_allowed);
+		}
 #endif
 		NULLFREE(cfg.logfile);
 		cfg.logtostdout = 1;

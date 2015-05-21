@@ -3,11 +3,9 @@
 
 extern char *mk_t_caidtab(CAIDTAB *ctab);
 extern char *mk_t_caidvaluetab(CAIDVALUETAB *tab);
-#ifdef CS_CACHEEX
 extern char *mk_t_cacheex_valuetab(CECSPVALUETAB *tab);
 extern char *mk_t_cacheex_cwcheck_valuetab(CWCHECKTAB *tab);
 extern char *mk_t_cacheex_hitvaluetab(CECSPVALUETAB *tab);
-#endif
 extern char *mk_t_tuntab(TUNTAB *ttab);
 extern char *mk_t_group(uint64_t grp);
 extern char *mk_t_ftab(FTAB *ftab);
@@ -21,8 +19,8 @@ extern char *mk_t_nano(uint16_t nano);
 extern char *mk_t_service(SIDTABS *sidtabs);
 extern char *mk_t_logfile(void);
 extern char *mk_t_iprange(struct s_ip *range);
-extern char *mk_t_ecmwhitelist(struct s_ecmWhitelist *whitelist);
-extern char *mk_t_ecmheaderwhitelist(struct s_ecmHeaderwhitelist *headerlist);
+extern char *mk_t_ecm_whitelist(struct s_ecm_whitelist *ecm_whitelist);
+extern char *mk_t_ecm_hdr_whitelist(struct s_ecm_hdr_whitelist *ecm_hdr_whitelist);
 extern char *mk_t_cltab(CLASSTAB *clstab);
 extern char *mk_t_emmbylen(struct s_reader *rdr);
 extern char *mk_t_allowedprotocols(struct s_auth *account);

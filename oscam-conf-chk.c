@@ -1,4 +1,7 @@
+#define MODULE_LOG_PREFIX "config"
+
 #include "globals.h"
+#include "oscam-array.h"
 #include "oscam-conf-chk.h"
 #include "oscam-garbage.h"
 #include "oscam-net.h"
@@ -43,65 +46,57 @@ void chk_iprange(char *value, struct s_ip **base)
 	clear_sip(&lip);
 }
 
-void chk_caidtab(char *caidasc, CAIDTAB *ctab)
+void chk_caidtab(char *value, CAIDTAB *caidtab)
 {
-	int32_t i;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	CAIDTAB newctab;
-	memset(&newctab, 0, sizeof(CAIDTAB));
-	for(i = 1; i < CS_MAXCAIDTAB; newctab.mask[i++] = 0xffff) { ; }
-
-	for(i = 0, ptr1 = strtok_r(caidasc, ",", &saveptr1); (i < CS_MAXCAIDTAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1))
+	caidtab_clear(caidtab);
+	char *ptr, *saveptr1 = NULL;
+	for(ptr = strtok_r(value, ",", &saveptr1); ptr; ptr = strtok_r(NULL, ",", &saveptr1))
 	{
-		uint32_t caid, mask, cmap;
-		if((ptr3 = strchr(trim(ptr1), ':')))
-			{ * ptr3++ = '\0'; }
-		else
-			{ ptr3 = ""; }
-
-		if((ptr2 = strchr(trim(ptr1), '&')))
-			{ * ptr2++ = '\0'; }
-		else
-			{ ptr2 = ""; }
-
-		if(((caid = a2i(ptr1, 2)) | (mask = a2i(ptr2, -2)) | (cmap = a2i(ptr3, 2))) < 0x10000)
-		{
-			newctab.caid[i] = caid;
-			newctab.mask[i] = mask;
-			newctab.cmap[i++] = cmap;
+		CAIDTAB_DATA d;
+		memset(&d, 0, sizeof(d));
+		d.mask = 0xffff;
+		char *caid_end_ptr = strchr(ptr, ':'); // caid_end_ptr + 1 -> cmap
+		if(caid_end_ptr) {
+			*caid_end_ptr++ = '\0';
+			d.cmap = a2i(caid_end_ptr, 2);
+			if (errno == EINVAL) continue;
 		}
+		char *mask_start_ptr = strchr(ptr, '&'); // mask_start_ptr + 1 -> mask
+		errno = 0;
+		if(mask_start_ptr) { // Mask is optional
+			*mask_start_ptr++ = '\0';
+			d.mask = a2i(mask_start_ptr, 2);
+			if (errno == EINVAL) continue;
+		}
+		d.caid = a2i(ptr, 2);
+		if (errno == EINVAL) continue;
+		if (d.caid || d.cmap)
+			caidtab_add(caidtab, &d);
 	}
-	memcpy(ctab, &newctab, sizeof(CAIDTAB));
 }
 
-void chk_caidvaluetab(char *lbrlt, CAIDVALUETAB *tab, int32_t minvalue)
+void chk_caidvaluetab(char *value, CAIDVALUETAB *caidvaluetab)
 {
-	int32_t i;
-	char *ptr1, *ptr2, *saveptr1 = NULL;
-	CAIDVALUETAB newtab;
-	memset(&newtab, 0, sizeof(CAIDVALUETAB));
-
-	for(i = 0, ptr1 = strtok_r(lbrlt, ",", &saveptr1); (i < CS_MAX_CAIDVALUETAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1))
+	caidvaluetab_clear(caidvaluetab);
+	char *ptr, *saveptr1 = NULL;
+	for(ptr = strtok_r(value, ",", &saveptr1); ptr; ptr = strtok_r(NULL, ",", &saveptr1))
 	{
-		int32_t caid, value;
-
-		if((ptr2 = strchr(trim(ptr1), ':')))
-			{ * ptr2++ = '\0'; }
-		else
-			{ ptr2 = ""; }
-
-		if(((caid = a2i(ptr1, 2)) < 0xFFFF) | ((value = atoi(ptr2)) < 10000))
-		{
-			newtab.caid[i] = caid;
-			if(value < minvalue) { value = minvalue; }
-			newtab.value[i] = value;
-			newtab.n = ++i;
-		}
+		CAIDVALUETAB_DATA d;
+		memset(&d, 0, sizeof(d));
+		char *caid_end_ptr = strchr(ptr, ':'); // caid_end_ptr + 1 -> value
+		if(!caid_end_ptr)
+			continue;
+		*caid_end_ptr++ = '\0';
+		errno = 0;
+		d.caid = a2i(ptr, 2);
+		if (errno == EINVAL)
+			continue;
+		d.value = atoi(caid_end_ptr);
+		if (d.caid && d.value < 10000)
+			caidvaluetab_add(caidvaluetab, &d);
 	}
-	memcpy(tab, &newtab, sizeof(CAIDVALUETAB));
 }
 
-#ifdef CS_CACHEEX
 void chk_cacheex_valuetab(char *lbrlt, CECSPVALUETAB *tab)
 {
 	//[caid][&mask][@provid][$servid][:awtime][:]dwtime
@@ -268,37 +263,33 @@ void chk_cacheex_hitvaluetab(char *lbrlt, CECSPVALUETAB *tab)
 	}
 	memcpy(tab, &newtab, sizeof(CECSPVALUETAB));
 }
-#endif
 
 void chk_tuntab(char *tunasc, TUNTAB *ttab)
 {
 	int32_t i;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	TUNTAB newttab;
-	memset(&newttab, 0 , sizeof(TUNTAB));
-
-	for(i = 0, ptr1 = strtok_r(tunasc, ",", &saveptr1); (i < CS_MAXTUNTAB) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1))
+	tuntab_clear(ttab);
+	errno = 0;
+	char *caid_ptr, *savecaid_ptr = NULL;
+	for(i = 0, caid_ptr = strtok_r(tunasc, ",", &savecaid_ptr); (caid_ptr); caid_ptr = strtok_r(NULL, ",", &savecaid_ptr), i++)
 	{
-		uint32_t bt_caidfrom, bt_caidto, bt_srvid;
-		if((ptr3 = strchr(trim(ptr1), ':')))
-			{ * ptr3++ = '\0'; }
-		else
-			{ ptr3 = ""; }
-
-		if((ptr2 = strchr(trim(ptr1), '.')))
-			{ * ptr2++ = '\0'; }
-		else
-			{ ptr2 = ""; }
-
-		if((bt_caidfrom = a2i(ptr1, 2)) | (bt_srvid = a2i(ptr2, -2)) | (bt_caidto = a2i(ptr3, 2)))
-		{
-			newttab.bt_caidfrom[i] = bt_caidfrom;
-			newttab.bt_caidto[i] = bt_caidto;
-			newttab.bt_srvid[i++] = bt_srvid;
-			newttab.n = i;
-		}
+		TUNTAB_DATA d;
+		char *srvid_ptr  = strchr(trim(caid_ptr), '.');
+		char *caidto_ptr = strchr(trim(caid_ptr), ':');
+		if (!srvid_ptr)
+			continue;
+		*srvid_ptr++ = '\0';
+		if (caidto_ptr)
+			*caidto_ptr++ = '\0';
+		d.bt_caidfrom = a2i(caid_ptr, 2);
+		d.bt_srvid    = a2i(srvid_ptr, 2);
+		d.bt_caidto   = 0;
+		if (caidto_ptr)
+			d.bt_caidto = a2i(caidto_ptr, 2);
+		if (errno == EINVAL)
+			continue;
+		if (d.bt_caidfrom | d.bt_srvid | d.bt_caidto)
+			tuntab_add(ttab, &d);
 	}
-	memcpy(ttab, &newttab, sizeof(TUNTAB));
 }
 
 void chk_services(char *labels, SIDTABS *sidtabs)
@@ -320,53 +311,40 @@ void chk_services(char *labels, SIDTABS *sidtabs)
 	sidtabs->no = newsidno;
 }
 
-void chk_ftab(char *zFilterAsc, FTAB *ftab, const char *zType, const char *zName, const char *zFiltName)
+void chk_ftab(char *value, FTAB *ftab)
 {
-	int32_t i, j;
-	char *ptr1, *ptr2, *ptr3, *saveptr1 = NULL;
-	char *ptr[CS_MAXFILTERS] = {0};
-	FTAB newftab;
-	memset(&newftab, 0, sizeof(FTAB));
-
-	for(i = 0, ptr1 = strtok_r(zFilterAsc, ";", &saveptr1); (i < CS_MAXFILTERS) && (ptr1); ptr1 = strtok_r(NULL, ";", &saveptr1), i++)
+	ftab_clear(ftab);
+	char *ptr1, *saveptr1 = NULL;
+	errno = 0;
+	for(ptr1 = strtok_r(value, ";", &saveptr1); (ptr1); ptr1 = strtok_r(NULL, ";", &saveptr1))
 	{
-		ptr[i] = ptr1;
-		if((ptr2 = strchr(trim(ptr1), ':')))
+		FILTER d;
+		memset(&d, 0, sizeof(d));
+		char *caid_end_ptr = strchr(ptr1, ':'); // caid_end_ptr + 1 -> headers
+		if(!caid_end_ptr)
+			continue;
+		caid_end_ptr[0] = '\0';
+		d.caid = a2i(ptr1, 4);
+		if (!d.caid || errno == EINVAL)
 		{
-			*ptr2++ = '\0';
-			newftab.filts[i].caid = (uint16_t)a2i(ptr1, 4);
-			ptr[i] = ptr2;
+			errno = 0;
+			continue;
 		}
-		else if(zFiltName && zFiltName[0] == 'c')
+		ptr1 = caid_end_ptr + 1; // -> headers
+		char *ident_ptr, *saveident_ptr = NULL;
+		for(ident_ptr = strtok_r(ptr1, ",", &saveident_ptr); ident_ptr && d.nprids < ARRAY_SIZE(d.prids); ident_ptr = strtok_r(NULL, ",", &saveident_ptr))
 		{
-			cs_log("PANIC: CAID field not found in CHID parameter!");
-			return;
+			uint32_t ident = a2i(ident_ptr, 4);
+			if (errno == EINVAL)
+			{
+				errno = 0;
+				continue;
+			}
+			d.prids[d.nprids++] = ident;
 		}
-		else if(zFiltName && (zFiltName[0] == 'f' || zFiltName[0] == 'l') )
-		{
-			newftab.filts[i].caid = (uint16_t)a2i(ptr1, 4);
-			ptr[i] = NULL;
-		}
-		newftab.nfilts++;
+		if (d.nprids)
+			ftab_add(ftab, &d);
 	}
-
-	if(newftab.nfilts)
-	{
-		cs_debug_mask(D_CLIENT, "%s '%s' %s filter(s):", zType, zName, zFiltName);
-	}
-	for(i = 0; i < newftab.nfilts; i++)
-	{
-		cs_debug_mask(D_CLIENT, "CAID #%d: %04X", i, newftab.filts[i].caid);
-		if(zFiltName && (zFiltName[0] == 'f' || zFiltName[0] == 'l') && ptr[i] == NULL) { continue; }
-		for(j = 0, ptr3 = strtok_r(ptr[i], ",", &saveptr1); (j < CS_MAXPROV) && (ptr3); ptr3 = strtok_r(NULL, ",", &saveptr1), j++)
-		{
-			newftab.filts[i].prids[j] = a2i(ptr3, 6);
-			newftab.filts[i].nprids++;
-			cs_debug_mask(D_CLIENT, "%s #%d: %06X", zFiltName, j, newftab.filts[i].prids[j]);
-		}
-	}
-
-	memcpy(ftab, &newftab, sizeof(FTAB));
 }
 
 void chk_cltab(char *classasc, CLASSTAB *clstab)
@@ -443,8 +421,8 @@ void chk_port_tab(char *portasc, PTAB *ptab)
 			if((ptr2 = strchr(trim(ptr3), ':')))
 			{
 				*ptr2++ = '\0';
-				newptab->ports[iport].ncd->ncd_ftab.nfilts++;
-				ifilt = newptab->ports[iport].ncd->ncd_ftab.nfilts - 1;
+				ifilt = newptab->ports[iport].ncd->ncd_ftab.nfilts++;
+				j = 0;
 				newptab->ports[iport].ncd->ncd_ftab.filts[ifilt].caid = (uint16_t)a2i(ptr3, 4);
 				newptab->ports[iport].ncd->ncd_ftab.filts[ifilt].prids[j] = a2i(ptr2, 6);
 			}
@@ -459,6 +437,89 @@ void chk_port_tab(char *portasc, PTAB *ptab)
 	NULLFREE(newptab);
 }
 
+void chk_ecm_whitelist(char *value, ECM_WHITELIST *ecm_whitelist)
+{
+	ecm_whitelist_clear(ecm_whitelist);
+	char *ptr, *saveptr1 = NULL;
+	for(ptr = strtok_r(value, ";", &saveptr1); ptr; ptr = strtok_r(NULL, ";", &saveptr1))
+	{
+		ECM_WHITELIST_DATA d;
+		memset(&d, 0, sizeof(d));
+		char *caid_end_ptr = strchr(ptr, ':'); // caid_end_ptr + 1 -> headers
+		char *provid_ptr = strchr(ptr, '@'); // provid_ptr + 1 -> provid
+		char *headers = ptr;
+		if(caid_end_ptr)
+		{
+			caid_end_ptr[0] = '\0';
+			if (provid_ptr)
+			{
+				provid_ptr[0] = '\0';
+				provid_ptr++;
+				d.ident = a2i(provid_ptr, 6);
+			}
+			d.caid = dyn_word_atob(ptr);
+			headers = caid_end_ptr + 1; // -> headers
+		} else if(provid_ptr) {
+			provid_ptr[0] = '\0';
+			d.ident = a2i(provid_ptr, 6);
+		}
+		if (d.caid == 0xffff) d.caid = 0;
+		if (d.ident == 0xffff) d.ident = 0;
+		char *len_ptr, *savelen_ptr = NULL;
+		for(len_ptr = strtok_r(headers, ",", &savelen_ptr); len_ptr; len_ptr = strtok_r(NULL, ",", &savelen_ptr))
+		{
+			d.len = dyn_word_atob(len_ptr);
+			if (d.len == 0xffff)
+				continue;
+			ecm_whitelist_add(ecm_whitelist, &d);
+		}
+	}
+}
+
+void chk_ecm_hdr_whitelist(char *value, ECM_HDR_WHITELIST *ecm_hdr_whitelist)
+{
+	ecm_hdr_whitelist_clear(ecm_hdr_whitelist);
+	char *ptr, *saveptr = NULL;
+	for(ptr = strtok_r(value, ";", &saveptr); ptr; ptr = strtok_r(NULL, ";", &saveptr))
+	{
+		ECM_HDR_WHITELIST_DATA d;
+		memset(&d, 0, sizeof(d));
+		char *caid_end_ptr = strchr(ptr, ':'); // caid_end_ptr + 1 -> headers
+		char *provid_ptr = strchr(ptr, '@'); // provid_ptr + 1 -> provid
+		char *headers = ptr;
+		if(caid_end_ptr)
+		{
+			caid_end_ptr[0] = '\0';
+			if (provid_ptr)
+			{
+				provid_ptr[0] = '\0';
+				provid_ptr++;
+				d.provid = a2i(provid_ptr, 6);
+			}
+			d.caid = dyn_word_atob(ptr);
+			headers = caid_end_ptr + 1; // -> headers
+		} else if(provid_ptr) {
+			provid_ptr[0] = '\0';
+			d.provid = a2i(provid_ptr, 6);
+		}
+		if (d.caid == 0xffff) d.caid = 0;
+		if (d.provid == 0xffff) d.provid = 0;
+		char *hdr_ptr, *savehdr_ptr = NULL;
+		for(hdr_ptr = strtok_r(headers, ",", &savehdr_ptr); hdr_ptr; hdr_ptr = strtok_r(NULL, ",", &savehdr_ptr))
+		{
+			hdr_ptr = trim(hdr_ptr);
+			d.len = strlen(hdr_ptr);
+			if (d.len / 2 > sizeof(d.header))
+				d.len = sizeof(d.header) * 2;
+			if (d.len > 1)
+			{
+				key_atob_l(hdr_ptr, d.header, d.len);
+				ecm_hdr_whitelist_add(ecm_hdr_whitelist, &d);
+			}
+		}
+	}
+}
+
 /* Clears the s_ip structure provided. The pointer will be set to NULL so everything is cleared.*/
 void clear_sip(struct s_ip **sip)
 {
@@ -467,20 +528,6 @@ void clear_sip(struct s_ip **sip)
 	{
 		add_garbage(cip);
 	}
-}
-
-/* Clears the s_ftab struct provided by setting nfilts and nprids to zero. */
-void clear_ftab(struct s_ftab *ftab)
-{
-	int32_t i, j;
-	for(i = 0; i < CS_MAXFILTERS; i++)
-	{
-		ftab->filts[i].caid = 0;
-		for(j = 0; j < CS_MAXPROV; j++)
-			{ ftab->filts[i].prids[j] = 0; }
-		ftab->filts[i].nprids = 0;
-	}
-	ftab->nfilts = 0;
 }
 
 /* Clears the s_ptab struct provided by setting nfilts and nprids to zero. */
@@ -500,25 +547,9 @@ void clear_ptab(struct s_ptab *ptab)
 	}
 }
 
-/* Clears given caidtab */
-void clear_caidtab(struct s_caidtab *ctab)
-{
-	memset(ctab, 0, sizeof(struct s_caidtab));
-	int32_t i;
-	for(i = 1; i < CS_MAXCAIDTAB; ctab->mask[i++] = 0xffff) { ; }
-}
-
-#ifdef CS_CACHEEX
 /* Clears given csptab */
 void clear_cacheextab(CECSPVALUETAB *ctab)
 {
 	memset(ctab, -1, sizeof(CECSPVALUETAB));
 	ctab->n = 0;
-}
-#endif
-
-/* Clears given tuntab */
-void clear_tuntab(struct s_tuntab *ttab)
-{
-	memset(ttab, 0, sizeof(struct s_tuntab));
 }

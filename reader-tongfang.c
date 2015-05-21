@@ -112,7 +112,7 @@ static int32_t tongfang_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 	if((ecm_len = check_sct_len(er->ecm, 3)) < 0) { return ERROR; }
 	if(cs_malloc(&tmp, ecm_len * 3 + 1))
 	{
-		rdr_debug_mask(reader, D_IFD, "ECM: %s", cs_hexdump(1, er->ecm, ecm_len, tmp, ecm_len * 3 + 1));
+		rdr_log_dbg(reader, D_IFD, "ECM: %s", cs_hexdump(1, er->ecm, ecm_len, tmp, ecm_len * 3 + 1));
 		NULLFREE(tmp);
 	}
 
@@ -204,14 +204,15 @@ static int32_t tongfang_card_info(struct s_reader *reader)
 	return OK;
 }
 
-void reader_tongfang(struct s_cardsystem *ph)
+const struct s_cardsystem reader_tongfang =
 {
-	ph->do_emm = tongfang_do_emm;
-	ph->do_ecm = tongfang_do_ecm;
-	ph->card_info = tongfang_card_info;
-	ph->card_init = tongfang_card_init;
-	ph->get_emm_type = tongfang_get_emm_type;
-	ph->caids[0] = 0x4B;
-	ph->desc = "tongfang";
-}
+	.desc         = "tongfang",
+	.caids        = (uint16_t[]){ 0x4B, 0 },
+	.do_emm       = tongfang_do_emm,
+	.do_ecm       = tongfang_do_ecm,
+	.card_info    = tongfang_card_info,
+	.card_init    = tongfang_card_init,
+	.get_emm_type = tongfang_get_emm_type,
+};
+
 #endif

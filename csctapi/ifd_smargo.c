@@ -50,7 +50,7 @@ static int32_t smargo_set_settings(struct s_reader *reader, int32_t freq, unsign
 
 	smargo_set_config_mode_on(reader);
 
-	rdr_debug_mask(reader, D_DEVICE, "Smargo: sending F=%04X (%d), D=%02X (%d), Freq=%04X (%d), N=%02X (%d), T=%02X (%d), inv=%02X (%d)",
+	rdr_log_dbg(reader, D_DEVICE, "sending F=%04X (%d), D=%02X (%d), Freq=%04X (%d), N=%02X (%d), T=%02X (%d), inv=%02X (%d)",
 				   Fi, Fi, Di, Di, freqk, freqk, Ni, Ni, T, T, inv, inv);
 
 	if(T != 14 || freq == 369)
@@ -84,15 +84,14 @@ static int32_t smargo_set_settings(struct s_reader *reader, int32_t freq, unsign
 	return OK;
 }
 
-static int32_t smargo_writesettings(struct s_reader *reader, uint32_t UNUSED(ETU), uint32_t UNUSED(EGT), unsigned char UNUSED(P), unsigned char UNUSED(I), uint16_t Fi, unsigned char Di, unsigned char Ni)
+static int32_t smargo_write_settings(struct s_reader *reader, struct s_cardreader_settings *s)
 {
-	return smargo_set_settings(reader, reader->mhz, reader->protocol_type == 1 ? 0 : reader->protocol_type , reader->convention, Fi, Di, Ni);
+	return smargo_set_settings(reader, reader->mhz, reader->protocol_type == 1 ? 0 : reader->protocol_type , reader->convention, s->Fi, s->D, s->Ni);
 }
 
 
 static int32_t smargo_init(struct s_reader *reader)
 {
-	rdr_log(reader, "smargo init type is %s", reader->crdr.desc);
 	reader->handle = open(reader->device,  O_RDWR);
 
 	if(reader->handle < 0)
@@ -123,20 +122,20 @@ static int32_t smargo_Serial_Read(struct s_reader *reader, uint32_t timeout, uin
 			if((bytes_read = read(reader->handle, data + count, size - count)) < 1)
 			{
 				int saved_errno = errno;
-				rdr_ddump_mask(reader, D_DEVICE, data, count, "Receiving:");
+				rdr_log_dump_dbg(reader, D_DEVICE, data, count, "Receiving:");
 				rdr_log(reader, "ERROR: %s (errno=%d %s)", __func__, saved_errno, strerror(saved_errno));
 				return ERROR;
 			}
 		}
 		else
 		{
-			rdr_ddump_mask(reader, D_DEVICE, data, count, "Receiving:");
-			rdr_debug_mask(reader, D_DEVICE, "Timeout in IO_Serial_Read");
+			rdr_log_dump_dbg(reader, D_DEVICE, data, count, "Receiving:");
+			rdr_log_dbg(reader, D_DEVICE, "Timeout in IO_Serial_Read");
 			*read_bytes = count;
 			return ERROR;
 		}
 	}
-	rdr_ddump_mask(reader, D_DEVICE, data, count, "Receiving:");
+	rdr_log_dump_dbg(reader, D_DEVICE, data, count, "Receiving:");
 	return OK;
 }
 
@@ -166,7 +165,7 @@ static int32_t smargo_fast_reset_by_atr(struct s_reader *reader, ATR *atr)
 
 	if(ATR_InitFromArray(atr, buf, n) != ERROR)
 	{
-		rdr_debug_mask(reader, D_DEVICE, "SR: ATR parsing OK");
+		rdr_log_dbg(reader, D_DEVICE, "SR: ATR parsing OK");
 		ret = OK;
 	}
 
@@ -175,7 +174,7 @@ static int32_t smargo_fast_reset_by_atr(struct s_reader *reader, ATR *atr)
 
 static int32_t smargo_reset(struct s_reader *reader, ATR *atr)
 {
-	rdr_debug_mask(reader, D_IFD, "Smargo: Resetting card");
+	rdr_log_dbg(reader, D_IFD, "Resetting card");
 	int32_t ret = ERROR;
 	int32_t i;
 	unsigned char buf[ATR_MAX_SIZE];
@@ -211,7 +210,7 @@ static int32_t smargo_reset(struct s_reader *reader, ATR *atr)
 		if(n == 0 || buf[0] == 0)
 			{ continue; }
 
-		rdr_ddump_mask(reader, D_IFD, buf, n, "Smargo ATR: %d bytes", n);
+		rdr_log_dump_dbg(reader, D_IFD, buf, n, "ATR: %d bytes", n);
 
 		if((buf[0] != 0x3B && buf[0] != 0x03 && buf[0] != 0x3F) || (buf[1] == 0xFF && buf[2] == 0x00))
 			{ continue; } // this is not a valid ATR
@@ -251,25 +250,25 @@ int32_t smargo_activate(struct s_reader *reader, struct s_ATR *atr)
 	}
 	else
 	{
-		rdr_debug_mask(reader, D_DEVICE, "Fast card reset with atr");
+		rdr_log_dbg(reader, D_DEVICE, "Fast card reset with atr");
 		call(smargo_fast_reset_by_atr(reader, atr));
 	}
 	return OK;
 }
 
-void cardreader_smargo(struct s_cardreader *crdr)
+const struct s_cardreader cardreader_smargo =
 {
-	crdr->desc      = "smargo";
-	crdr->reader_init   = smargo_init;
-	crdr->get_status    = IO_Serial_GetStatus;
-	crdr->activate  = smargo_activate;
-	crdr->transmit  = IO_Serial_Transmit;
-	crdr->receive       = IO_Serial_Receive;
-	crdr->close     = IO_Serial_Close;
-	crdr->write_settings = smargo_writesettings;
-	crdr->set_parity    = IO_Serial_SetParity;
-	crdr->typ       = R_MOUSE;
+	.desc            = "smargo",
+	.typ             = R_MOUSE,
+	.max_clock_speed = 1,
+	.reader_init     = smargo_init,
+	.activate        = smargo_activate,
+	.write_settings  = smargo_write_settings,
+	.get_status      = IO_Serial_GetStatus,
+	.transmit        = IO_Serial_Transmit,
+	.receive         = IO_Serial_Receive,
+	.close           = IO_Serial_Close,
+	.set_parity      = IO_Serial_SetParity,
+};
 
-	crdr->max_clock_speed   = 1;
-}
 #endif

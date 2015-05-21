@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "lock"
+
 #include "globals.h"
 #include "oscam-lock.h"
 #include "oscam-time.h"
@@ -16,7 +18,7 @@ void cs_lock_create(CS_MUTEX_LOCK *l, const char *name, uint32_t timeout_ms)
 	__cs_pthread_cond_init(&l->writecond);
 	__cs_pthread_cond_init(&l->readcond);
 #ifdef WITH_MUTEXDEBUG
-	cs_debug_mask_nolock(D_TRACE, "lock %s created", name);
+	cs_log_dbg(D_TRACE, "lock %s created", name);
 #endif
 }
 
@@ -41,14 +43,14 @@ void cs_lock_destroy(CS_MUTEX_LOCK *l)
 
 #ifdef WITH_DEBUG
 	if(!n && old_name != LOG_LIST)
-		{ cs_log_nolock("WARNING lock %s destroy timed out.", old_name); }
+		{ cs_log("WARNING lock %s destroy timed out.", old_name); }
 #endif
 
 	pthread_mutex_destroy(&l->lock);
 	pthread_cond_destroy(&l->writecond);
 	pthread_cond_destroy(&l->readcond);
 #ifdef WITH_MUTEXDEBUG
-	cs_debug_mask_nolock(D_TRACE, "lock %s destroyed", l->name);
+	cs_log_dbg(D_TRACE, "lock %s destroyed", l->name);
 #endif
 }
 
@@ -87,13 +89,13 @@ void cs_rwlock_int(CS_MUTEX_LOCK *l, int8_t type)
 		l->readlock = (type == WRITELOCK) ? 0 : 1;
 #ifdef WITH_DEBUG
 		if(l->name != LOG_LIST)
-			{ cs_log_nolock("WARNING lock %s (%s) timed out.", l->name, (type == WRITELOCK) ? "WRITELOCK" : "READLOCK"); }
+			{ cs_log("WARNING lock %s (%s) timed out.", l->name, (type == WRITELOCK) ? "WRITELOCK" : "READLOCK"); }
 #endif
 	}
 
 	pthread_mutex_unlock(&l->lock);
 #ifdef WITH_MUTEXDEBUG
-	//cs_debug_mask_nolock(D_TRACE, "lock %s locked", l->name);
+	//cs_log_dbg(D_TRACE, "lock %s locked", l->name);
 #endif
 	return;
 }
@@ -127,7 +129,7 @@ void cs_rwunlock_int(CS_MUTEX_LOCK *l, int8_t type)
 	if(l->name != LOG_LIST)
 	{
 		const char *typetxt[] = { "", "write", "read" };
-		cs_debug_mask_nolock(D_TRACE, "%slock %s: released", typetxt[type], l->name);
+		cs_log_dbg(D_TRACE, "%slock %s: released", typetxt[type], l->name);
 	}
 #endif
 #endif
@@ -164,7 +166,7 @@ int8_t cs_try_rwlock_int(CS_MUTEX_LOCK *l, int8_t type)
 	if(l->name != LOG_LIST)
 	{
 		const char *typetxt[] = { "", "write", "read" };
-		cs_debug_mask_nolock(D_TRACE, "try_%slock %s: status=%d", typetxt[type], l->name, status);
+		cs_log_dbg(D_TRACE, "try_%slock %s: status=%d", typetxt[type], l->name, status);
 	}
 #endif
 #endif

@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "webif"
+
 #include "globals.h"
 
 #ifdef WEBIF
@@ -29,12 +31,13 @@
 #include "oscam-time.h"
 #include "oscam-work.h"
 
-extern struct s_cardreader cardreaders[CS_MAX_MOD];
+extern const struct s_cardreader *cardreaders[];
 extern char cs_confdir[];
 extern uint32_t ecmcwcache_size;
 extern uint8_t cs_http_use_utf8;
 extern uint32_t cfg_sidtab_generation;
 extern int32_t exit_oscam;
+extern uint8_t cacheex_peer_id[8];
 
 extern char *entitlement_type[];
 extern char *RDR_CD_TXT[];
@@ -50,8 +53,10 @@ pthread_key_t getssl;
 static CS_MUTEX_LOCK http_lock;
 CS_MUTEX_LOCK *lock_cs;
 
-static uint8_t useLocalD = 1;
-#define PRINTF_LOCAL_D useLocalD ? "%'d" : "%d"
+static uint8_t useLocal = 1;
+#define PRINTF_LOCAL_D useLocal ? "%'d" : "%d"
+#define PRINTF_LOCAL_F useLocal ? "%'.0f" : "%.0f"
+#define PRINTF_LOCAL_MB useLocal ? "%'.2f MB" : "%.2f MB"
 
 static pthread_t httpthread;
 static int32_t sock;
@@ -129,25 +134,25 @@ static void set_status_info_var(struct templatevars *vars, char *varname, int no
 * unused 13 - 15
 */
 static void set_status_info(struct templatevars *vars, struct pstat stats){
-	set_status_info_var(vars, "MEM_CUR_TOTAL",  stats.check_available & (1 << 0), "%'.2f MB" , (double)stats.mem_total/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_FREE",   stats.check_available & (1 << 1), "%'.2f MB" , (double)stats.mem_free/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_USED",   stats.check_available & (1 << 1), "%'.2f MB" , (double)stats.mem_used/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_BUFF",   stats.check_available & (1 << 2), "%'.2f MB" , (double)stats.mem_buff/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_CACHED", stats.check_available & (1 << 2), "%'.2f MB" , (double)stats.mem_cached/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_FREEM",  stats.check_available & (1 << 2), "%'.2f MB" , (double)stats.mem_freem/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_SHARE",  stats.check_available & (1 << 3), "%'.2f MB" , (double)stats.mem_share/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_TOTSW",  stats.check_available & (1 << 4), "%'.2f MB" , (double)stats.mem_total_swap/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_FRESW",  stats.check_available & (1 << 5), "%'.2f MB" , (double)stats.mem_free_swap/(1024.0*1024.0));
-	set_status_info_var(vars, "MEM_CUR_USESW",  stats.check_available & (1 << 5), "%'.2f MB" , (double)stats.mem_used_swap/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_TOTAL",  stats.check_available & (1 << 0), PRINTF_LOCAL_MB , (double)stats.mem_total/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_FREE",   stats.check_available & (1 << 1), PRINTF_LOCAL_MB , (double)stats.mem_free/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_USED",   stats.check_available & (1 << 1), PRINTF_LOCAL_MB , (double)stats.mem_used/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_BUFF",   stats.check_available & (1 << 2), PRINTF_LOCAL_MB , (double)stats.mem_buff/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_CACHED", stats.check_available & (1 << 2), PRINTF_LOCAL_MB , (double)stats.mem_cached/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_FREEM",  stats.check_available & (1 << 2), PRINTF_LOCAL_MB , (double)stats.mem_freem/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_SHARE",  stats.check_available & (1 << 3), PRINTF_LOCAL_MB , (double)stats.mem_share/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_TOTSW",  stats.check_available & (1 << 4), PRINTF_LOCAL_MB , (double)stats.mem_total_swap/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_FRESW",  stats.check_available & (1 << 5), PRINTF_LOCAL_MB , (double)stats.mem_free_swap/(1024.0*1024.0));
+	set_status_info_var(vars, "MEM_CUR_USESW",  stats.check_available & (1 << 5), PRINTF_LOCAL_MB , (double)stats.mem_used_swap/(1024.0*1024.0));
 
-	set_status_info_var(vars, "SERVER_PROCS",   stats.check_available & (1 << 6), "%'.0f"    , stats.info_procs);
+	set_status_info_var(vars, "SERVER_PROCS",   stats.check_available & (1 << 6), PRINTF_LOCAL_F , stats.info_procs);
 
 	set_status_info_var(vars, "CPU_LOAD_0",     stats.check_available & (1 << 7), "%.2f"     , stats.cpu_avg[0]);
 	set_status_info_var(vars, "CPU_LOAD_1",     stats.check_available & (1 << 7), "%.2f"     , stats.cpu_avg[1]);
 	set_status_info_var(vars, "CPU_LOAD_2",     stats.check_available & (1 << 7), "%.2f"     , stats.cpu_avg[2]);
 
-	set_status_info_var(vars, "OSCAM_VMSIZE",   stats.check_available & (1 << 8), "%'.2f MB" , (double)stats.vsize/(1024.0*1024.0));
-	set_status_info_var(vars, "OSCAM_RSSSIZE",  stats.check_available & (1 << 8), "%'.2f MB" , (double)stats.rss/(1024.0*1024.0));
+	set_status_info_var(vars, "OSCAM_VMSIZE",   stats.check_available & (1 << 8), PRINTF_LOCAL_MB , (double)stats.vsize/(1024.0*1024.0));
+	set_status_info_var(vars, "OSCAM_RSSSIZE",  stats.check_available & (1 << 8), PRINTF_LOCAL_MB , (double)stats.rss/(1024.0*1024.0));
 	set_status_info_var(vars, "OSCAM_CPU_USER", stats.check_available & (1 << 9), "%.2f %%" , stats.cpu_usage_user);
 	set_status_info_var(vars, "OSCAM_CPU_SYS",  stats.check_available & (1 << 10), "%.2f %%" , stats.cpu_usage_sys);
 	double sum_cpu = stats.cpu_usage_sys + stats.cpu_usage_user;
@@ -256,18 +261,18 @@ static void set_ecm_info(struct templatevars * vars)
 	if(emmsum < 1) {emmsum = 1; emm = 1;}
 
 	tpl_printf(vars, TPLADD, "TOTAL_ECM_MIN", "%d", first_client->n_request[0]);
-	tpl_printf(vars, TPLADD, "TOTAL_CW", PRINTF_LOCAL_D, !ecm ? (int)ecmsum : 0);
-	tpl_printf(vars, TPLADD, "TOTAL_CWOK", PRINTF_LOCAL_D, first_client->cwfound);
-	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", PRINTF_LOCAL_D, first_client->cwnot);
-	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", PRINTF_LOCAL_D, first_client->cwignored);
-	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", PRINTF_LOCAL_D, first_client->cwtout);
-	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", PRINTF_LOCAL_D, first_client->cwcache);
-	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", PRINTF_LOCAL_D, first_client->cwtun);
-	tpl_printf(vars, TPLADD, "TOTAL_CWPOS", PRINTF_LOCAL_D, first_client->cwfound + first_client->cwcache);
-	tpl_printf(vars, TPLADD, "TOTAL_CWNEG", PRINTF_LOCAL_D, first_client->cwnot + first_client->cwtout);
-	tpl_printf(vars, TPLADD, "TOTAL_EM", PRINTF_LOCAL_D, !emm ? (int)emmsum : 0);
-	tpl_printf(vars, TPLADD, "TOTAL_EMOK", PRINTF_LOCAL_D, first_client->emmok);
-	tpl_printf(vars, TPLADD, "TOTAL_EMNOK", PRINTF_LOCAL_D, first_client->emmnok);
+	tpl_printf(vars, TPLADD, "TOTAL_CW", PRINTF_LOCAL_F, !ecm ? ecmsum : 0);
+	tpl_printf(vars, TPLADD, "TOTAL_CWOK", PRINTF_LOCAL_F, (double)first_client->cwfound);
+	tpl_printf(vars, TPLADD, "TOTAL_CWNOK", PRINTF_LOCAL_F, (double)first_client->cwnot);
+	tpl_printf(vars, TPLADD, "TOTAL_CWIGN", PRINTF_LOCAL_F, (double)first_client->cwignored);
+	tpl_printf(vars, TPLADD, "TOTAL_CWTOUT", PRINTF_LOCAL_F, (double)first_client->cwtout);
+	tpl_printf(vars, TPLADD, "TOTAL_CWCACHE", PRINTF_LOCAL_F, (double)first_client->cwcache);
+	tpl_printf(vars, TPLADD, "TOTAL_CWTUN", PRINTF_LOCAL_F, (double)first_client->cwtun);
+	tpl_printf(vars, TPLADD, "TOTAL_CWPOS", PRINTF_LOCAL_F, (double)first_client->cwfound + (double)first_client->cwcache);
+	tpl_printf(vars, TPLADD, "TOTAL_CWNEG", PRINTF_LOCAL_F, (double)first_client->cwnot + (double)first_client->cwtout);
+	tpl_printf(vars, TPLADD, "TOTAL_EM", PRINTF_LOCAL_F, !emm ? emmsum : 0);
+	tpl_printf(vars, TPLADD, "TOTAL_EMOK", PRINTF_LOCAL_F, (double)first_client->emmok);
+	tpl_printf(vars, TPLADD, "TOTAL_EMNOK", PRINTF_LOCAL_F, (double)first_client->emmnok);
 	tpl_printf(vars, TPLADD, "REL_CWOK", "%.2f", (double)first_client->cwfound * 100 / ecmsum);
 	tpl_printf(vars, TPLADD, "REL_CWNOK", "%.2f", (double)first_client->cwnot * 100 / ecmsum);
 	//tpl_printf(vars, TPLADD, "REL_CWIGN", "%.2f", (double)first_client->cwignored * 100 / ecmsum);
@@ -929,11 +934,11 @@ static char *send_oscam_config_cccam(struct templatevars *vars, struct uriparams
 
 	if(strcmp(getParam(params, "button"), "Refresh list") == 0)
 	{
-		cs_debug_mask(D_TRACE, "Entitlements: Refresh Shares start");
+		cs_log_dbg(D_TRACE, "Entitlements: Refresh Shares start");
 #ifdef MODULE_CCCSHARE
 		refresh_shares();
 #endif
-		cs_debug_mask(D_TRACE, "Entitlements: Refresh Shares finished");
+		cs_log_dbg(D_TRACE, "Entitlements: Refresh Shares finished");
 		tpl_addMsg(vars, "Refresh Shares started");
 	}
 
@@ -1078,6 +1083,9 @@ static char *send_oscam_config_webif(struct templatevars *vars, struct uriparams
 
 	tpl_addVar(vars, TPLADD, "HTTPHELPLANG", cfg.http_help_lang);
 	tpl_addVar(vars, TPLADD, "HTTPLOCALE", cfg.http_locale);
+	tpl_printf(vars, TPLADD, "HTTPEMMUCLEAN", "%d", cfg.http_emmu_clean);
+	tpl_printf(vars, TPLADD, "HTTPEMMSCLEAN", "%d", cfg.http_emms_clean);
+	tpl_printf(vars, TPLADD, "HTTPEMMGCLEAN", "%d", cfg.http_emmg_clean);
 	tpl_printf(vars, TPLADD, "HTTPREFRESH", "%d", cfg.http_refresh);
 	tpl_printf(vars, TPLADD, "HTTPPOLLREFRESH", "%d", cfg.poll_refresh);
 	tpl_addVar(vars, TPLADD, "HTTPTPL", cfg.http_tpl);
@@ -1396,11 +1404,8 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 			clear_all_rdr_stats();
 		}
 	}
-#ifdef WITH_LB
-				tpl_addVar(vars, TPLADD, "READERACTIONCOLS", "6");
-#else
-				tpl_addVar(vars, TPLADD, "READERACTIONCOLS", "5");
-#endif
+
+	tpl_addVar(vars, TPLADD, "READERACTIONCOLS", config_enabled(WITH_LB) ? "6" : "5");
 
 	if(strcmp(getParam(params, "action"), "resetserverstats") == 0)
 	{
@@ -1531,7 +1536,7 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 			tpl_addVar(vars, TPLADD, "READERCLASS", rdr->enable ? "enabledreader" : "disabledreader");
 
 			if(rdr->description)
-				tpl_printf(vars, TPLADD, "DESCRIPTION","%s(%s)",!apicall?"&#013;":"",xml_encode(vars, rdr->description));
+				tpl_printf(vars, TPLADD, "DESCRIPTION","%s(%s)",!apicall?"&#13;":"",xml_encode(vars, rdr->description));
 			else
 				tpl_addVar(vars, TPLADD, "DESCRIPTION", "");
 
@@ -1599,14 +1604,14 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 			if(rdr->enable == 0)
 			{
 				tpl_addVar(vars, TPLADD, "SWITCHICO", "image?i=ICENA");
-				tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Enable this reader");
+				tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Enable");
 				tpl_addVar(vars, TPLADD, "SWITCH", "enable");
 				tpl_addVar(vars, TPLADD, "WRITEEMM", "");
 			}
 			else
 			{
 				tpl_addVar(vars, TPLADD, "SWITCHICO", "image?i=ICDIS");
-				tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Disable this reader");
+				tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Disable");
 				tpl_addVar(vars, TPLADD, "SWITCH", "disable");
 
 				tpl_addVar(vars, TPLADD, "EMMICO", "image?i=ICEMM");
@@ -1681,12 +1686,9 @@ static char *send_oscam_reader(struct templatevars *vars, struct uriparams *para
 		tpl_addVar(vars, TPLAPPEND, "ADDPROTOCOL", "<option>scam</option>\n");
 #endif
 
-		for(i = 0; i < CS_MAX_MOD; i++)
+		for(i = 0; cardreaders[i]; i++)
 		{
-			if(cardreaders[i].desc)
-			{
-				tpl_printf(vars, TPLAPPEND, "ADDPROTOCOL", "<option>%s</option>\n", xml_encode(vars, cardreaders[i].desc));
-			}
+			tpl_printf(vars, TPLAPPEND, "ADDPROTOCOL", "<option>%s</option>\n", xml_encode(vars, cardreaders[i]->desc));
 		}
 		return tpl_getTpl(vars, "READERS");
 	}
@@ -2017,12 +2019,12 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 			{ tpl_printf(vars, TPLAPPEND, "ATR", "%02X", rdr->atr[i]); }
 
 	// ECM Whitelist
-	value = mk_t_ecmwhitelist(rdr->ecmWhitelist);
+	value = mk_t_ecm_whitelist(&rdr->ecm_whitelist);
 	tpl_addVar(vars, TPLADD, "ECMWHITELIST", value);
 	free_mk_t(value);
 
 	// ECM Header Whitelist
-	value = mk_t_ecmheaderwhitelist(rdr->ecmHeaderwhitelist);
+	value = mk_t_ecm_hdr_whitelist(&rdr->ecm_hdr_whitelist);
 	tpl_addVar(vars, TPLADD, "ECMHEADERWHITELIST", value);
 	free_mk_t(value);
 
@@ -2055,17 +2057,6 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	{
 		tpl_addVar(vars, TPLADD, "AUTOSPEEDVALUE", (rdr->autospeed == 1) ? "1" : "0");
 	}
-#ifdef MODULE_CAMD35
-	// Aktivate global emm filter on viacces camd35 reader
-	if(!apicall)
-	{
-		tpl_addVar(vars, TPLADD, "VIAEMMGLOBAL", (rdr->via_emm_global == 1) ? "checked" : "");
-	}
-	else
-	{
-		tpl_addVar(vars, TPLADD, "VIAEMMGLOBAL", (rdr->via_emm_global == 1) ? "1" : "0");
-	}
-#endif
 	// sc8in1 dtrrts patch
 	if(!apicall)
 	{
@@ -2074,6 +2065,15 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	else
 	{
 		tpl_addVar(vars, TPLADD, "SC8IN1DTRRTSPATCHVALUE", (rdr->sc8in1_dtrrts_patch == 1) ? "1" : "0");
+	}
+
+	if(!apicall)
+	{
+		tpl_addVar(vars, TPLADD, "READOLDCLASSES", (rdr->read_old_classes == 1) ? "checked" : "");
+	}
+	else
+	{
+		tpl_addVar(vars, TPLADD, "READOLDCLASSES", (rdr->read_old_classes == 1) ? "1" : "0");
 	}
 
 	// Detect
@@ -2202,7 +2202,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	free_mk_t(value);
 
 	if(rdr->cachemm)
-		{ tpl_printf(vars, TPLADD, "EMMCACHE", "%d,%d,%d", rdr->cachemm, rdr->rewritemm, rdr->logemm); }
+		{ tpl_printf(vars, TPLADD, "EMMCACHE", "%d,%d,%d,%d", rdr->cachemm, rdr->rewritemm, rdr->logemm, rdr->deviceemm); }
 
 	//savenano
 	value = mk_t_nano(rdr->s_nano);
@@ -2289,6 +2289,9 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "TMP", "NDSVERSION%d", rdr->ndsversion);
 	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
 
+	tpl_printf(vars, TPLADD, "TMP", "NDSREADTIERS%d", rdr->readtiers);
+	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
+
 	tpl_printf(vars, TPLADD, "TMP", "NAGRAREAD%d", rdr->nagra_read);
 	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
 
@@ -2363,7 +2366,6 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 #endif
 	default :
 		tpl_addMsg(vars, "Error: protocol not resolvable");
-		tpl_addMsg(vars, tpl_printf(vars, TPLADD, "TMP", "Error: protocol number: %d readername: %s", rdr->typ, xml_encode(vars, rdr->label)));
 		break;
 
 	}
@@ -3401,7 +3403,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 			expired = " (disabled)";
 			classname = "disabled";
 			tpl_addVar(vars, TPLADD, "SWITCHICO", "image?i=ICENA");
-			tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Enable this account");
+			tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Enable");
 			tpl_addVar(vars, TPLADD, "SWITCH", "enable");
 			disabled_users++;
 			isactive = 0;
@@ -3409,7 +3411,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 		else
 		{
 			tpl_addVar(vars, TPLADD, "SWITCHICO", "image?i=ICDIS");
-			tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Disable this account");
+			tpl_addVar(vars, TPLADD, "SWITCHTITLE", "Disable");
 			tpl_addVar(vars, TPLADD, "SWITCH", "disable");
 		}
 		if((account->expirationdate && account->expirationdate < now)||account->disabled != 0)
@@ -3609,7 +3611,7 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 			}
 
 		if(account->description)
-			tpl_printf(vars, TPLADD, "DESCRIPTION","%s(%s)",!apicall?"&#013;":"",xml_encode(vars, account->description));
+			tpl_printf(vars, TPLADD, "DESCRIPTION","%s(%s)",!apicall?"&#13;":"",xml_encode(vars, account->description));
 		else
 			tpl_addVar(vars, TPLADD, "DESCRIPTION", "");
 
@@ -3683,25 +3685,6 @@ static char *send_oscam_user_config(struct templatevars *vars, struct uriparams 
 #define ENTITLEMENT_PAGE_SIZE 500
 
 #ifdef MODULE_CCCSHARE
-static char *get_cardsystem_desc_by_caid(uint16_t caid)
-{
-	if(caid >= 0x0100 && caid <= 0x01FF) { return "seca"; }
-	if(caid >= 0x0500 && caid <= 0x05FF) { return "viaccess"; }
-	if(caid >= 0x0600 && caid <= 0x06FF) { return "irdeto"; }
-	if(caid >= 0x0900 && caid <= 0x09FF) { return "videoguard"; }
-	if(caid >= 0x0B00 && caid <= 0x0BFF) { return "conax"; }
-	if(caid >= 0x0D00 && caid <= 0x0DFF) { return "cryptoworks"; }
-	if(caid >= 0x1700 && caid <= 0x17FF) { return "betacrypt"; }
-	if(caid >= 0x1800 && caid <= 0x18FF) { return "nagra"; }
-	if(caid >= 0x4B00 && caid <= 0x4BFF) { return "tongfang"; }
-	if(caid >= 0x5501 && caid <= 0x551A) { return "griffin"; }
-	if(caid == 0x4AE0 || caid == 0x4AE1) { return "drecrypt"; }
-	if(caid == 0x5581 || caid == 0x4AEE) { return "bulcrypt"; }
-	if(caid == 0x2600) { return "biss"; }
-	if(caid == 0x4ABF) { return "dgcrypt"; }
-	return "???";
-}
-
 static void print_cards(struct templatevars *vars, struct uriparams *params, struct cc_card **cardarray, int32_t cardsize,
 						int8_t show_global_list, struct s_reader *rdr, int32_t offset, int32_t apicall)
 {
@@ -3953,7 +3936,7 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 				}
 				unlock_sharelist();
 				struct cc_card **cardarray = get_sorted_card_copy(sharelist2, 0, &cardsize);
-				ll_destroy(sharelist2);
+				ll_destroy(&sharelist2);
 				print_cards(vars, params, cardarray, cardsize, 1, NULL, offset, apicall);
 				NULLFREE(cardarray);
 			}
@@ -4130,8 +4113,25 @@ static char *send_oscam_entitlement(struct templatevars *vars, struct uriparams 
 
 				if(rdr->card_atr_length)
 					for(i = 0; i < rdr->card_atr_length; i++) { tpl_printf(vars, TPLAPPEND, "READERATR", "%02X ", rdr->card_atr[i]); }
+					
+				if(caid_is_seca(rdr->caid) || caid_is_viaccess(rdr->caid))
+				{
+					if(rdr->maturity==0xF)
+						{
+							tpl_printf(vars, TPLAPPEND, "READERMATURITY", "%s ", "no limit");
+						}
+						else 
+							{
+								tpl_printf(vars, TPLAPPEND, "READERMATURITY", "%d+", rdr->maturity);
+							}
+				}
+				else
+				{
+					tpl_printf(vars, TPLAPPEND, "READERMATURITY", "%s ", "n/a");
+				}
 
-				tpl_addVar(vars, TPLADD, "READERCSYSTEM", rdr->csystem.desc);
+				if (rdr->csystem)
+					tpl_addVar(vars, TPLADD, "READERCSYSTEM", rdr->csystem->desc);
 
 				if(add_nds_line)
 				{
@@ -4232,14 +4232,22 @@ static char *send_oscam_logpoll(struct templatevars * vars, struct uriparams * p
 		cs_strncpy(str_out, p_txt, pos1);
 		uint64_t id = b2ll(8, (uchar *) (loghistid + ((ptr1-loghist)/3)));
 
+		size_t b64_str_in = strlen(xml_encode(vars, str_out));
+		size_t b64_str_out = 32 + BASE64_LENGTH(b64_str_in);
+		char *b64_str_out_buf;
+		if(!cs_malloc(&b64_str_out_buf, b64_str_out))
+			{ continue; }
+		base64_encode(xml_encode(vars, str_out), b64_str_in, b64_str_out_buf, b64_str_out);
+
 		if(id > lastid){
 			tpl_printf(vars, TPLAPPEND, "DATA","%s{\"id\":\"%" PRIu64 "\",\"usr\":\"%s\",\"line\":\"%s\"}",
 									dot,
 									id,
-									xml_encode(vars, p_usr),
-									xml_encode(vars, str_out));
+									urlencode(vars, xml_encode(vars, p_usr)),
+									b64_str_out_buf);
 			dot = ","; // next in Array with leading delimiter
 		}
+		NULLFREE(b64_str_out_buf);
 	}
 	tpl_addVar(vars, TPLAPPEND, "DATA", "]");
 	return tpl_getTpl(vars, "POLL");
@@ -4258,9 +4266,8 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 	if(!apicall)
 	{
 		setActiveMenu(vars, MNU_STATUS);
-#ifdef WITH_LB
-		tpl_addVar(vars, TPLADD, "STATUSCOL14HEAD","LB Value/");
-#endif
+		if (config_enabled(WITH_LB))
+			tpl_addVar(vars, TPLADD, "STATUSCOL14HEAD","LB Value/");
 	}
 	if(strcmp(getParam(params, "action"), "kill") == 0)
 	{
@@ -4377,8 +4384,8 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 	else { tpl_addVar(vars, TPLADD, "HIDEIDLECLIENTSSELECTED0", "selected"); }
 
 	int32_t user_count_all = 0, user_count_shown = 0, user_count_active = 0;
-	int32_t reader_count_all = 0, reader_count_conn = 0;
-	int32_t proxy_count_all = 0, proxy_count_conn = 0;
+	int32_t reader_count_all = 0, reader_count_conn = 0, reader_count_off = 0;
+	int32_t proxy_count_all = 0, proxy_count_conn = 0, proxy_count_off = 0;
 	int32_t server_count_all = 0, server_count_shown = 0, server_count_hidden = 0;
 	int32_t monitor_count_all = 0, monitor_count_shown = 0;
 	int32_t shown;
@@ -4410,9 +4417,9 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 			if(cl->typ == 'c')
 				{ user_count_all++; }
 			else if(cl->typ == 'p')
-				{ proxy_count_all++; }
+				{ proxy_count_all++; if(cl->reader->card_status != CARD_INSERTED) { proxy_count_off++; } }
 			else if(cl->typ == 'r')
-				{ reader_count_all++; }
+				{ reader_count_all++; if(cl->reader->card_status != CARD_INSERTED) { reader_count_off++; } }
 			else if(cl->typ == 's' || cl->typ == 'h')
 				{ server_count_all++; if(cl->wihidden) {server_count_hidden++;} }
 			else if(cl->typ == 'm')
@@ -4523,6 +4530,20 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					}
 					localtime_r(&cl->login, &lt);
 
+					if(cl->typ == 'c' || cl->typ == 'm')
+					{
+						if(cl->account && cl->account->description)
+							tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#13;":"",xml_encode(vars, cl->account->description));
+						else
+							tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", "");
+					}
+					else if(cl->typ == 'p' || cl->typ == 'r')
+					{
+						if(cl->reader && cl->reader->description)
+							tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#13;":"",xml_encode(vars, cl->reader->description));
+						else
+							tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", "");
+					}
 					if(!apicall)
 					{
 						tpl_addVar(vars, TPLADD, "LBL", xml_encode(vars, usr));
@@ -4560,31 +4581,14 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					tpl_printf(vars, TPLADD, "CLIENTTYPE", "%c", cl->typ);
 					tpl_printf(vars, TPLADD, "CLIENTCNR", "%d", get_threadnum(cl));
 					tpl_addVar(vars, TPLADD, "CLIENTUSER", xml_encode(vars, usr));
-					if(cl->typ == 'c' || cl->typ == 'm')
-					{
-						if(cl->account && cl->account->description)
-							tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#013;":"",xml_encode(vars, cl->account->description));
-						else
-							tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", "");
-					}
-					else if(cl->typ == 'p' || cl->typ == 'r')
-					{
-						if(cl->reader && cl->reader->description)
-							tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#013;":"",xml_encode(vars, cl->reader->description));
-						else
-							tpl_addVar(vars, TPLADD, "CLIENTDESCRIPTION", "");
-					}
 
 					tpl_addVar(vars, TPLADD, "STATUSUSERICON", xml_encode(vars, usr));
 					if (cl->typ == 'c' || cl->typ == 'm') {
 						tpl_addVar(vars, TPLADD, "USERNAME", xml_encode(vars, usr));
 						tpl_addVar(vars, TPLADD, "USERENC", urlencode(vars, usr));
-						tpl_addVar(vars, TPLADD, "READERNAMEENC", "");
-						tpl_addVar(vars, TPLADD, "READERNAME","");
 					} else if (cl->typ == 'p' || cl->typ == 'r') {
 						tpl_addVar(vars, TPLADD, "READERNAME", xml_encode(vars, usr));
 						tpl_addVar(vars, TPLADD, "READERNAMEENC", urlencode(vars, usr));
-						tpl_addVar(vars, TPLADD, "USERNAME", "");
 					}
 
 					bool picon_shown = false;
@@ -4603,7 +4607,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							}
 						}
 						else
-							tpl_printf(vars, TPLADD, "UPICMISSING", "%smissing icon: IC_%s.tpl",!apicall?"&#013;":"",xml_encode(vars, usr));
+							tpl_printf(vars, TPLADD, "UPICMISSING", "%smissing icon: IC_%s.tpl",!apicall?"&#13;":"",xml_encode(vars, usr));
 					}
 
 					if (!picon_shown) {
@@ -4668,7 +4672,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 							tpl_printf(vars, TPLADD, "MSVALUE", PRINTF_LOCAL_D, cl->cwlastresptime);
 							if(apicall)
 							{
-								tpl_addVar(vars, TPLADD, "LASTREADER", cl->lastreader);
+								tpl_addVar(vars, TPLADD, "LASTREADER", (cl->last_caid == NO_CAID_VALUE || isec > cfg.hideclient_to ) ? "" : cl->lastreader);
 								tpl_addVar(vars, TPLADD, "READERNAMEENC", urlencode(vars, cl->lastreader));
 							}
 							else
@@ -4693,7 +4697,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 								tpl_printf(vars, TPLAPPEND, "CLIENTLBVALUE", "%s (%'d ms)", xml_encode(vars, cl->lastreader), cl->cwlastresptime);
 #endif
 							}
-							if(cl->last_caid == NO_CAID_VALUE) tpl_addVar(vars, TPLADD, "CLIENTLBVALUE", "");
+							if(cl->last_caid == NO_CAID_VALUE || isec > cfg.hideclient_to) tpl_addVar(vars, TPLADD, "CLIENTLBVALUE", "");
 						}
 						if(cl->last_caid != NO_CAID_VALUE || cl->last_srvid != NO_SRVID_VALUE)
 						{
@@ -4939,7 +4943,7 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					{
 						tpl_printf(vars, TPLADD, "UCAC", "%d", user_count_active);
 						tpl_printf(vars, TPLADD, "CFGH", "%d", cfg.hideclient_to);
-						tpl_addVar(vars, TPLADD, "CHEADADD", tpl_getTpl(vars, "CLIENTHEADLINEWITH"));
+						tpl_addVar(vars, TPLADD, "CHEADADD", tpl_getTpl(vars, "CLIENTHEADLINEADD"));
 					}
 						tpl_printf(vars, TPLADD, "UCS", "%d", user_count_shown);
 						tpl_printf(vars, TPLADD, "UCA", "%d", user_count_all);
@@ -4955,6 +4959,10 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					if(shown) { tpl_addVar(vars, TPLAPPEND, "READERSTATUS", tpl_getTpl(vars, "CLIENTSTATUSBIT")); }
 						tpl_printf(vars, TPLADD, "RCC", "%d", reader_count_conn);
 						tpl_printf(vars, TPLADD, "RCA", "%d", reader_count_all);
+						if(reader_count_off) {
+							tpl_printf(vars, TPLADD, "RCO", "%d", reader_count_all-reader_count_off);
+							tpl_addVar(vars, TPLADD, "RHEADADD", tpl_getTpl(vars, "CLIENTRHEADLINEADD"));
+						}
 						tpl_addVar(vars, TPLADD, "HIDEIDLE", "3");
 						tpl_addVar(vars, TPLADD, "SHOWHIDDEN", "Reader");
 						tpl_addVar(vars, TPLADD, "XHEAD", tpl_getTpl(vars, "CLIENTRHEADLINE"));
@@ -4965,6 +4973,10 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 					if(shown) { tpl_addVar(vars, TPLAPPEND, "PROXYSTATUS", tpl_getTpl(vars, "CLIENTSTATUSBIT")); }
 						tpl_printf(vars, TPLADD, "PCC", "%d", proxy_count_conn);
 						tpl_printf(vars, TPLADD, "PCA", "%d", proxy_count_all);
+						if(proxy_count_off) {
+							tpl_printf(vars, TPLADD, "PCO", "%d", proxy_count_all-proxy_count_off);
+							tpl_addVar(vars, TPLADD, "PHEADADD", tpl_getTpl(vars, "CLIENTPHEADLINEADD"));
+						}
 						tpl_addVar(vars, TPLADD, "HIDEIDLE", "4");
 						tpl_addVar(vars, TPLADD, "SHOWHIDDEN", "Proxy");
 						tpl_addVar(vars, TPLADD, "XHEAD", tpl_getTpl(vars, "CLIENTPHEADLINE"));
@@ -5255,7 +5267,11 @@ static char *send_oscam_status(struct templatevars * vars, struct uriparams * pa
 			tpl_printf(vars, TPLADD, "SCH", "%d", server_count_hidden);
 			tpl_printf(vars, TPLADD, "SCA", "%d", server_count_all);
 			tpl_printf(vars, TPLADD, "RCC", "%d", reader_count_conn);
+			tpl_printf(vars, TPLADD, "RCO", "%d", reader_count_off);
+			tpl_printf(vars, TPLADD, "RCA", "%d", reader_count_all);
 			tpl_printf(vars, TPLADD, "PCC", "%d", proxy_count_conn);
+			tpl_printf(vars, TPLADD, "PCO", "%d", proxy_count_off);
+			tpl_printf(vars, TPLADD, "PCA", "%d", proxy_count_all);
 			tpl_printf(vars, TPLADD, "PICONENABLED", "%d", cfg.http_showpicons?1:0);
 			return tpl_getTpl(vars, "JSONSTATUS");
 		}
@@ -6046,7 +6062,7 @@ static char *send_oscam_failban(struct templatevars * vars, struct uriparams * p
 		{ return tpl_getTpl(vars, "APIFAILBAN"); }
 }
 
-static bool send_EMM(struct s_reader * rdr, uint16_t caid, struct s_cardsystem * cs, const unsigned char *emmhex, uint32_t len)
+static bool send_EMM(struct s_reader * rdr, uint16_t caid, const struct s_cardsystem *csystem, const unsigned char *emmhex, uint32_t len)
 {
 
 	if(NULL != rdr && NULL != emmhex && 0 != len)
@@ -6066,15 +6082,15 @@ static bool send_EMM(struct s_reader * rdr, uint16_t caid, struct s_cardsystem *
 			emm_pack->caid[0] = (caid >> 8) & 0xFF;
 			emm_pack->caid[1] = caid & 0xFF;
 
-			if(cs && cs->get_emm_type)
+			if(csystem && csystem->get_emm_type)
 			{
-				if(!cs->get_emm_type(emm_pack, rdr))
+				if(!csystem->get_emm_type(emm_pack, rdr))
 				{
-					rdr_debug_mask(rdr, D_EMM, "get_emm_type() returns error");
+					rdr_log_dbg(rdr, D_EMM, "get_emm_type() returns error");
 				}
 			}
 
-			cs_debug_mask(D_EMM, "emm is being sent to reader %s.", rdr->label);
+			cs_log_dbg(D_EMM, "emm is being sent to reader %s.", rdr->label);
 			add_job(rdr->client, ACTION_READER_EMM, emm_pack, sizeof(EMM_PACKET));
 			return true;
 		}
@@ -6083,7 +6099,7 @@ static bool send_EMM(struct s_reader * rdr, uint16_t caid, struct s_cardsystem *
 	return false;
 }
 
-static bool process_single_emm(struct templatevars * vars, struct s_reader * rdr, uint16_t caid, struct s_cardsystem * cs, const char *ep)
+static bool process_single_emm(struct templatevars * vars, struct s_reader * rdr, uint16_t caid, const struct s_cardsystem *csystem, const char *ep)
 {
 
 	if(NULL != vars && NULL != rdr && NULL != ep)
@@ -6110,7 +6126,7 @@ static bool process_single_emm(struct templatevars * vars, struct s_reader * rdr
 				tpl_addVar(vars, TPLADD, "EP", strtoupper(emmdata));
 				tpl_addVar(vars, TPLADD, "SIZE", buff);
 
-				if(send_EMM(rdr, caid, cs, emmhex, len))
+				if(send_EMM(rdr, caid, csystem, emmhex, len))
 				{
 					tpl_addMsg(vars, "Single EMM has been sent.");
 					return true;
@@ -6122,7 +6138,7 @@ static bool process_single_emm(struct templatevars * vars, struct s_reader * rdr
 	return false;
 }
 
-static bool process_emm_file(struct templatevars * vars, struct s_reader * rdr, uint16_t caid, struct s_cardsystem * cs, const char *sFilePath)
+static bool process_emm_file(struct templatevars * vars, struct s_reader * rdr, uint16_t caid, const struct s_cardsystem *csystem, const char *sFilePath)
 {
 
 	bool     bret     = false;
@@ -6159,7 +6175,7 @@ static bool process_emm_file(struct templatevars * vars, struct s_reader * rdr, 
 						continue;
 					}
 					len /= 2;
-					if(send_EMM(rdr, caid, cs, emmhex, len))
+					if(send_EMM(rdr, caid, csystem, emmhex, len))
 					{
 						++wemms;
 						/* Give time to process EMM, otherwise, too many jobs can be added*/
@@ -6209,33 +6225,33 @@ static char *send_oscam_EMM_running(struct templatevars * vars, struct uriparams
 		int32_t tcaid = dyn_word_atob(getParam(params, "emmcaid"));
 		uint16_t caid = (-1 != tcaid) ? (uint16_t)tcaid : 0;
 		char buff[7] = "";
-		struct s_cardsystem *cs = NULL;
+		const struct s_cardsystem *csystem = NULL;
 		int32_t proxy = is_cascading_reader(rdr);
 
-		if((proxy || !rdr->csystem.active) && caid)    // network reader (R_CAMD35 R_NEWCAMD R_CS378X R_CCCAM)
+		if((proxy || !rdr->csystem_active) && caid)    // network reader (R_CAMD35 R_NEWCAMD R_CS378X R_CCCAM)
 		{
 			if(proxy && !rdr->ph.c_send_emm)
 			{
-				tpl_addMsg(vars, "The reader does not support EMMs!");
+				tpl_addMsg(vars, "The reader does not support EMM's!");
 				return tpl_getTpl(vars, "EMM_RUNNING");
 			}
 
-			cs = get_cardsystem_by_caid(caid);
-			if(!cs)
+			csystem = get_cardsystem_by_caid(caid);
+			if(!csystem)
 			{
-				rdr_debug_mask(rdr, D_EMM, "unable to find cardsystem for caid %04X", caid);
+				rdr_log_dbg(rdr, D_EMM, "unable to find cardsystem for caid %04X", caid);
 				caid = 0;
 			}
 		}
-		else if(!proxy && rdr->csystem.active)     // local active reader
+		else if(!proxy && rdr->csystem_active)     // local active reader
 		{
-			cs = &rdr->csystem;
+			csystem = rdr->csystem;
 			caid = rdr->caid;
 		}
 
-		if(cs)
+		if(csystem)
 		{
-			tpl_addVar(vars, TPLADD, "SYSTEM", cs->desc);
+			tpl_addVar(vars, TPLADD, "SYSTEM", csystem->desc);
 		}
 		else
 		{
@@ -6251,8 +6267,8 @@ static char *send_oscam_EMM_running(struct templatevars * vars, struct uriparams
 			tpl_addVar(vars, TPLADD, "CAID", "unknown");
 		}
 
-		process_single_emm(vars, rdr, caid, cs, getParam(params, "ep"));
-		process_emm_file(vars, rdr, caid, cs, getParam(params, "emmfile"));
+		process_single_emm(vars, rdr, caid, csystem, getParam(params, "ep"));
+		process_emm_file(vars, rdr, caid, csystem, getParam(params, "emmfile"));
 	}
 	else
 	{
@@ -6285,48 +6301,117 @@ static char *send_oscam_EMM(struct templatevars * vars, struct uriparams * param
 	}
 
 	FILE *fp;
-	char buffer[256];
+	struct stat sb;
+	char buffer[1024];
+	char emm_hex[1024];
+	char filename[128];
 	char targetfile[256];
-	const char *slash = "/";
-	struct dirent **namelist;
-	int count = -1, i;
-	if (cfg.emmlogdir)
-	{
-		count = scandir(cfg.emmlogdir, &namelist, 0, alphasort );
-	}
-	
-	if( count >= 0 )
-	{
-		for( i = 0 ; i < count; i++ )
-		{
-			if(strstr(namelist[i]->d_name, getParam(params, "label")) && is_ext(namelist[i]->d_name, ".log"))
-			{
-				if(cfg.emmlogdir[strlen(cfg.emmlogdir) - 1] == '/') { slash = ""; }
-				snprintf(targetfile, sizeof(targetfile), "%s%s%s", cfg.emmlogdir, slash, namelist[i]->d_name);
+	char tmpstr[20];
+	char emm_txt[32];
+	char emm_title[32];
+	char *emm_path;
+	char *emm_types[] = { "unique_emm", "shared_emm", "global_emm" };
+	char *emm_names[] = { "RDREMMUNIQUE", "RDREMMSHARED", "RDREMMGLOBAL" };
+	char *emm_cfg_names[] = { "httpemmuclean", "httpemmsclean", "httpemmgclean" };
+	int32_t emm_max_size[] = { cfg.http_emmu_clean, cfg.http_emms_clean, cfg.http_emmg_clean };
+	int num_emm_types = 3;
+	int i;
 
-				if((fp = fopen(targetfile, "r")) == NULL) { continue; }
+	emm_path = cfg.emmlogdir ? cfg.emmlogdir : cs_confdir;
+
+	for( i = 0 ; i < num_emm_types; i++ )
+	{
+		snprintf(filename, sizeof(filename), "%s%s%s%s", getParam(params, "label"), "_", emm_types[i], ".log");
+		snprintf(targetfile, sizeof(targetfile), "%s%s%s", emm_path, emm_path[strlen(emm_path) - 1] == '/' ? "" : "/", filename);
+		snprintf(emm_txt, sizeof(emm_txt), "%s_TXT", emm_names[i]);
+		tpl_addVar(vars, TPLADD, emm_txt, filename);
+
+		if((fp = fopen(targetfile, "r")) != NULL)
+		{
+			stat(targetfile, &sb);
+			tpl_printf(vars, TPLAPPEND, emm_txt, " (Size: %'.2f kB)", (double)sb.st_size/1024);
+
+			if(emm_max_size[i]>=0)
+			{
+				snprintf(emm_title, sizeof(emm_title), "%s_TITLE", emm_names[i]);
+				tpl_addVar(vars, TPLADD, emm_title, "title=\"Click Line to Copy EMM in Single EMM Write Field\"");
+			}
+
+			if(emm_max_size[i]>0)
+			{
+				uint32_t emms=0, emm_d, emmrs=0;
+				char *ptr, *saveptr1 = NULL;
 
 				while(fgets(buffer, sizeof(buffer), fp) != NULL)
 				{
-					if (strstr(namelist[i]->d_name, "unique_emm"))
-						{
-							tpl_addVar(vars, TPLAPPEND, "RDREMMUNIQUE", buffer);
-						}
-					else if (strstr(namelist[i]->d_name, "global_emm"))
-						{
-							tpl_addVar(vars, TPLAPPEND, "RDREMMGLOBAL", buffer);
-						}
-					else if (strstr(namelist[i]->d_name, "shared_emm"))
-						{
-							tpl_addVar(vars, TPLAPPEND, "RDREMMSHARED", buffer);
-						}
+					emms++;
+					snprintf(tmpstr, sizeof(tmpstr), "LINE_%d", emms);
+					tpl_addVar(vars, TPLADD, tmpstr, buffer);
 				}
-				fclose(fp);
+
+				for(emm_d=emms;emm_d>0;--emm_d) 
+				{
+					snprintf(tmpstr, sizeof(tmpstr), "LINE_%d", emm_d);
+					if(sscanf(tpl_getVar(vars, tmpstr), "%*s %*s %*s %s", &emm_hex[0])==1)
+					{
+						if(strstr(tpl_getVar(vars, "EMM_TMP"),emm_hex)==0)
+							{ tpl_addVar(vars, TPLAPPEND, "EMM_TMP", tpl_getVar(vars, tmpstr)); }
+						tpl_addVar(vars, TPLADD, tmpstr, "");
+					}
+				}
+
+				for(ptr = strtok_r(tpl_getVar(vars, "EMM_TMP"),"\n", &saveptr1); ptr; ptr = strtok_r(NULL,"\n", &saveptr1))
+				{
+					emmrs++;
+					snprintf(tmpstr, sizeof(tmpstr), "LINE_%d", emmrs);
+					tpl_addVar(vars, TPLADD, tmpstr, ptr);
+				}
+				tpl_addVar(vars, TPLADD, "EMM_TMP", ""); 
+
+				tpl_printf(vars, TPLAPPEND, emm_txt, ": %'d different EMM's from a total off %'d Entrys", emmrs,emms);
+				for(emm_d=emmrs;emm_d>0;--emm_d) 
+				{
+					snprintf(tmpstr, sizeof(tmpstr), "LINE_%d", emm_d);
+					tpl_printf(vars, TPLAPPEND, emm_names[i], "<a class=\"tosingleemm\" href=\"#\">%s</a>\n", tpl_getVar(vars, tmpstr));
+					if(sb.st_size>emm_max_size[i]*1024) { tpl_printf(vars, TPLAPPEND, "EMM_TMP", "%s\n", tpl_getVar(vars, tmpstr)); }
+					tpl_addVar(vars, TPLADD, tmpstr, "");
+				}
+
+				if(sb.st_size>emm_max_size[i]*1024)
+				{
+					char orgfile[256];
+					int f=0;
+					do {
+						snprintf(orgfile, sizeof(orgfile), "%s.%d", targetfile, f);
+						f++;
+					} while(access(orgfile, 0|F_OK) != -1);
+
+					if(rename(targetfile, orgfile) == 0)
+					{
+						FILE *fs = fopen(targetfile, "w");
+						fprintf(fs, "%s", tpl_getVar(vars, "EMM_TMP"));
+						fclose(fs);
+						tpl_printf(vars, TPLAPPEND, emm_txt, "<br><b>New reduced File created!</b> Size of Original File is higher as %d kB, saved to %s", emm_max_size[i], orgfile);
+					}
+				}
+				tpl_addVar(vars, TPLADD, "EMM_TMP", ""); 
 			}
-			free( namelist[i] );
+			else if (emm_max_size[i]==0)
+			{
+				while(fgets(buffer, sizeof(buffer), fp) != NULL)
+				{
+					tpl_printf(vars, TPLAPPEND, emm_names[i], "<a class=\"tosingleemm\" href=\"#\">%s</a>", buffer);
+				}
+			}
+			else
+			{
+				tpl_printf(vars, TPLADD, emm_names[i],"Viewing of EMM File deactivated.<br>Set %s in Config Webif to 0 or higher for viewing or filtering EMM File.", emm_cfg_names[i]);
+			}
+			fclose(fp);
 		}
-		free(namelist);
+		if(strcmp(tpl_getVar(vars, emm_names[i]),"")==0) { tpl_addVar(vars, TPLADD, emm_names[i],"no saved EMM's"); }
 	}
+
 	return tpl_getTpl(vars, "ASKEMM");
 }
 
@@ -6404,7 +6489,7 @@ static char *send_oscam_cacheex(struct templatevars * vars, struct uriparams * p
 				tpl_addVar(vars, TPLADD, "USERNAME", xml_encode(vars, cl->account->usr));
 				tpl_addVar(vars, TPLADD, "USERENC", urlencode(vars, cl->account->usr));
 				if(cl->account->description) {
-					tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#013;":"",xml_encode(vars, cl->account->description));
+					tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#13;":"",xml_encode(vars, cl->account->description));
 				}
 			} else { 
 				tpl_addVar(vars, TPLADD, "NAME", cl->account->usr);
@@ -6433,7 +6518,7 @@ static char *send_oscam_cacheex(struct templatevars * vars, struct uriparams * p
 				tpl_addVar(vars, TPLADD, "READERNAME", xml_encode(vars, cl->reader->label));
 				tpl_addVar(vars, TPLADD, "READERNAMEENC", urlencode(vars, cl->reader->label));
 				if(cl->reader->description) {
-					tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#013;":"",xml_encode(vars, cl->reader->description));
+					tpl_printf(vars, TPLADD, "CLIENTDESCRIPTION","%s(%s)",!apicall?"&#13;":"",xml_encode(vars, cl->reader->description));
 				}
 			} else { 
 				tpl_addVar(vars, TPLADD, "NAME", cl->reader->label);
@@ -7044,13 +7129,13 @@ static int8_t check_httpdyndns(IN_ADDR_T addr)
 			if(cfg.http_dyndns[i][0])
 			{
 				cs_resolve((const char *)cfg.http_dyndns[i], &cfg.http_dynip[i], NULL, NULL);
-				cs_debug_mask(D_TRACE, "WebIf: httpdyndns [%d] resolved %s to %s ", i, (char *)cfg.http_dyndns[i], cs_inet_ntoa(cfg.http_dynip[i]));
+				cs_log_dbg(D_TRACE, "WebIf: httpdyndns [%d] resolved %s to %s ", i, (char *)cfg.http_dyndns[i], cs_inet_ntoa(cfg.http_dynip[i]));
 			}
 		}
 	}
 	else
 	{
-		cs_debug_mask(D_TRACE, "WebIf: No dyndns addresses found");
+		cs_log_dbg(D_TRACE, "WebIf: No dyndns addresses found");
 		return 0;
 	}
 
@@ -7141,19 +7226,20 @@ static int32_t readRequest(FILE * f, IN_ADDR_T in, char **result, int8_t forcePl
 					int32_t errcode = ERR_peek_error();
 					char errstring[128];
 					ERR_error_string_n(errcode, errstring, sizeof(errstring) - 1);
-					cs_debug_mask(D_TRACE, "WebIf: read error ret=%d (%d%s%s)", n, SSL_get_error(cur_ssl(), n), errcode ? " " : "", errcode ? errstring : "");
+					cs_log_dbg(D_TRACE, "WebIf: read error ret=%d (%d%s%s)", n, SSL_get_error(cur_ssl(), n), errcode ? " " : "", errcode ? errstring : "");
 				}
 				return -1;
 			}
 #else
 			if(errno != ECONNRESET)
-				{ cs_debug_mask(D_TRACE, "WebIf: read error ret=%d (errno=%d %s)", n, errno, strerror(errno)); }
+				{ cs_log_dbg(D_TRACE, "WebIf: read error ret=%d (errno=%d %s)", n, errno, strerror(errno)); }
 #endif
 			return -1;
 		}
 		if(!cs_realloc(result, bufsize + n + 1))
 		{
 			send_error500(f);
+			NULLFREE(*result);
 			return -1;
 		}
 
@@ -7211,7 +7297,7 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 
 		// at this point we do all checks related origin IP, ranges and dyndns stuff
 		ok = check_valid_origin(addr);
-		cs_debug_mask(D_TRACE, "WebIf: Origin checked. Result: access from %s => %s", cs_inet_ntoa(addr), (!ok) ? "forbidden" : "allowed");
+		cs_log_dbg(D_TRACE, "WebIf: Origin checked. Result: access from %s => %s", cs_inet_ntoa(addr), (!ok) ? "forbidden" : "allowed");
 
 		// based on the failed origin checks we send a 403 to calling browser
 		if(!ok)
@@ -7274,7 +7360,7 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 
 		if(!filebuf || bufsize < 1)
 		{
-			if(!*keepalive) { cs_debug_mask(D_CLIENT, "WebIf: No data received from client %s. Closing connection.", cs_inet_ntoa(addr)); }
+			if(!*keepalive) { cs_log_dbg(D_CLIENT, "WebIf: No data received from client %s. Closing connection.", cs_inet_ntoa(addr)); }
 			return -1;
 		}
 
@@ -7407,11 +7493,11 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 				{
 					if(authheader)
 					{
-						cs_debug_mask(D_CLIENT, "WebIf: Received wrong auth header from %s:", cs_inet_ntoa(addr));
-						cs_debug_mask(D_CLIENT, "%s", authheader);
+						cs_log_dbg(D_CLIENT, "WebIf: Received wrong auth header from %s:", cs_inet_ntoa(addr));
+						cs_log_dbg(D_CLIENT, "%s", authheader);
 					}
 					else
-						{ cs_debug_mask(D_CLIENT, "WebIf: Received no auth header from %s.", cs_inet_ntoa(addr)); }
+						{ cs_log_dbg(D_CLIENT, "WebIf: Received no auth header from %s.", cs_inet_ntoa(addr)); }
 				}
 				calculate_nonce(NULL, expectednonce, opaque);
 			}
@@ -7471,6 +7557,13 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 			tpl_addVar(vars, TPLADD, "CS_SVN_VERSION", CS_SVN_VERSION);
 			tpl_addVar(vars, TPLADD, "CS_TARGET", CS_TARGET);
 			tpl_addVar(vars, TPLADD, "HTTPOSCAMLABEL", xml_encode(vars,cfg.http_oscam_label));
+			if (!boxtype_is("generic"))
+			{
+				if (!boxname_is("generic"))
+					tpl_printf(vars, TPLADD, "DETECTED_BOXTYPE", "%s (%s)", boxtype_get(), boxname_get());
+				else
+					tpl_addVar(vars, TPLADD, "DETECTED_BOXTYPE", boxtype_get());
+			}
 
 			if(cfg.http_locale){
 				float decimal_point = 0.0;
@@ -7537,15 +7630,15 @@ static int32_t process_request(FILE * f, IN_ADDR_T in)
 
 			}
 
-#ifdef WITH_LB
-			tpl_addVar(vars, TPLADD, "LBISDEFINED", "1");
-#endif
+			if (config_enabled(WITH_LB))
+				tpl_addVar(vars, TPLADD, "LBISDEFINED", "1");
+
 			// language code in helplink
 			tpl_addVar(vars, TPLADD, "LANGUAGE", cfg.http_help_lang);
 			tpl_addVar(vars, TPLADD, "RUNTIME", sec2timeformat(vars, (now - first_client->login)));
 			time_t uptime = oscam_get_uptime();
 			if(uptime > 0){
-				tpl_addVar(vars, TPLADD, "UPTIMETXT", "Up Time: ");
+				tpl_printf(vars, TPLADD, "UPTIMETXT", "%s Up Time: ", strcmp(tpl_getVar(vars, "DETECTED_BOXTYPE"),"")==0 ? "System" : tpl_getVar(vars, "DETECTED_BOXTYPE"));
 				tpl_addVar(vars, TPLADD, "UPTIME", sec2timeformat(vars, uptime));
 			}
 			tpl_addVar(vars, TPLADD, "CURIP", cs_inet_ntoa(addr));
@@ -7769,10 +7862,11 @@ static void *serve_process(void *conn)
 						{ send_error(f, 200, "Bad Request", NULL, "This web server is running in SSL mode.", 1); }
 					fflush(f);
 					fclose(f);
+					NULLFREE(filebuf);
 				}
 				else
 				{
-					cs_debug_mask(D_TRACE, "WebIf: fdopen(%d) failed. (errno=%d %s)", s, errno, strerror(errno));
+					cs_log_dbg(D_TRACE, "WebIf: fdopen(%d) failed. (errno=%d %s)", s, errno, strerror(errno));
 				}
 			}
 		}
@@ -7794,7 +7888,7 @@ static void *serve_process(void *conn)
 		}
 		else
 		{
-			cs_debug_mask(D_TRACE, "WebIf: fdopen(%d) failed. (errno=%d %s)", s, errno, strerror(errno));
+			cs_log_dbg(D_TRACE, "WebIf: fdopen(%d) failed. (errno=%d %s)", s, errno, strerror(errno));
 		}
 		shutdown(s, SHUT_WR);
 		close(s);
@@ -8002,17 +8096,14 @@ static void *http_server(void *UNUSED(d))
 	// Wait a bit so that we don't close ressources while http threads are active
 	cs_sleepms(300);
 #ifdef WITH_SSL
-	if(ssl_active)
-	{
-		SSL_CTX_free(ctx);
-		CRYPTO_set_dynlock_create_callback(NULL);
-		CRYPTO_set_dynlock_lock_callback(NULL);
-		CRYPTO_set_dynlock_destroy_callback(NULL);
-		CRYPTO_set_locking_callback(NULL);
-		CRYPTO_set_id_callback(NULL);
-		OPENSSL_free(lock_cs);
-		lock_cs = NULL;
-	}
+	SSL_CTX_free(ctx);
+	CRYPTO_set_dynlock_create_callback(NULL);
+	CRYPTO_set_dynlock_lock_callback(NULL);
+	CRYPTO_set_dynlock_destroy_callback(NULL);
+	CRYPTO_set_locking_callback(NULL);
+	CRYPTO_set_id_callback(NULL);
+	OPENSSL_free(lock_cs);
+	lock_cs = NULL;
 #endif
 	cs_log("HTTP Server stopped");
 	free_client(cl);
@@ -8065,7 +8156,7 @@ void webif_init(void)
 	snprintf(buf, 8, "%'d", 7);
 	if(strcmp(buf, "7"))
 	{
-		useLocalD = 0;
+		useLocal = 0;
 	}
 
 	if(cfg.http_port == 0)

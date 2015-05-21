@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "config"
+
 #include "globals.h"
 #include "oscam-conf.h"
 #include "oscam-config.h"
@@ -476,7 +478,7 @@ static FILE *__open_config_file(const char *conf_filename, bool die_on_err)
 		}
 		else
 		{
-			cs_debug_mask(D_TRACE, "INFO: Cannot open file \"%s\" (errno=%d %s)", filename, errno, strerror(errno));
+			cs_log_dbg(D_TRACE, "INFO: Cannot open file \"%s\" (errno=%d %s)", filename, errno, strerror(errno));
 		}
 		return NULL;
 	}

@@ -34,12 +34,11 @@ void    webif_tpls_free(void);
 struct templatevars *tpl_create(void);
 void                 tpl_clear(struct templatevars *vars);
 
-char    *tpl_addVar(struct templatevars *vars, uint8_t addmode, char *name, char *value);
-char    *tpl_addMsg(struct templatevars *vars, char *value);
-char    *tpl_addTmp(struct templatevars *vars, char *value);
-char    *tpl_printf(struct templatevars *vars, uint8_t addmode, char *varname, char *fmtstring, ...) __attribute__((format(printf, 4, 5)));
+void    tpl_addVar(struct templatevars *vars, uint8_t addmode, const char *name, const char *value);
+void    tpl_addMsg(struct templatevars *vars, const char *value);
+void    tpl_printf(struct templatevars *vars, uint8_t addmode, const char *varname, const char *fmtstring, ...) __attribute__((format(printf, 4, 5)));
 
-char    *tpl_getVar(struct templatevars *vars, char *name);
+char    *tpl_getVar(struct templatevars *vars, const char *name);
 char    *tpl_getFilePathInSubdir(const char *path, const char *subdir, const char *name, const char *ext, char *result, uint32_t resultsize);
 char    *tpl_getTplPath(const char *name, const char *path, char *result, uint32_t resultsize);
 char    *tpl_getTpl(struct templatevars *vars, const char *name);
@@ -51,7 +50,7 @@ void    tpl_checkOneDirDiskRevisions(const char *subdir);
 void    tpl_checkDiskRevisions(void);
 
 char    *urlencode(struct templatevars *vars, char *str);
-char    *xml_encode(struct templatevars *vars, char *chartoencode);
+char    *xml_encode(struct templatevars *vars, const char *chartoencode);
 char    *sec2timeformat(struct templatevars *vars, int32_t seconds);
 
 #else

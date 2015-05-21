@@ -1,8 +1,11 @@
+#define MODULE_LOG_PREFIX "monitor"
+
 #include "globals.h"
 #ifdef MODULE_MONITOR
 #include "cscrypt/md5.h"
 #include "module-monitor.h"
 #include "oscam-aes.h"
+#include "oscam-array.h"
 #include "oscam-client.h"
 #include "oscam-config.h"
 #include "oscam-conf-chk.h"
@@ -119,11 +122,15 @@ int32_t monitor_send_idx(struct s_client *cl, char *txt)
 	nanosleep(&req_ts, NULL); //avoid lost udp-pakkets
 	if(!cl->crypted)
 		{ return sendto(cl->udp_fd, txt, strlen(txt), 0, (struct sockaddr *)&cl->udp_sa, cl->udp_sa_len); }
+	l = strlen(txt);
+	if(l > 255)
+		{ l = 255; }
 	buf[0] = '&';
-	buf[9] = l = strlen(txt);
+	buf[9] = l;
 	l = boundary(4, l + 5) + 5;
 	memcpy(buf + 1, module_data->ucrc, 4);
 	cs_strncpy((char *)buf + 10, txt, sizeof(buf) - 10);
+	memset(buf+10+buf[9], 0, l-10-buf[9]);
 	uchar tmp[10];
 	memcpy(buf + 5, i2b_buf(4, crc32(0L, buf + 10, l - 10), tmp), 4);
 	aes_encrypt_idx(&module_data->aes_keys, buf + 5, l - 5);
@@ -452,7 +459,7 @@ static void monitor_process_details_reader(struct s_client *cl)
 	}
 
 	snprintf(tmpbuf, sizeof(tmpbuf) - 1, "Cardsystem: %s Reader: %s ValidTo: %s HexSerial: %s ATR: %s",
-			 rdr->csystem.desc,
+			 rdr->csystem ? rdr->csystem->desc : "-",
 			 rdr->label,
 			 valid_to,
 			 cs_hexdump(1, rdr->hexserial, 8, tbuffer2, sizeof(tbuffer2)),
@@ -732,11 +739,11 @@ static void monitor_set_account(char *args)
 			{
 
 			case    6:
-				clear_tuntab(&account->ttab);
+				tuntab_clear(&account->ttab);
 				break;     //betatunnel
 
 			case    8:
-				clear_caidtab(&account->ctab);
+				caidtab_clear(&account->ctab);
 				break;    //Caid
 			}
 			found = i;

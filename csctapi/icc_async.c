@@ -53,7 +53,7 @@
  * Not exported functions declaration
  */
 static uint16_t tempfi; // used to capture FI and use it for rounding or not 
-static void ICC_Async_InvertBuffer(uint32_t size, unsigned char *buffer);
+static void ICC_Async_InvertBuffer(struct s_reader *reader, uint32_t size, unsigned char *buffer);
 static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated);
 static int32_t PPS_Exchange(struct s_reader *reader, unsigned char *params, uint32_t *length);
 static uint32_t PPS_GetLength(unsigned char *block);
@@ -68,16 +68,18 @@ static int32_t SetRightParity(struct s_reader *reader);
 
 int32_t ICC_Async_Device_Init(struct s_reader *reader)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
 	reader->fdmc = -1;
-	rdr_debug_mask(reader, D_IFD, "Opening device %s", reader->device);
+	rdr_log_dbg(reader, D_IFD, "Opening device %s", reader->device);
 	reader->written = 0;
-	int32_t ret = reader->crdr.reader_init(reader);
+	int32_t ret = crdr_ops->reader_init(reader);
 	if(ret == OK)
-		{ rdr_debug_mask(reader, D_IFD, "Device %s succesfully opened", reader->device); }
+		{ rdr_log_dbg(reader, D_IFD, "Device %s succesfully opened", reader->device); }
 	else
 	{
 		if(reader->typ != R_SC8in1) { NULLFREE(reader->crdr_data); }
-		rdr_debug_mask(reader, D_IFD, "ERROR: Can't open %s device", reader->device);
+		rdr_log_dbg(reader, D_IFD, "ERROR: Can't open %s device", reader->device);
 	}
 	return ret;
 }
@@ -90,19 +92,22 @@ int32_t ICC_Async_Init_Locks(void)
 	LL_ITER itr = ll_iter_create(configured_readers);
 	while((rdr = ll_iter_next(&itr)))
 	{
-		if(rdr->crdr.lock_init)
-			{ rdr->crdr.lock_init(rdr); }
+		const struct s_cardreader *crdr_ops = rdr->crdr;
+		if (!crdr_ops || !crdr_ops->lock_init) continue;
+		crdr_ops->lock_init(rdr);
 	}
 	return OK;
 }
 
 int32_t ICC_Async_GetStatus(struct s_reader *reader, int32_t *card)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
 	if (reader->typ == R_SMART && reader->smartdev_found >= 4) {
 		reader->statuscnt = reader->statuscnt + 1;
 		if (reader->statuscnt == 6) {
 		int32_t in = 0;
-		call(reader->crdr.get_status(reader, &in));
+		call(crdr_ops->get_status(reader, &in));
 		if(in)
 			{reader->modemstat = 1; *card = 1; reader->statuscnt = 0;}
 		else
@@ -115,7 +120,7 @@ int32_t ICC_Async_GetStatus(struct s_reader *reader, int32_t *card)
 	}
 	else {
 		int32_t in = 0;
-		call(reader->crdr.get_status(reader, &in));
+		call(crdr_ops->get_status(reader, &in));
 		if(in)
 			{ *card = 1;}
 		else
@@ -127,7 +132,10 @@ int32_t ICC_Async_GetStatus(struct s_reader *reader, int32_t *card)
 
 int32_t ICC_Async_Activate(struct s_reader *reader, ATR *atr, uint16_t deprecated)
 {
-	rdr_debug_mask(reader, D_IFD, "Activating card");
+	rdr_log_dbg(reader, D_IFD, "Activating card");
+
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
 
 	reader->current_baudrate = DEFAULT_BAUDRATE;
 	if(reader->atr[0] != 0 && !reader->ins7e11_fast_reset)
@@ -137,8 +145,9 @@ int32_t ICC_Async_Activate(struct s_reader *reader, ATR *atr, uint16_t deprecate
 	}
 	else
 	{
-		call(reader->crdr.activate(reader, atr));
-		if(reader->crdr.skip_extra_atr_parsing)
+		reader->crdr_flush = crdr_ops->flush; // Flush flag may be changed for each reader
+		call(crdr_ops->activate(reader, atr));
+		if(crdr_ops->skip_extra_atr_parsing)
 			{ return OK; }
 	}
 
@@ -162,36 +171,38 @@ int32_t ICC_Async_Activate(struct s_reader *reader, ATR *atr, uint16_t deprecate
 	reader->protocol_type = ATR_PROTOCOL_TYPE_T0;
 
 	// Parse_ATR and InitCard need to be included in lock because they change parity of serial port
-	if(reader->crdr.lock)
-		{ reader->crdr.lock(reader); }
+	if(crdr_ops->lock)
+		{ crdr_ops->lock(reader); }
 
 	int32_t ret = Parse_ATR(reader, atr, deprecated);
 
-	if(reader->crdr.unlock)
-		{ reader->crdr.unlock(reader); }
+	if(crdr_ops->unlock)
+		{ crdr_ops->unlock(reader); }
 
 	if(ret)
 		{ rdr_log(reader, "ERROR: Parse_ATR returned error"); }
 	if(ret)
 		{ return ERROR; }
-	rdr_debug_mask(reader, D_IFD, "Card succesfully activated");
+	rdr_log_dbg(reader, D_IFD, "Card succesfully activated");
 
 	return OK;
 }
 
 int32_t ICC_Async_CardWrite(struct s_reader *reader, unsigned char *command, uint16_t command_len, unsigned char *rsp, uint16_t *lr)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
 	int32_t ret;
 
 	*lr = 0; //will be returned in case of error
-	if(reader->crdr.card_write)
+	if(crdr_ops->card_write)
 	{
-		call(reader->crdr.card_write(reader, command, rsp, lr, command_len));
+		call(crdr_ops->card_write(reader, command, rsp, lr, command_len));
 		return OK;
 	}
 
-	if(reader->crdr.lock)
-		{ reader->crdr.lock(reader); }
+	if(crdr_ops->lock)
+		{ crdr_ops->lock(reader); }
 
 	int32_t try = 1;
 	uint16_t type = 0;
@@ -208,7 +219,7 @@ int32_t ICC_Async_CardWrite(struct s_reader *reader, unsigned char *command, uin
 		case ATR_PROTOCOL_TYPE_T1:
 			ret = Protocol_T1_Command(reader, command, command_len, rsp, lr);
 			type = 1;
-			if(ret != OK && !reader->crdr.skip_t1_command_retries)
+			if(ret != OK && !crdr_ops->skip_t1_command_retries)
 			{
 				//try to resync
 				rdr_log(reader, "Resync error: readtimeouts %d/%d (max/min) us, writetimeouts %d/%d (max/min) us", reader->maxreadtimeout, reader->minreadtimeout, reader->maxwritetimeout, reader->minwritetimeout);
@@ -225,8 +236,8 @@ int32_t ICC_Async_CardWrite(struct s_reader *reader, unsigned char *command, uin
 					rdr_log(reader, "T1 Resync command error, trying to reactivate!");
 					ATR atr;
 					ICC_Async_Activate(reader, &atr, reader->deprecated);
-					if(reader->crdr.unlock)
-						{ reader->crdr.unlock(reader); }
+					if(crdr_ops->unlock)
+						{ crdr_ops->unlock(reader); }
 					return ERROR;
 				}
 			}
@@ -244,46 +255,49 @@ int32_t ICC_Async_CardWrite(struct s_reader *reader, unsigned char *command, uin
 	}
 	while((try < 3) && (ret != OK));    //always do one retry when failing
 
-	if(reader->crdr.unlock)
-		{ reader->crdr.unlock(reader); }
+	if(crdr_ops->unlock)
+		{ crdr_ops->unlock(reader); }
 
 	if(ret)
 	{
-		rdr_debug_mask(reader, D_TRACE, "ERROR: Protocol_T%d_Command returns error", type);
+		rdr_log_dbg(reader, D_TRACE, "ERROR: Protocol_T%d_Command returns error", type);
 		return ERROR;
 	}
 
-	rdr_ddump_mask(reader, D_READER, rsp, *lr, "Answer from cardreader:");
+	rdr_log_dump_dbg(reader, D_READER, rsp, *lr, "Answer from cardreader:");
 	return OK;
 }
 
 int32_t ICC_Async_GetTimings(struct s_reader *reader, uint32_t wait_etu)
 {
 	int32_t timeout = ETU_to_us(reader, wait_etu);
-	rdr_debug_mask(reader, D_IFD, "Setting timeout to %i ETU (%d us)", wait_etu, timeout);
+	rdr_log_dbg(reader, D_IFD, "Setting timeout to %i ETU (%d us)", wait_etu, timeout);
 	return timeout;
 }
 
 int32_t ICC_Async_Transmit(struct s_reader *reader, uint32_t size, uint32_t expectedlen, unsigned char *data, uint32_t delay, uint32_t timeout)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	if(expectedlen)  //expectedlen = 0 means expected len is unknown
-		{ rdr_debug_mask(reader, D_IFD, "Transmit size %d bytes, expected len %d bytes, delay %d us, timeout=%d us", size, expectedlen, delay, timeout); }
+		{ rdr_log_dbg(reader, D_IFD, "Transmit size %d bytes, expected len %d bytes, delay %d us, timeout=%d us", size, expectedlen, delay, timeout); }
 	else
-		{ rdr_debug_mask(reader, D_IFD, "Transmit size %d bytes, delay %d us, timeout=%d us", size, delay, timeout); }
-	rdr_ddump_mask(reader, D_IFD, data, size, "Transmit:");
+		{ rdr_log_dbg(reader, D_IFD, "Transmit size %d bytes, delay %d us, timeout=%d us", size, delay, timeout); }
+	rdr_log_dump_dbg(reader, D_IFD, data, size, "Transmit:");
 	unsigned char *sent = data;
 
-	if(reader->convention == ATR_CONVENTION_INVERSE && reader->crdr.need_inverse)
+	if(reader->convention == ATR_CONVENTION_INVERSE && crdr_ops->need_inverse)
 	{
-		ICC_Async_InvertBuffer(size, sent);
+		ICC_Async_InvertBuffer(reader, size, sent);
 	}
 
-	call(reader->crdr.transmit(reader, sent, size, expectedlen, delay, timeout));
-	rdr_debug_mask(reader, D_IFD, "Transmit succesful");
-	if(reader->convention == ATR_CONVENTION_INVERSE && reader->crdr.need_inverse)
+	call(crdr_ops->transmit(reader, sent, size, expectedlen, delay, timeout));
+	rdr_log_dbg(reader, D_IFD, "Transmit succesful");
+	if(reader->convention == ATR_CONVENTION_INVERSE && crdr_ops->need_inverse)
 	{
 		// revert inversion cause the code in protocol_t0 is accessing buffer after transmit
-		ICC_Async_InvertBuffer(size, sent);
+		ICC_Async_InvertBuffer(reader, size, sent);
 	}
 
 	return OK;
@@ -291,40 +305,47 @@ int32_t ICC_Async_Transmit(struct s_reader *reader, uint32_t size, uint32_t expe
 
 int32_t ICC_Async_Receive(struct s_reader *reader, uint32_t size, unsigned char *data, uint32_t delay, uint32_t timeout)
 {
-	rdr_debug_mask(reader, D_IFD, "Receive size %d bytes, delay %d us, timeout=%d us", size, delay, timeout);
-	call(reader->crdr.receive(reader, data, size, delay, timeout));
-	rdr_debug_mask(reader, D_IFD, "Receive succesful");
-	if(reader->convention == ATR_CONVENTION_INVERSE && reader->crdr.need_inverse == 1)
-		{ ICC_Async_InvertBuffer(size, data); }
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
+	rdr_log_dbg(reader, D_IFD, "Receive size %d bytes, delay %d us, timeout=%d us", size, delay, timeout);
+	call(crdr_ops->receive(reader, data, size, delay, timeout));
+	rdr_log_dbg(reader, D_IFD, "Receive succesful");
+	if(reader->convention == ATR_CONVENTION_INVERSE && crdr_ops->need_inverse == 1)
+		ICC_Async_InvertBuffer(reader, size, data);
 	return OK;
 }
 
 int32_t ICC_Async_Close(struct s_reader *reader)
 {
-	rdr_debug_mask(reader, D_IFD, "Closing device %s", reader->device);
-	call(reader->crdr.close(reader));
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
+	rdr_log_dbg(reader, D_IFD, "Closing device %s", reader->device);
+	call(crdr_ops->close(reader));
 	if(reader->typ != R_SC8in1)
         { 
            NULLFREE(reader->crdr_data);
            NULLFREE(reader->csystem_data);
         }
-	rdr_debug_mask(reader, D_IFD, "Device %s succesfully closed", reader->device);
+	rdr_log_dbg(reader, D_IFD, "Device %s succesfully closed", reader->device);
 	return OK;
 }
 
 void ICC_Async_DisplayMsg(struct s_reader *reader, char *msg)
 {
-	if(reader->crdr.display_msg)
-		{ reader->crdr.display_msg(reader, msg); }
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops || !crdr_ops->display_msg) return;
+	crdr_ops->display_msg(reader, msg);
 }
 
 int32_t ICC_Async_Reset(struct s_reader *reader, struct s_ATR *atr,
 						int32_t (*rdr_activate_card)(struct s_reader *, struct s_ATR *, uint16_t deprecated),
 						int32_t (*rdr_get_cardsystem)(struct s_reader *, struct s_ATR *))
 {
-	if(!reader->crdr.do_reset)
-		{ return 0; }
-	return reader->crdr.do_reset(reader, atr, rdr_activate_card, rdr_get_cardsystem);
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops || !crdr_ops->do_reset) return 0;
+	return crdr_ops->do_reset(reader, atr, rdr_activate_card, rdr_get_cardsystem);
 }
 
 /*static uint32_t ICC_Async_GetClockRate_NewSmart(int32_t cardmhz)
@@ -360,7 +381,7 @@ static int32_t ICC_Async_GetPLL_Divider(struct s_reader *reader)
 		reader->divider = (int32_t) divider;
 		if(divider > reader->divider) { reader->divider++; }  /* to prevent over clocking, ceil (round up) the divider */
 		}
-		rdr_debug_mask(reader, D_DEVICE, "PLL maxmhz = %.2f, wanted mhz = %.2f, divider used = %d, actualcardclock=%.2f", (float) reader->cardmhz / 100, (float) reader->mhz / 100,
+		rdr_log_dbg(reader, D_DEVICE, "PLL maxmhz = %.2f, wanted mhz = %.2f, divider used = %d, actualcardclock=%.2f", (float) reader->cardmhz / 100, (float) reader->mhz / 100,
 					   reader->divider, (float) reader->cardmhz / reader->divider / 100);
 		reader->mhz = reader->cardmhz / reader->divider;
 	}
@@ -377,7 +398,7 @@ static int32_t ICC_Async_GetPLL_Divider(struct s_reader *reader)
 		reader->mhz = dm7025_clock_freq[i];
 		reader->divider = dm7025_PLL_setting[i]; /*Nicer way of codeing is: reader->divider = i + 6;*/
 
-		rdr_debug_mask(reader, D_DEVICE, "DM7025 PLL maxmhz = %.2f, wanted mhz = %.2f, PLL setting used = %d, actualcardclock=%.2f", (float) reader->cardmhz / 100, (float) t_cardmhz / 100,
+		rdr_log_dbg(reader, D_DEVICE, "DM7025 PLL maxmhz = %.2f, wanted mhz = %.2f, PLL setting used = %d, actualcardclock=%.2f", (float) reader->cardmhz / 100, (float) t_cardmhz / 100,
 					   reader->divider, (float) reader->mhz / 100);
 	}
 
@@ -385,10 +406,10 @@ static int32_t ICC_Async_GetPLL_Divider(struct s_reader *reader)
 }
 
 
-static void ICC_Async_InvertBuffer(uint32_t size, unsigned char *buffer)
+static void ICC_Async_InvertBuffer(struct s_reader *reader, uint32_t size, unsigned char *buffer)
 {
 	uint32_t i;
-	cs_debug_mask(D_IFD, "%s: size=%u buf[0]=%02x", __func__, size, buffer[0]);
+	rdr_log_dbg(reader, D_IFD, "%s: size=%u buf[0]=%02x", __func__, size, buffer[0]);
 	for(i = 0; i < size; i++)
 		{ buffer[i] = ~(INVERT_BYTE(buffer[i])); }
 }
@@ -446,14 +467,14 @@ static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated)
 			snprintf((char *)txt + point, sizeof(txt) - point, "no TD%i means T0", i);
 			OffersT[0] = 1;
 		}
-		rdr_debug_mask(reader, D_ATR, "%s", txt);
+		rdr_log_dbg(reader, D_ATR, "%s", txt);
 	}
 
 	int32_t numprottype = 0;
 	for(i = 0; i <= 2; i++)
 		if(OffersT[i])
 			{ numprottype ++; }
-	rdr_debug_mask(reader, D_ATR, "%i protocol types detected. Historical bytes: %s",
+	rdr_log_dbg(reader, D_ATR, "%i protocol types detected. Historical bytes: %s",
 				   numprottype, cs_hexdump(1, atr->hb, atr->hbn, tmp, sizeof(tmp)));
 
 	ATR_GetParameter(atr, ATR_PARAMETER_N, &(N));
@@ -485,7 +506,7 @@ static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated)
 			D = ATR_DEFAULT_D;
 		}
 		uint32_t F = atr_f_table[FI];
-		rdr_debug_mask(reader, D_ATR, "Specific mode: T%i, F=%d, D=%d, N=%d",
+		rdr_log_dbg(reader, D_ATR, "Specific mode: T%i, F=%d, D=%d, N=%d",
 					   reader->protocol_type, F, D, N);
 	}
 	else   //negotiable mode
@@ -512,11 +533,11 @@ static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated)
 				D = atr_d_table[DI];
 				uint32_t F = atr_f_table[FI];
 				PPS_success = 1;
-				rdr_debug_mask(reader, D_ATR, "PTS Succesfull, selected protocol: T%i, F=%d, D=%d, N=%d",
+				rdr_log_dbg(reader, D_ATR, "PTS Succesfull, selected protocol: T%i, F=%d, D=%d, N=%d",
 							   reader->protocol_type, F, D, N);
 			}
 			else
-				{ rdr_ddump_mask(reader, D_ATR, req, len, "PTS Failure, response:"); }
+				{ rdr_log_dump_dbg(reader, D_ATR, req, len, "PTS Failure, response:"); }
 		}
 
 		//When for SCI, T14 protocol, TA1 is obeyed, this goes OK for mosts devices, but somehow on DM7025 Sky S02 card goes wrong when setting ETU (ok on DM800/DM8000)
@@ -539,7 +560,7 @@ static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated)
 					{ D = 0; } // viaccess cards that fail PTS need this
 			}
 			uint32_t F = atr_f_table[FI];
-			rdr_debug_mask(reader, D_ATR, "No PTS %s, selected protocol T%i, F=%d, D=%d, N=%d",
+			rdr_log_dbg(reader, D_ATR, "No PTS %s, selected protocol T%i, F=%d, D=%d, N=%d",
 						   NeedsPTS ? "happened" : "needed", reader->protocol_type, F, D, N);
 		}
 	}//end negotiable mode
@@ -565,6 +586,9 @@ static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated)
 
 static int32_t PPS_Exchange(struct s_reader *reader, unsigned char *params, uint32_t *length)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	unsigned char confirm[PPS_MAX_LENGTH];
 	uint32_t len_request, len_confirm;
 	char tmp[128];
@@ -572,12 +596,12 @@ static int32_t PPS_Exchange(struct s_reader *reader, unsigned char *params, uint
 
 	len_request = PPS_GetLength(params);
 	params[len_request - 1] = PPS_GetPCK(params, len_request - 1);
-	rdr_debug_mask(reader, D_IFD, "PTS: Sending request: %s",
+	rdr_log_dbg(reader, D_IFD, "PTS: Sending request: %s",
 				   cs_hexdump(1, params, len_request, tmp, sizeof(tmp)));
 
-	if(reader->crdr.set_protocol)
+	if(crdr_ops->set_protocol)
 	{
-		ret = reader->crdr.set_protocol(reader, params, length, len_request);
+		ret = crdr_ops->set_protocol(reader, params, length, len_request);
 		return ret;
 	}
 
@@ -589,7 +613,7 @@ static int32_t PPS_Exchange(struct s_reader *reader, unsigned char *params, uint
 	len_confirm = PPS_GetLength(confirm);
 	call(ICC_Async_Receive(reader, len_confirm - 2, confirm + 2, 0, 1000000));
 
-	rdr_debug_mask(reader, D_IFD, "PTS: Receiving confirm: %s",
+	rdr_log_dbg(reader, D_IFD, "PTS: Receiving confirm: %s",
 				   cs_hexdump(1, confirm, len_confirm, tmp, sizeof(tmp)));
 	if((len_request != len_confirm) || (memcmp(params, confirm, len_request)))
 		{ ret = ERROR; }
@@ -626,16 +650,22 @@ static uint32_t ETU_to_us(struct s_reader *reader, uint32_t ETU)
 
 static int32_t ICC_Async_SetParity(struct s_reader *reader, uint16_t parity)
 {
-	if(reader->crdr.set_parity)
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
+	if(crdr_ops->set_parity)
 	{
-		rdr_debug_mask(reader, D_IFD, "Setting right parity");
-		call(reader->crdr.set_parity(reader, parity));
+		rdr_log_dbg(reader, D_IFD, "Setting right parity");
+		call(crdr_ops->set_parity(reader, parity));
 	}
 	return OK;
 }
 
 static int32_t SetRightParity(struct s_reader *reader)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	//set right parity
 	uint16_t parity = PARITY_EVEN;
 	if(reader->convention == ATR_CONVENTION_INVERSE)
@@ -645,7 +675,7 @@ static int32_t SetRightParity(struct s_reader *reader)
 
 	call(ICC_Async_SetParity(reader, parity));
 
-	if(reader->crdr.flush)
+	if(crdr_ops->flush && reader->crdr_flush)
 		{ IO_Serial_Flush(reader); }
 
 	return OK;
@@ -653,6 +683,9 @@ static int32_t SetRightParity(struct s_reader *reader)
 
 static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uint32_t D, unsigned char N, uint16_t deprecated)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	uint32_t I, F, Fi, BGT = 0, edc, GT = 0, WWT = 0, EGT = 0;
 	unsigned char wi = 0;
 
@@ -663,13 +696,16 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 	tempfi = FI;
 
 	//set clock speed to max if internal reader
-	if(reader->crdr.max_clock_speed == 1)
+	if(crdr_ops->max_clock_speed == 1 && reader->typ == R_INTERNAL)
 	{
-		if((reader->mhz == 357 || reader->mhz == 358) && reader->autospeed == 1)  //no overclocking
+		if(reader->autospeed == 1)  //no overclocking
 			{ reader->mhz = atr_fs_table[FI] / 10000; } //we are going to clock the card to this nominal frequency
 
 		if(reader->cardmhz > 2000 && reader->autospeed == 1)  // -1 replaced by autospeed parameter is magic number pll internal reader set cardmhz according to optimal atr speed
-			{ reader->mhz = atr_fs_table[FI] / 10000 ; }
+		{
+			reader->mhz = atr_fs_table[FI] / 10000 ;
+			if((!strncmp(boxtype_get(), "vu", 2 ))||(boxtype_is("ini-8000am"))){reader->mhz = 450;}
+		}
 	}
 
 	if(reader->cardmhz > 2000)
@@ -679,7 +715,7 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 	}
 
 	Fi = atr_f_table[FI];  //get the frequency divider also called clock rate conversion factor
-	if(reader->crdr.set_baudrate)
+	if(crdr_ops->set_baudrate)
 	{
 		reader->current_baudrate = DEFAULT_BAUDRATE;
 
@@ -690,14 +726,15 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 			{
 					uint32_t baud_temp = (double)D * ICC_Async_GetClockRate(reader->cardmhz) / (double)Fi; // just a test
 					rdr_log(reader, "Setting baudrate to %d bps", baud_temp);
-					call(reader->crdr.set_baudrate(reader, baud_temp));
+					call(crdr_ops->set_baudrate(reader, baud_temp));
 					reader->current_baudrate = baud_temp;				
 			}
 		}
 	}
 	if(reader->cardmhz > 2000 && reader->typ == R_INTERNAL) { F = reader->mhz; }  // for PLL based internal readers
 	else { 
-	if ((reader->typ == R_SMART) || (!strcasecmp(reader->crdr.desc, "smargo"))) { 
+	if (reader->typ == R_SMART || is_smargo_reader(reader))
+	{
 		if (reader->autospeed == 1) {
 		uint32_t Fsmart = atr_fs_table[FI];
 		reader->mhz = Fsmart/10000;
@@ -765,11 +802,11 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		reader->BWT = 0; // T0 protocol doesnt have block waiting time (used to detect unresponsive card, this is max time for starting a block answer)
 
 		
-		rdr_debug_mask(reader, D_ATR, "Protocol: T=%i, WWT=%u, Clockrate=%u", reader->protocol_type, WWT, F * 10000);
+		rdr_log_dbg(reader, D_ATR, "Protocol: T=%i, WWT=%u, Clockrate=%u", reader->protocol_type, WWT, F * 10000);
 
 		reader->read_timeout = WWT; // Work waiting time used in T0 (max time to signal unresponsive card!)
 		reader->char_delay = GT + EGT; // Character delay is used on T0
-		rdr_debug_mask(reader, D_ATR, "Setting timings: timeout=%u ETU, block_delay=%u ETU, char_delay=%u ETU",
+		rdr_log_dbg(reader, D_ATR, "Setting timings: timeout=%u ETU, block_delay=%u ETU, char_delay=%u ETU",
 					   reader->read_timeout, reader->block_delay, reader->char_delay);
 		break;
 	}
@@ -837,14 +874,14 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		// Set initial send sequence (NS)
 		reader->ns = 1;
 
-		rdr_debug_mask(reader, D_ATR, "Protocol: T=%i: IFSC=%d, CWT=%d etu, BWT=%d etu, BGT=%d etu, EDC=%s, N=%d",
+		rdr_log_dbg(reader, D_ATR, "Protocol: T=%i: IFSC=%d, CWT=%d etu, BWT=%d etu, BGT=%d etu, EDC=%s, N=%d",
 					   reader->protocol_type, reader->ifsc,
 					   reader->CWT, reader->BWT,
 					   BGT, (edc == EDC_LRC) ? "LRC" : "CRC", N);
 		reader->read_timeout = reader->BWT;
 		reader->block_delay = BGT;
 		reader->char_delay = GT + EGT;
-		rdr_debug_mask(reader, D_ATR, "Setting timings: reader timeout=%u ETU, block_delay=%u ETU, char_delay=%u ETU",
+		rdr_log_dbg(reader, D_ATR, "Setting timings: reader timeout=%u ETU, block_delay=%u ETU, char_delay=%u ETU",
 					   reader->read_timeout, reader->block_delay, reader->char_delay);
 
 		break;
@@ -865,30 +902,29 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		reader->worketu *= 2; // overclocked T14 needs this otherwise high ecm reponses
 	}
 
-	if(reader->crdr.write_settings)
+	struct s_cardreader_settings s = {
+		.ETU = ETU,
+		.EGT = EGT,
+		.P   = 5,
+		.I   = I,
+		.F   = Fi,
+		.Fi  = (uint16_t) Fi,
+		.Ni  = N,
+		.D   = D,
+		.WWT = WWT,
+		.BGT = BGT,
+	};
+
+	if(crdr_ops->write_settings)
 	{
-		call(reader->crdr.write_settings(reader, ETU, EGT, 5, I, (uint16_t) Fi, (unsigned char)D, N));
-	}
-	else if(reader->crdr.write_settings2)
-	{
-		call(reader->crdr.write_settings2(reader, (uint16_t) Fi, (uint8_t) D, WWT, EGT, BGT));
-	}
-	else if(reader->crdr.write_settings3)
-	{
-//#if defined(__SH4__) || defined(STB04SCI) || defined(__powerpc__)
-		if (reader->cardmhz < 2000)
-		{
-		Fi = F/100; // non pll internal reader needs base frequency like 1,2,3,4,5,6 MHz not clock rate conversion factor (Fi)
-		}
-//#endif
-		call(reader->crdr.write_settings3(reader, ETU, Fi, WWT, reader->CWT, reader->BWT, EGT, (unsigned char)I));
+		call(crdr_ops->write_settings(reader, &s));
 	}
 
 	if(reader->typ == R_INTERNAL)
 	{
 		if(reader->cardmhz > 2000)
 		{
-			rdr_log(reader, "PLL Reader: ATR Fsmax is %i MHz, clocking card to %.2f Mhz (nearest possible mhz specified reader->cardmhz)",
+			rdr_log(reader, "PLL Reader: ATR Fsmax is %i MHz, clocking card to %.2f Mhz (nearest possible mhz specified reader->mhz)",
 					atr_fs_table[FI] / 1000000, (float) reader->mhz / 100);
 		}
 		else
@@ -908,7 +944,7 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 	}
 
 	//Communicate to T1 card IFSD -> we use same as IFSC
-	if(reader->protocol_type == ATR_PROTOCOL_TYPE_T1 && reader->ifsc != DEFAULT_IFSC && !reader->crdr.skip_setting_ifsc)
+	if(reader->protocol_type == ATR_PROTOCOL_TYPE_T1 && reader->ifsc != DEFAULT_IFSC && !crdr_ops->skip_setting_ifsc)
 	{
 		unsigned char rsp[CTA_RES_LEN];
 		uint16_t lr = 0;

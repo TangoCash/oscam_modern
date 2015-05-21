@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "main"
+
 #include "globals.h"
 #include <getopt.h>
 
@@ -26,6 +28,7 @@
 #include "oscam-config.h"
 #include "oscam-ecm.h"
 #include "oscam-emm.h"
+#include "oscam-emm-cache.h"
 #include "oscam-files.h"
 #include "oscam-garbage.h"
 #include "oscam-lock.h"
@@ -36,6 +39,32 @@
 #include "oscam-work.h"
 #include "reader-common.h"
 #include "module-gbox.h"
+
+#ifdef WITH_SSL
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+static void ssl_init(void)
+{
+	SSL_load_error_strings();
+	ERR_load_BIO_strings();
+	ERR_load_SSL_strings();
+	SSL_library_init();
+}
+
+static void ssl_done(void)
+{
+	ERR_remove_state(0);
+	ERR_free_strings();
+	EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+}
+
+#else
+static void ssl_init(void) { }
+static void ssl_done(void) { }
+#endif
 
 extern char *config_mak;
 
@@ -48,8 +77,6 @@ static char default_pidfile[64];
 
 int32_t exit_oscam = 0;
 static struct s_module modules[CS_MAX_MOD];
-struct s_cardsystem cardsystems[CS_MAX_MOD];
-struct s_cardreader cardreaders[CS_MAX_MOD];
 
 struct s_client *first_client = NULL;  //Pointer to clients list, first client is master
 struct s_reader *first_active_reader = NULL;  //list of active readers (enable=1 deleted = 0)
@@ -93,7 +120,8 @@ struct  s_config  cfg;
 int log_remove_sensitive = 1;
 
 static char *prog_name;
-char *stb_boxtype = NULL;
+static char *stb_boxtype;
+static char *stb_boxname;
 
 /*****************************************************************************
         Statics
@@ -108,7 +136,7 @@ static void show_usage(void)
 		   "| |_| |___) | |_| (_| | | | | | |\n"
 		   " \\___/|____/ \\___\\__,_|_| |_| |_|\n\n");
 	printf("OSCam cardserver v%s, build r%s (%s)\n", CS_VERSION, CS_SVN_VERSION, CS_TARGET);
-	printf("Copyright (C) 2009-2013 OSCam developers.\n");
+	printf("Copyright (C) 2009-2015 OSCam developers.\n");
 	printf("This program is distributed under GPLv3.\n");
 	printf("OSCam is based on Streamboard mp-cardserver v0.9d written by dukat\n");
 	printf("Visit http://www.streamboard.tv/oscam/ for more details.\n\n");
@@ -318,6 +346,7 @@ static void write_versionfile(bool use_stdout)
 
 	fprintf(fp, "Version:        oscam-%s-r%s\n", CS_VERSION, CS_SVN_VERSION);
 	fprintf(fp, "Compiler:       %s\n", CS_TARGET);
+	fprintf(fp, "Box type:       %s (%s)\n", boxtype_get(), boxname_get());
 	fprintf(fp, "ConfigDir:      %s\n", cs_confdir);
 #ifdef WEBIF
 	fprintf(fp, "WebifPort:      %d\n", cfg.http_port);
@@ -649,7 +678,7 @@ void cs_exit(int32_t sig)
 	// this is very important - do not remove
 	if(cl->typ != 's')
 	{
-		cs_debug_mask(D_TRACE, "thread %8lX ended!", (unsigned long)pthread_self());
+		cs_log_dbg(D_TRACE, "thread %8lX ended!", (unsigned long)pthread_self());
 
 		free_client(cl);
 
@@ -701,18 +730,26 @@ static void init_machine_info(void)
 
 	// Linux only functionality
 	char boxtype[128];
+	boxtype[0] = 0;
 	char model[128];
+	model[0] = 0;
 	char vumodel[128];
+	vumodel[0] = 0;
+	int8_t azmodel = 0;
+	FILE *f;
 
+	if ((f = fopen("/proc/stb/info/azmodel", "r"))){ azmodel = 1; fclose(f);}
 	read_line_from_file("/proc/stb/info/model", model, sizeof(model));
 	read_line_from_file("/proc/stb/info/boxtype", boxtype, sizeof(boxtype));
-	if (read_line_from_file("/proc/stb/info/vumodel", vumodel, sizeof(vumodel)))
+	read_line_from_file("/proc/stb/info/vumodel", vumodel, sizeof(vumodel));
+	if (vumodel[0] && !boxtype[0] && !azmodel)
 		snprintf(boxtype, sizeof(boxtype), "vu%s", vumodel);
+	if (!boxtype[0] && azmodel)
+		snprintf(boxtype, sizeof(boxtype), "Azbox-%s", model);
 
 	// Detect dreambox type
 	if (strcasecmp(buffer.machine, "ppc") == 0 && !model[0] && !boxtype[0])
 	{
-		FILE *f;
 		char line[128], *p;
 		int have_dreambox = 0;
 		if ((f = fopen("/proc/cpuinfo", "r")))
@@ -741,16 +778,64 @@ static void init_machine_info(void)
 		}
 	}
 
+	if (!boxtype[0] && !strcasecmp(model, "dm800") && !strcasecmp(buffer.machine, "armv7l"))
+		snprintf(boxtype, sizeof(boxtype), "%s", "su980");
+	
+	if (!boxtype[0])
+	{
+		uchar *pos;
+		pos = (uchar*) memchr(buffer.release, 'd', sizeof(buffer.release));
+		if(pos)
+		{
+			if((!memcmp(pos, "dbox2", sizeof("dbox2"))) && !strcasecmp(buffer.machine, "ppc"))
+			{
+				snprintf(boxtype, sizeof(boxtype), "%s", "dbox2");
+			}
+		}
+	}
+
 	if (model[0])
 		cs_log("Stb model      = %s", model);
 
+	if (vumodel[0])
+		cs_log("Stb vumodel    = vu%s", vumodel);
+
 	if (boxtype[0])
+	{
+		char boxname[128];
+		if(!strcasecmp(boxtype,"ini-8000am")){snprintf(boxname, sizeof(boxname), "%s", "Atemio Nemesis");}
+		else if(!strcasecmp(boxtype,"ini-9000ru")){snprintf(boxname, sizeof(boxname), "%s", "Sezam Marvel");}
+		else if(!strcasecmp(boxtype,"ini-8000sv")){snprintf(boxname, sizeof(boxname), "%s", "Miraclebox Ultra");}
+		else if(!strcasecmp(boxtype,"ini-9000de")){snprintf(boxname, sizeof(boxname), "%s", "Xpeed LX3");}
+		else boxname[0] = 0;
+		if(boxname[0]){cs_log("Stb boxname    = %s", boxname); stb_boxname = cs_strdup(boxname);}
 		cs_log("Stb boxtype    = %s", boxtype);
+	}
 
 	if (boxtype[0])
 		stb_boxtype = cs_strdup(boxtype);
 	else if (model[0])
 		stb_boxtype = cs_strdup(model);
+}
+
+const char *boxtype_get(void)
+{
+	return stb_boxtype ? stb_boxtype : "generic";
+}
+
+const char *boxname_get(void)
+{
+	return stb_boxname ? stb_boxname : "generic";
+}
+
+bool boxtype_is(const char *boxtype)
+{
+	return strcasecmp(boxtype_get(), boxtype) == 0;
+}
+
+bool boxname_is(const char *boxname)
+{
+	return strcasecmp(boxname_get(), boxname) == 0;
 }
 
 /* Checks if the date of the system is correct and waits if necessary. */
@@ -811,7 +896,7 @@ void start_thread(void *startroutine, char *nameroutine)
 	pthread_t temp;
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	cs_debug_mask(D_TRACE, "starting thread %s", nameroutine);
+	cs_log_dbg(D_TRACE, "starting thread %s", nameroutine);
 	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
 	cs_writelock(&system_lock);
 	int32_t ret = pthread_create(&temp, &attr, startroutine, NULL);
@@ -819,7 +904,7 @@ void start_thread(void *startroutine, char *nameroutine)
 		{ cs_log("ERROR: can't create %s thread (errno=%d %s)", nameroutine, ret, strerror(ret)); }
 	else
 	{
-		cs_debug_mask(D_TRACE, "%s thread started", nameroutine);
+		cs_log_dbg(D_TRACE, "%s thread started", nameroutine);
 		pthread_detach(temp);
 	}
 	pthread_attr_destroy(&attr);
@@ -854,11 +939,7 @@ void module_reader_set(struct s_reader *rdr)
 	{
 		struct s_module *module = &modules[i];
 		if(module->num && module->num == rdr->typ)
-		{
 			rdr->ph = *module;
-			if(rdr->device[0])
-				{ rdr->ph.active = 1; }
-		}
 	}
 }
 
@@ -1023,7 +1104,7 @@ static void process_clients(void)
 		{
 			if(pfd[i].revents == 0) { continue; }  // skip sockets with no changes
 			rc--; //event handled!
-			cs_debug_mask(D_TRACE, "[OSCAM] new event %d occurred on fd %d after %"PRId64" ms inactivity", pfd[i].revents,
+			cs_log_dbg(D_TRACE, "[OSCAM] new event %d occurred on fd %d after %"PRId64" ms inactivity", pfd[i].revents,
 						  pfd[i].fd, comp_timeb(&end, &start));
 			//clients
 			cl = cl_list[i];
@@ -1036,9 +1117,9 @@ static void process_clients(void)
 				int32_t len = read(thread_pipe[0], buf, sizeof(buf));
 				if(len == -1)
 				{
-					cs_debug_mask(D_TRACE, "[OSCAM] Reading from pipe failed (errno=%d %s)", errno, strerror(errno));
+					cs_log_dbg(D_TRACE, "[OSCAM] Reading from pipe failed (errno=%d %s)", errno, strerror(errno));
 				}
-				cs_ddump_mask(D_TRACE, buf, len, "[OSCAM] Readed:");
+				cs_log_dump_dbg(D_TRACE, buf, len, "[OSCAM] Readed:");
 				continue;
 			}
 
@@ -1078,7 +1159,7 @@ static void process_clients(void)
 					//connection to remote proxy was closed
 					//oscam should check for rdr->tcp_connected and reconnect on next ecm request sent to the proxy
 					network_tcp_connection_close(rdr, "closed");
-					rdr_debug_mask(rdr, D_READER, "connection closed");
+					rdr_log_dbg(rdr, D_READER, "connection closed");
 				}
 				if(cl2->pfd && pfd[i].fd == cl2->pfd && (pfd[i].revents & (POLLIN | POLLPRI)))
 				{
@@ -1145,6 +1226,38 @@ static void *reader_check(void)
 		}
 		cs_readunlock(&readerlist_lock);
 		sleepms_on_cond(&reader_check_sleep_cond_mutex, &reader_check_sleep_cond, 1000);
+	}
+	return NULL;
+}
+
+static pthread_cond_t card_poll_sleep_cond;
+
+static void * card_poll(void) {
+	struct s_client *cl;
+	struct s_reader *rdr;
+	pthread_mutex_t card_poll_sleep_cond_mutex;
+	pthread_mutex_init(&card_poll_sleep_cond_mutex, NULL);
+	pthread_cond_init(&card_poll_sleep_cond, NULL);
+	set_thread_name(__func__);
+	while (!exit_oscam) {
+		cs_readlock(&readerlist_lock);
+		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
+			if (rdr->enable && rdr->card_status == CARD_INSERTED) {
+				cl = rdr->client;
+				if (cl && !cl->kill)
+					{ add_job(cl, ACTION_READER_POLL_STATUS, 0, 0); }
+			}
+		}
+		cs_readunlock(&readerlist_lock);
+		struct timespec ts;
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		ts.tv_sec = tv.tv_sec;
+		ts.tv_nsec = tv.tv_usec * 1000;
+		ts.tv_sec += 1;
+		pthread_mutex_lock(&card_poll_sleep_cond_mutex);
+		pthread_cond_timedwait(&card_poll_sleep_cond, &card_poll_sleep_cond_mutex, &ts); // sleep on card_poll_sleep_cond
+		pthread_mutex_unlock(&card_poll_sleep_cond_mutex);
 	}
 	return NULL;
 }
@@ -1242,8 +1355,123 @@ static void pidfile_create(char *pidfile)
 	}
 }
 
+static bool running_under_valgrind;
+
+static void detect_valgrind(void)
+{
+#ifdef __linux__
+	char fname[32];
+	snprintf(fname, sizeof(fname), "/proc/%d/maps", getpid());
+	FILE *f = fopen(fname, "r");
+	if (f) {
+		char line[256];
+		while (fgets(line, sizeof(line), f)) {
+			if (strstr(line, "/valgrind/")) {
+				running_under_valgrind = true;
+				break;
+			}
+		}
+	}
+	fclose(f);
+#endif
+}
+
+#ifdef BUILD_TESTS
+extern void run_all_tests(void);
+__attribute__ ((noreturn)) static void run_tests(void)
+{
+	run_all_tests();
+	exit(0);
+}
+#else
+static void run_tests(void) { }
+#endif
+
+const struct s_cardsystem *cardsystems[] =
+{
+#ifdef READER_NAGRA
+	&reader_nagra,
+#endif
+#ifdef READER_IRDETO
+	&reader_irdeto,
+#endif
+#ifdef READER_CONAX
+	&reader_conax,
+#endif
+#ifdef READER_CRYPTOWORKS
+	&reader_cryptoworks,
+#endif
+#ifdef READER_SECA
+	&reader_seca,
+#endif
+#ifdef READER_VIACCESS
+	&reader_viaccess,
+#endif
+#ifdef READER_VIDEOGUARD
+	&reader_videoguard1,
+	&reader_videoguard2,
+	&reader_videoguard12,
+#endif
+#ifdef READER_DRE
+	&reader_dre,
+#endif
+#ifdef READER_TONGFANG
+	&reader_tongfang,
+#endif
+#ifdef READER_BULCRYPT
+	&reader_bulcrypt,
+#endif
+#ifdef READER_GRIFFIN
+	&reader_griffin,
+#endif
+#ifdef READER_DGCRYPT
+	&reader_dgcrypt,
+#endif
+	NULL
+};
+
+const struct s_cardreader *cardreaders[] =
+{
+#ifdef CARDREADER_DB2COM
+	&cardreader_db2com,
+#endif
+#if defined(CARDREADER_INTERNAL_AZBOX)
+	&cardreader_internal_azbox,
+#elif defined(CARDREADER_INTERNAL_COOLAPI)
+	&cardreader_internal_cool,
+#elif defined(CARDREADER_INTERNAL_SCI)
+	&cardreader_internal_sci,
+#endif
+#ifdef CARDREADER_PHOENIX
+	&cardreader_mouse,
+#endif
+#ifdef CARDREADER_MP35
+	&cardreader_mp35,
+#endif
+#ifdef CARDREADER_PCSC
+	&cardreader_pcsc,
+#endif
+#ifdef CARDREADER_SC8IN1
+	&cardreader_sc8in1,
+#endif
+#ifdef CARDREADER_SMARGO
+	&cardreader_smargo,
+#endif
+#ifdef CARDREADER_SMART
+	&cardreader_smartreader,
+#endif
+#ifdef CARDREADER_STAPI
+	&cardreader_stapi,
+#endif
+#ifdef CARDREADER_STINGER
+	&cardreader_stinger,
+#endif
+	NULL
+};
+
 int32_t main(int32_t argc, char *argv[])
 {
+	run_tests();
 	int32_t i, j;
 	prog_name = argv[0];
 	struct timespec start_ts;
@@ -1305,88 +1533,6 @@ int32_t main(int32_t argc, char *argv[])
 		0
 	};
 
-	void (*cardsystem_def[])(struct s_cardsystem *) =
-	{
-#ifdef READER_NAGRA
-		reader_nagra,
-#endif
-#ifdef READER_IRDETO
-		reader_irdeto,
-#endif
-#ifdef READER_CONAX
-		reader_conax,
-#endif
-#ifdef READER_CRYPTOWORKS
-		reader_cryptoworks,
-#endif
-#ifdef READER_SECA
-		reader_seca,
-#endif
-#ifdef READER_VIACCESS
-		reader_viaccess,
-#endif
-#ifdef READER_VIDEOGUARD
-		reader_videoguard1,
-		reader_videoguard2,
-		reader_videoguard12,
-#endif
-#ifdef READER_DRE
-		reader_dre,
-#endif
-#ifdef READER_TONGFANG
-		reader_tongfang,
-#endif
-#ifdef READER_BULCRYPT
-		reader_bulcrypt,
-#endif
-#ifdef READER_GRIFFIN
-		reader_griffin,
-#endif
-#ifdef READER_DGCRYPT
-		reader_dgcrypt,
-#endif
-		0
-	};
-
-	void (*cardreader_def[])(struct s_cardreader *) =
-	{
-#ifdef CARDREADER_DB2COM
-		cardreader_db2com,
-#endif
-#if defined(CARDREADER_INTERNAL_AZBOX)
-		cardreader_internal_azbox,
-#elif defined(CARDREADER_INTERNAL_COOLAPI)
-		cardreader_internal_cool,
-#elif defined(CARDREADER_INTERNAL_SCI)
-		cardreader_internal_sci,
-#endif
-#ifdef CARDREADER_PHOENIX
-		cardreader_mouse,
-#endif
-#ifdef CARDREADER_MP35
-		cardreader_mp35,
-#endif
-#ifdef CARDREADER_PCSC
-		cardreader_pcsc,
-#endif
-#ifdef CARDREADER_SC8IN1
-		cardreader_sc8in1,
-#endif
-#ifdef CARDREADER_SMARGO
-		cardreader_smargo,
-#endif
-#ifdef CARDREADER_SMART
-		cardreader_smartreader,
-#endif
-#ifdef CARDREADER_STAPI
-		cardreader_stapi,
-#endif
-#ifdef CARDREADER_STINGER
-		cardreader_stinger,
-#endif
-		0
-	};
-
 	parse_cmdline_params(argc, argv);
 
 	if(bg && do_daemon(1, 0))
@@ -1418,7 +1564,7 @@ int32_t main(int32_t argc, char *argv[])
 	cs_lock_create(&readdir_lock, "readdir_lock", 5000);
 	cs_lock_create(&cwcycle_lock, "cwcycle_lock", 5000);
 	init_cache();
-	init_hitcache();
+	cacheex_init_hitcache();
 	init_config();
 	cs_init_log();
 	init_machine_info();
@@ -1434,6 +1580,7 @@ int32_t main(int32_t argc, char *argv[])
 	cs_init_statistics();
 	coolapi_open_all();
 	init_stat();
+	ssl_init();
 
 	// These initializations *MUST* be called after init_config()
 	// because modules depend on config values.
@@ -1441,16 +1588,6 @@ int32_t main(int32_t argc, char *argv[])
 	{
 		struct s_module *module = &modules[i];
 		mod_def[i](module);
-	}
-	for(i = 0; cardsystem_def[i]; i++)
-	{
-		memset(&cardsystems[i], 0, sizeof(struct s_cardsystem));
-		cardsystem_def[i](&cardsystems[i]);
-	}
-	for(i = 0; cardreader_def[i]; i++)
-	{
-		memset(&cardreaders[i], 0, sizeof(struct s_cardreader));
-		cardreader_def[i](&cardreaders[i]);
 	}
 
 	init_sidtab();
@@ -1508,10 +1645,15 @@ int32_t main(int32_t argc, char *argv[])
 	init_cardreader();
 
 	cs_waitforcardinit();
+	
+	emm_load_cache();
+	load_emmstat_from_file();
 
 	led_status_starting();
 
 	ac_init();
+
+	start_thread((void *) &card_poll, "card poll");
 
 	for(i = 0; i < CS_MAX_MOD; i++)
 	{
@@ -1523,6 +1665,7 @@ int32_t main(int32_t argc, char *argv[])
 	// main loop function
 	process_clients();
 
+	pthread_cond_signal(&card_poll_sleep_cond); // Stop card_poll thread
 	cw_process_thread_wakeup(); // Stop cw_process thread
 	pthread_cond_signal(&reader_check_sleep_cond); // Stop reader_check thread
 
@@ -1539,10 +1682,13 @@ int32_t main(int32_t argc, char *argv[])
 	remove_versionfile();
 
 	stat_finish();
-	
+	dvbapi_stop_all_descrambling();
 	dvbapi_save_channel_cache();
+	emm_save_cache();
+	save_emmstat_to_file();
 	
 	cccam_done_share();
+	gbox_send_good_night(); 
 
 	kill_all_clients();
 	kill_all_readers();
@@ -1567,6 +1713,8 @@ int32_t main(int32_t argc, char *argv[])
 	if(oscam_pidfile)
 		{ unlink(oscam_pidfile); }
 
+	free_cache();
+	cacheex_free_hitcache();
 	webif_tpls_free();
 	init_free_userdb(cfg.account);
 	cfg.account = NULL;
@@ -1574,15 +1722,23 @@ int32_t main(int32_t argc, char *argv[])
 	free_readerdb();
 	free_irdeto_guess_tab();
 	config_free();
+	ssl_done();
 
-	cs_log("cardserver down");
+	detect_valgrind();
+	if (!running_under_valgrind)
+		cs_log("cardserver down");
+	else
+		cs_log("running under valgrind, waiting 5 seconds before stopping cardserver");
 	log_free();
+
+	if (running_under_valgrind) sleep(5); // HACK: Wait a bit for things to settle
 
 	stop_garbage_collector();
 
 	NULLFREE(first_client->account);
 	NULLFREE(first_client);
 	free(stb_boxtype);
+	free(stb_boxname);
 
 	// This prevents the compiler from removing config_mak from the final binary
 	syslog_ident = config_mak;

@@ -1,5 +1,8 @@
+#define MODULE_LOG_PREFIX "config"
+
 #include "globals.h"
 #include "module-anticasc.h"
+#include "oscam-array.h"
 #include "oscam-client.h"
 #include "oscam-conf.h"
 #include "oscam-conf-chk.h"
@@ -105,26 +108,6 @@ static void account_allowedprotocols_fn(const char *token, char *value, void *se
 		free_mk_t(value);
 	}
 }
-
-#ifdef WITH_LB
-static void caidvaluetab_fn(const char *token, char *value, void *setting, FILE *f)
-{
-	CAIDVALUETAB *caid_value_table = setting;
-	int limit = streq(token, "lb_retrylimits") ? 50 : 1;
-	if(value)
-	{
-		chk_caidvaluetab(value, caid_value_table, limit);
-		return;
-	}
-	if(caid_value_table->n > 0 || cfg.http_full_cfg)
-	{
-		value = mk_t_caidvaluetab(caid_value_table);
-		fprintf_conf(f, token, "%s\n", value);
-		free_mk_t(value);
-	}
-}
-#endif
-
 
 static void account_au_fn(const char *token, char *value, void *setting, FILE *f)
 {
@@ -258,7 +241,7 @@ static void account_tuntab_fn(const char *token, char *value, void *setting, FIL
 	{
 		if(strlen(value) == 0)
 		{
-			clear_tuntab(ttab);
+			tuntab_clear(ttab);
 		}
 		else
 		{
@@ -266,7 +249,7 @@ static void account_tuntab_fn(const char *token, char *value, void *setting, FIL
 		}
 		return;
 	}
-	if(ttab->bt_caidfrom[0] || cfg.http_full_cfg)
+	if((ttab->ttdata && ttab->ttdata[0].bt_caidfrom) || cfg.http_full_cfg)
 	{
 		value = mk_t_tuntab(ttab);
 		fprintf_conf(f, token, "%s\n", value);
@@ -386,7 +369,7 @@ static const struct config_list account_opts[] =
 	DEF_OPT_FUNC("cacheex_ecm_filter"   , OFS(cacheex.filter_caidtab),  cacheex_hitvaluetab_fn),
 	DEF_OPT_UINT8("cacheex_drop_csp"    , OFS(cacheex.drop_csp),        0),
 	DEF_OPT_UINT8("cacheex_allow_request"   , OFS(cacheex.allow_request),   0),
-	DEF_OPT_INT8("no_wait_time"			, OFS(no_wait_time),			0),
+	DEF_OPT_UINT8("no_wait_time"        , OFS(no_wait_time),            0),
 	DEF_OPT_UINT8("cacheex_allow_filter", OFS(cacheex.allow_filter),    1),	
 #endif
 #ifdef MODULE_CCCAM
@@ -511,9 +494,16 @@ int32_t init_free_userdb(struct s_auth *ptr)
 	{
 		struct s_auth *ptr_next;
 		ptr_next = ptr->next;
-		ll_destroy(ptr->aureader_list);
+		ll_destroy(&ptr->aureader_list);
 		ptr->next = NULL;
 		config_list_gc_values(account_opts, ptr);
+		ftab_clear(&ptr->ftab);
+		ftab_clear(&ptr->fchid);
+		tuntab_clear(&ptr->ttab);
+		caidtab_clear(&ptr->ctab);
+#ifdef WITH_LB
+		caidvaluetab_clear(&ptr->lb_nbest_readers_tab);
+#endif
 		add_garbage(ptr);
 		ptr = ptr_next;
 	}

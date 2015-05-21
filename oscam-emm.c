@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "emm"
+
 #include "globals.h"
 #include "cscrypt/md5.h"
 #include "module-dvbapi.h"
@@ -10,6 +12,7 @@
 #include "oscam-work.h"
 #include "reader-common.h"
 #include "oscam-chk.h"
+#include "oscam-emm-cache.h"
 
 const char *entitlement_type[] = { "", "package", "PPV-Event", "chid", "tier", "class", "PBM", "admin" };
 
@@ -34,7 +37,7 @@ static int8_t cs_emmlen_is_blocked(struct s_reader *rdr, int16_t len)
  *
  * the emm is checked against it and returns 1 for a valid emm or 0 if not
  */
-static int8_t do_simple_emm_filter(struct s_reader *rdr, struct s_cardsystem *cs, EMM_PACKET *ep, int8_t cl_dvbapi)
+static int8_t do_simple_emm_filter(struct s_reader *rdr, const struct s_cardsystem *csystem, EMM_PACKET *ep, int8_t cl_dvbapi)
 {
 	if(is_network_reader(rdr)) { return 1; }  // dont evaluate on network readers, server with local reader will check it
 
@@ -46,7 +49,7 @@ static int8_t do_simple_emm_filter(struct s_reader *rdr, struct s_cardsystem *cs
 	unsigned int j, filter_count = 0;
 
 	// Call cardsystems emm filter
-	cs->get_emm_filter(rdr, &dmx_filter, &filter_count);
+	csystem->get_emm_filter(rdr, &dmx_filter, &filter_count);
 
 	// Only check matching emmtypes:
 	uint8_t org_emmtype;
@@ -75,7 +78,7 @@ static int8_t do_simple_emm_filter(struct s_reader *rdr, struct s_cardsystem *cs
 				{ k += 2; } //skip emm len bytes
 			if(!mask)
 				{ continue; }
-			//cs_log("**** filter #%d [%d] = %02X, filter mask[%d] = %02X, flt&mask = %02X , ep->emm[%d] = %02X, ep->emm[%d] & mask = %02X ****", j, i,
+			//cs_log("**** filter %d [%d] = %02X, filter mask[%d] = %02X, flt&mask = %02X , ep->emm[%d] = %02X, ep->emm[%d] & mask = %02X ****", j, i,
 			//  dmx_filter[j].filter[i], i, dmx_filter[j].mask[i], flt&mask, k, ep->emm[k], k, ep->emm[k] & mask);
 			flt = (dmx_filter[j].filter[i] & mask);
 			match = (flt == (ep->emm[k] & mask));
@@ -94,7 +97,7 @@ static int8_t do_simple_emm_filter(struct s_reader *rdr, struct s_cardsystem *cs
 	return 0; //emm filter does not match, illegal emm, return
 }
 
-static void reader_log_emm(struct s_reader *reader, EMM_PACKET *ep, int32_t i, int32_t rc, struct timeb *tps)
+static void reader_log_emm(struct s_reader *reader, EMM_PACKET *ep, int32_t count, int32_t rc, struct timeb *tps)
 {
 	char *rtxt[] =
 	{
@@ -113,9 +116,8 @@ static void reader_log_emm(struct s_reader *reader, EMM_PACKET *ep, int32_t i, i
 		if(!tps)
 			{ tps = &tpe; }
 
-		rdr_log(reader, "%s emmtype=%s, len=%d, idx=%d, cnt=%d: %s (%"PRId64" ms)",
-				username(ep->client), typedesc[reader->emmcache[i].type], ep->emm[2],
-				i, reader->emmcache[i].count, rtxt[rc], comp_timeb(&tpe, tps));
+		rdr_log(reader, "%s emmtype=%s, len=%d, cnt=%d: %s (%"PRId64" ms)",
+				username(ep->client), typedesc[ep->type], ep->emm[2], count, rtxt[rc], comp_timeb(&tpe, tps));
 	}
 
 	if(rc)
@@ -144,18 +146,6 @@ static void reader_log_emm(struct s_reader *reader, EMM_PACKET *ep, int32_t i, i
 #endif
 }
 
-static int32_t reader_store_emm(struct s_reader *reader, uint8_t type, uint8_t *emmd5)
-{
-	int32_t rc;
-	memcpy(reader->emmcache[reader->rotate].emmd5, emmd5, CS_EMMSTORESIZE);
-	reader->emmcache[reader->rotate].type = type;
-	reader->emmcache[reader->rotate].count = 1;
-	//  cs_debug_mask(D_READER, "EMM stored (index %d)", rotate);
-	rc = reader->rotate;
-	reader->rotate = (++reader->rotate < CS_EMMCACHESIZE) ? reader->rotate : 0;
-	return rc;
-}
-
 int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid)
 {
 	int32_t i;
@@ -170,9 +160,12 @@ int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid
 	if(reader->caid != caid)
 	{
 		int caid_found = 0;
-		for(i = 0; i < (int)ARRAY_SIZE(reader->csystem.caids); i++)
+		if (!reader->csystem)
+			return 0;
+		for(i = 0; reader->csystem->caids[i]; i++)
 		{
-			if( (reader->caid != 0) && (reader->csystem.caids[i] == caid) ) 
+			uint16_t cs_caid = reader->csystem->caids[i];
+			if (reader->caid && cs_caid == caid)
 			{
 				caid_found = 1;
 				break;
@@ -187,44 +180,59 @@ int32_t emm_reader_match(struct s_reader *reader, uint16_t caid, uint32_t provid
 		}
 		if(!caid_found)
 		{
-			rdr_debug_mask(reader, D_EMM, "reader_caid %04X != emmpid caid %04X -> SKIP!", reader->caid, caid);
+			rdr_log_dbg(reader, D_EMM, "reader_caid %04X != emmpid caid %04X -> SKIP!", reader->caid, caid);
 			return 0;
 		}
 	}
 
 	//if (!hexserialset(reader)) { There are cards without serial, they should get emm of type global and shared!
-	//  rdr_debug_mask(reader, D_EMM, "no hexserial is set");
+	//  rdr_log_dbg(reader, D_EMM, "no hexserial is set");
 	//  return 0;
 	//}
 
 	if(!provid)
 	{
-		rdr_debug_mask(reader, D_EMM, "reader %04X match since emmpid has no provid -> SEND!", caid);
+		rdr_log_dbg(reader, D_EMM, "reader %04X match since emmpid has no provid -> SEND!", caid);
 		return 1;
 	}
 
-	if(reader->auprovid == provid)
+	uint32_t prid = reader->auprovid;
+	
+	if(caid_is_viaccess(caid) && (prid != 0) && ((prid &0xFFFFF0) != prid)) // viaccess fixup last digit of provid is a dont care!
 	{
-		rdr_debug_mask(reader, D_EMM, "reader auprovid = %06X matching with emm provid = %06X -> SEND!", reader->auprovid, provid);
+		prid &= 0xFFFFF0;
+		rdr_log_dbg(reader, D_EMM, "reader auprovid = %06X fixup to %06X (ignoring last digit)", reader->auprovid, prid); 
+	}
+	
+	if(prid == provid)
+	{
+		rdr_log_dbg(reader, D_EMM, "reader auprovid = %06X matching with emm provid = %06X -> SEND!", prid, provid);
 		return 1;
 	}
 
 	for(i = 0; i < reader->nprov; i++)
 	{
-		uint32_t prid = b2i(4, reader->prid[i]);
+		prid = b2i(4, reader->prid[i]);
+		
+		if(caid_is_viaccess(caid) && (prid != 0) && ((prid &0xFFFFF0) != prid)) // viaccess fixup last digit of provid is a dont care!
+		{
+			rdr_log_dbg(reader, D_EMM, "reader provid = %06X fixup to %06X (ignoring last digit)", prid, (prid &0xFFFFF0));
+			prid &= 0xFFFFF0;
+		}
 		
 		if(prid == provid)
 		{
-			rdr_debug_mask(reader, D_EMM, "reader provid %06X matching with emm provid %06X -> SEND!", prid, provid);
-			return 1;
-		}
-		if(!reader->auprovid && ((reader->typ == R_CAMD35 || reader->typ == R_CS378X) && (prid & 0xFFFF) == (provid & 0xFFFF)))
-		{
-			rdr_debug_mask(reader, D_EMM, "CS378: Match after fixing reader provid %06X to ??%04X and emm provid %06X to ??%04X -> SEND!", prid, prid&0xFFFF, provid, provid&0xFFFF);
+			rdr_log_dbg(reader, D_EMM, "reader provid %06X matching with emm provid %06X -> SEND!", prid, provid);
 			return 1;
 		}
 		
-		rdr_debug_mask(reader, D_EMM, "reader provid %06X no match with emm provid %06X -> SKIP!", prid, provid);
+		if((reader->typ == R_CAMD35 || reader->typ == R_CS378X) && (prid & 0xFFFF) == (provid & 0xFFFF))
+		{
+			rdr_log_dbg(reader, D_EMM, "CS378: Match after fixing reader provid %06X to ??%04X and emm provid %06X to ??%04X -> SEND!", prid, prid&0xFFFF, provid, provid&0xFFFF);
+			return 1;
+		}
+		
+		rdr_log_dbg(reader, D_EMM, "reader provid %06X no match with emm provid %06X -> SKIP!", prid, provid);
 	}
 	return 0;
 }
@@ -306,9 +314,10 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 	char *typtext[] = {"unknown", "unique", "shared", "global"};
 	char tmp[17];
 	int32_t emmnok = 0;
+	bool lastseendone = false;
 
 	struct s_reader *aureader = NULL;
-	cs_ddump_mask(D_EMM, ep->emm, ep->emmlen, "emm:");
+	cs_log_dump_dbg(D_EMM, ep->emm, ep->emmlen, "emm:");
 
 	int8_t assemble = 0;
 	bool cl_dvbapi = is_dvbapi_usr(client->account->usr);
@@ -323,10 +332,15 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 
 		uint16_t caid = b2i(2, ep->caid);
 		uint32_t provid = b2i(4, ep->provid);
-
+		
+		if(caid_is_viaccess(caid)) // viaccess fixup last digit is a dont care!
+		{
+			 provid &= 0xFFFFF0;
+		}
+		
 		if(aureader->audisabled)
 		{
-			rdr_debug_mask(aureader, D_EMM, "AU is disabled");
+			rdr_log_dbg(aureader, D_EMM, "AU is disabled");
 			/* we have to write the log for blocked EMM here because
 			 this EMM never reach the reader module where the rest
 			 of EMM log is done. */
@@ -342,7 +356,7 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 
 		if(!(aureader->grp & client->grp))
 		{
-			rdr_debug_mask(aureader, D_EMM, "skip emm, group mismatch");
+			rdr_log_dbg(aureader, D_EMM, "skip emm, group mismatch");
 			continue;
 		}
 
@@ -350,65 +364,65 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 		if(!emm_reader_match(aureader, caid, provid))
 			{ continue; }
 
-		struct s_cardsystem *cs = NULL;
+		const struct s_cardsystem *csystem = NULL;
 
 		if(is_network_reader(aureader))    // network reader (R_CAMD35 R_NEWCAMD R_CS378X R_CCCAM)
 		{
 			if(!aureader->ph.c_send_emm)  // no emm support
 				{ continue; }
 
-			cs = get_cardsystem_by_caid(caid);
-			if(!cs)
+			csystem = get_cardsystem_by_caid(caid);
+			if(!csystem)
 			{
-				rdr_debug_mask(aureader, D_EMM, "unable to find cardsystem for caid %04X", caid);
+				rdr_log_dbg(aureader, D_EMM, "unable to find cardsystem for caid %04X", caid);
 				continue;
 			}
 		}
 		else     // local reader
 		{
-			if(aureader->csystem.active)
-				{ cs = &aureader->csystem; }
+			if(aureader->csystem_active)
+				{ csystem = aureader->csystem; }
 		}
 
-		if(cs && cs->get_emm_type)
+		if(csystem && csystem->get_emm_type)
 		{
-			if(!cs->get_emm_type(ep, aureader))
+			if(!csystem->get_emm_type(ep, aureader))
 			{
-				rdr_debug_mask(aureader, D_EMM, "emm skipped, get_emm_type() returns error");
+				rdr_log_dbg(aureader, D_EMM, "emm skipped, get_emm_type() returns error");
 				emmnok++;
 				continue;
 			}
 		}
 
-		if(!ep->skip_filter_check && cs && cs->get_emm_filter)
+		if(!ep->skip_filter_check && csystem && csystem->get_emm_filter)
 		{
-			if(!do_simple_emm_filter(aureader, cs, ep, 1)) // do check with dvbapi fixup enabled
+			if(!do_simple_emm_filter(aureader, csystem, ep, 1)) // do check with dvbapi fixup enabled
 			{
-				if(!do_simple_emm_filter(aureader, cs, ep, 0)) // do check with dvbapi fixup disabled
+				if(!do_simple_emm_filter(aureader, csystem, ep, 0)) // do check with dvbapi fixup disabled
 				{
-					rdr_debug_mask(aureader, D_EMM, "emm skipped, do_simple_emm_filter() returns invalid");
+					rdr_log_dbg(aureader, D_EMM, "emm skipped, do_simple_emm_filter() returns invalid");
 					emmnok++;
 					continue;
 				}
 			}
 		}
 
-		if(cs && cs->do_emm_reassembly)
+		if(csystem && csystem->do_emm_reassembly)
 		{
 			if(assemble)
 			{
-				if(!cs->do_emm_reassembly(client, ep))
+				if(!csystem->do_emm_reassembly(aureader, client, ep))
 					{ continue; } // skip this reader
 			}
 			else
 			{
-				rdr_debug_mask(aureader, D_EMM, "processing raw emm");
+				rdr_log_dbg(aureader, D_EMM, "processing raw emm");
 			}
 		}
 
-		rdr_debug_mask_sensitive(aureader, D_EMM, "emmtype %s. Reader serial {%s}.", typtext[ep->type],
+		rdr_log_dbg_sensitive(aureader, D_EMM, "emmtype %s. Reader serial {%s}.", typtext[ep->type],
 								 cs_hexdump(0, aureader->hexserial, 8, tmp, sizeof(tmp)));
-		rdr_debug_mask_sensitive(aureader, D_EMM, "emm UA/SA: {%s}.",
+		rdr_log_dbg_sensitive(aureader, D_EMM, "emm UA/SA: {%s}.",
 								 cs_hexdump(0, ep->hexserial, 8, tmp, sizeof(tmp)));
 
 		client->last = time(NULL);
@@ -489,40 +503,43 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 			{ client->account->emmok++; }
 		first_client->emmok++;
 
-		//Check emmcache early:
-		int32_t i;
-		unsigned char md5tmp[CS_EMMSTORESIZE];
-
-		MD5(ep->emm, ep->emm[2], md5tmp);
 		ep->client = client;
 
 		int32_t writeemm = 1; // 0= dont write emm, 1=write emm, default = write
 
-		for(i = 0; i < CS_EMMCACHESIZE; i++)  //check emm cache hits
+		if(aureader->cachemm) //Check emmcache early:
 		{
-			if(!memcmp(aureader->emmcache[i].emmd5, md5tmp, CS_EMMSTORESIZE))
+			unsigned char md5tmp[MD5_DIGEST_LENGTH];
+
+			MD5(ep->emm, ep->emm[2], md5tmp);
+		
+			struct s_emmcache *emmcache = find_emm_cache(md5tmp); // check emm cache
+			if(emmcache && !lastseendone)
 			{
-				rdr_debug_mask(aureader, D_EMM, "emm found in cache: count %d rewrite %d",
-							   aureader->emmcache[i].count, aureader->rewritemm);
-				if(aureader->cachemm && (aureader->emmcache[i].count > aureader->rewritemm))
-				{
-					aureader->emmcache[i].count++;
-					reader_log_emm(aureader, ep, i, 2, NULL);
-					writeemm = 0; // dont write emm!
-					saveemm(aureader, ep, "emmcache");
-					break; // found emm match needs no further handling, stop searching and proceed with next reader!
-				}
-				writeemm = 1; // found emm match but rewrite counter not reached: write emm!
-				break;
+				cs_ftime(&emmcache->lastseen);
+				lastseendone = true; // in case several aureaders, only do lastseen once!
+			}
+		
+			struct s_emmstat *emmstat = get_emm_stat(aureader, md5tmp, ep->type);
+			if(emmstat)
+			{
+				rdr_log_dbg(aureader, D_EMM, "emm count %d rewrite %d", emmstat->count, aureader->rewritemm);
+			}
+			if(emmstat->count >= aureader->rewritemm)
+			{
+				reader_log_emm(aureader, ep, emmstat->count, 2, NULL);
+				writeemm = 0; // dont write emm!
+				saveemm(aureader, ep, "emmcache");
+				continue; // found emm match needs no further handling, proceed with next reader!
 			}
 		}
-
+		
 		if(writeemm)   // only write on no cache hit or cache hit that needs further rewrite
 		{
 			EMM_PACKET *emm_pack;
 			if(cs_malloc(&emm_pack, sizeof(EMM_PACKET)))
 			{
-				rdr_debug_mask(aureader, D_EMM, "emm is being sent to reader");
+				rdr_log_dbg(aureader, D_EMM, "emm is being sent to reader");
 				memcpy(emm_pack, ep, sizeof(EMM_PACKET));
 				add_job(aureader->client, ACTION_READER_EMM, emm_pack, sizeof(EMM_PACKET));
 				saveemm(aureader, ep, "written");
@@ -543,62 +560,83 @@ void do_emm(struct s_client *client, EMM_PACKET *ep)
 
 int32_t reader_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 {
-	int32_t i, rc, ecs;
+	int32_t rc, ecs = 0,count = 0;
 	unsigned char md5tmp[MD5_DIGEST_LENGTH];
 	struct timeb tps;
 
 	cs_ftime(&tps);
 
-	MD5(ep->emm, ep->emm[2], md5tmp);
-
-	for(i = ecs = 0; i < CS_EMMCACHESIZE; i++)
+	if(reader->cachemm)
 	{
-		if(!memcmp(reader->emmcache[i].emmd5, md5tmp, CS_EMMSTORESIZE))
+		MD5(ep->emm, ep->emm[2], md5tmp);
+		count = clean_stale_emm_cache_and_stat(md5tmp, (int64_t)1000*60*60*24*30); // clean after 30 days emm is last seen!
+		if(count)
 		{
-			reader->emmcache[i].count++;
-			if(reader->cachemm)
+			cs_log_dbg(D_EMM, "Cleaned %d emm stale stats and cache entries", count);
+		}
+	
+	
+		struct s_emmcache *emmcache = find_emm_cache(md5tmp); // check emm cache
+		if(!emmcache)
+		{
+			emm_edit_cache(md5tmp, ep, true);
+		}
+		
+		struct s_emmstat *emmstat = get_emm_stat(reader, md5tmp, ep->type);
+		if(emmstat)
+		{
+			if(reader->cachemm && emmstat->count >= reader->rewritemm)
 			{
-				if(reader->emmcache[i].count > reader->rewritemm)
+				ecs = 2; //skip emm
+			}
+			else
+			{
+				ecs = 1; //rewrite emm
+				if(!emmstat->count)
 				{
-					ecs = 2; //skip emm
+					cs_ftime(&emmstat->firstwritten);
+					emmstat->lastwritten = emmstat->firstwritten;
 				}
 				else
 				{
-					ecs = 1; //rewrite emm
+					cs_ftime(&emmstat->lastwritten);
 				}
+				count = ++emmstat->count;
 			}
-			break;
+		}
+		else
+		{
+			cs_log("abort: oscam seems out of resources!");
+			return 0;
 		}
 	}
-
+	
 	// Ecs=0 not found in cache
 	// Ecs=1 found in cache, rewrite emm
 	// Ecs=2 skip
 	if((rc = ecs) < 2)
-	{
+	{	
 		if(is_network_reader(reader))
 		{
-			rdr_debug_mask(reader, D_READER, "network emm reader");
+			rdr_log_dbg(reader, D_READER, "network emm reader");
 			if(reader->ph.c_send_emm)
 			{
 				rc = reader->ph.c_send_emm(ep);
 			}
 			else
 			{
-				rdr_debug_mask(reader, D_READER, "send_emm() support missing");
+				rdr_log_dbg(reader, D_READER, "send_emm() support missing");
 				rc = 0;
 			}
 		}
 		else
 		{
-			rdr_debug_mask(reader, D_READER, "local emm reader");
+			rdr_log_dbg(reader, D_READER, "local emm reader");
 			rc = cardreader_do_emm(reader, ep);
 		}
-		if(!ecs)
-			{ i = reader_store_emm(reader, ep->type, md5tmp); }
 	}
 
-	reader_log_emm(reader, ep, i, rc, &tps);
+	reader_log_emm(reader, ep, count, rc, &tps);
 
 	return rc;
 }
@@ -646,10 +684,10 @@ void do_emm_from_file(struct s_reader *reader)
 		{ memcpy(eptmp->provid, reader->prid[0], sizeof(eptmp->provid)); }
 	eptmp->emmlen = eptmp->emm[2] + 3;
 }
-	struct s_cardsystem *cs = get_cardsystem_by_caid(reader->caid);
-	if(cs && cs->get_emm_type && !cs->get_emm_type(eptmp, reader))
+	const struct s_cardsystem *csystem = get_cardsystem_by_caid(reader->caid);
+	if(csystem && csystem->get_emm_type && !csystem->get_emm_type(eptmp, reader))
 	{
-		rdr_debug_mask(reader, D_EMM, "emm skipped, get_emm_type() returns error");
+		rdr_log_dbg(reader, D_EMM, "emm skipped, get_emm_type() returns error");
 		NULLFREE(eptmp);
 		return;
 	}
@@ -691,7 +729,7 @@ void emm_sort_nanos(unsigned char *dest, const unsigned char *src, int32_t len)
 			{
 				if(w + l > len)
 				{
-					cs_debug_mask(D_EMM, "sortnanos: sanity check failed. Exceeding memory area. Probably corrupted nanos!");
+					cs_log_dbg(D_EMM, "sortnanos: sanity check failed. Exceeding memory area. Probably corrupted nanos!");
 					memset(dest, 0, len); // zero out everything
 					return;
 				}

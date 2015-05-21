@@ -1,9 +1,13 @@
+#define MODULE_LOG_PREFIX "client"
+
 #include "globals.h"
 
 #include "cscrypt/md5.h"
 #include "module-anticasc.h"
 #include "module-cccam.h"
 #include "module-webif.h"
+#include "oscam-array.h"
+#include "oscam-conf-chk.h"
 #include "oscam-client.h"
 #include "oscam-ecm.h"
 #include "oscam-failban.h"
@@ -68,7 +72,7 @@ const char *remote_txt(void)
 
 const char *client_get_proto(struct s_client *cl)
 {
-	char *ctyp;
+	const char *ctyp;
 	switch(cl->typ)
 	{
 	case 's':
@@ -262,15 +266,13 @@ struct s_client *create_client(IN_ADDR_T ip)
 		}
 		while(found || cl->tid == 0);
 	}
-	for(last = first_client; last->next != NULL; last = last->next)
+	for(last = first_client; last && last->next; last = last->next)
 		{ ; } //ends with cl on last client
-	last->next = cl;
+	if (last)
+		last->next = cl;
 	int32_t bucket = (uintptr_t)cl / 16 % CS_CLIENT_HASHBUCKETS;
 	cl->nexthashed = first_client_hashed[bucket];
 	first_client_hashed[bucket] = cl;
-#ifdef MODULE_GBOX
-	cl->gbox_peer_id = 0;
-#endif
 	cs_writeunlock(&clientlist_lock);
 	return cl;
 }
@@ -418,15 +420,15 @@ int32_t cs_auth_client(struct s_client *client, struct s_auth *account, const ch
 				client->autoau = account->autoau;
 				client->tosleep = (60 * account->tosleep);
 				client->c35_sleepsend = account->c35_sleepsend;
-				memcpy(&client->ctab, &account->ctab, sizeof(client->ctab));
+				caidtab_clone(&account->ctab, &client->ctab);
 				if(account->uniq)
 					{ cs_fake_client(client, account->usr, account->uniq, client->ip); }
-				client->ftab  = account->ftab;   // IDENT filter
 				client->cltab = account->cltab;  // CLASS filter
-				client->fchid = account->fchid;  // CHID filter
+				ftab_clone(&account->ftab, &client->ftab);   // IDENT filter
+				ftab_clone(&account->fchid, &client->fchid);  // CHID filter
 				client->sidtabs.ok = account->sidtabs.ok;  // services
 				client->sidtabs.no = account->sidtabs.no;  // services
-				memcpy(&client->ttab, &account->ttab, sizeof(client->ttab));
+				tuntab_clone(&account->ttab, &client->ttab);
 				ac_init_client(client, account);
 			}
 		}
@@ -530,18 +532,21 @@ void cs_reinit_clients(struct s_auth *new_accounts)
 					cl->c35_sleepsend = account->c35_sleepsend;
 					cl->monlvl = account->monlvl;
 					cl->disabled    = account->disabled;
-					cl->fchid   = account->fchid;  // CHID filters
 					cl->cltab   = account->cltab;  // Class
 					// newcamd module doesn't like ident reloading
 					if(!cl->ncd_server)
-						{ cl->ftab = account->ftab; }   // Ident
+					{
+						ftab_clone(&account->ftab, &cl->ftab);   // IDENT filter
+						ftab_clone(&account->fchid, &cl->fchid);  // CHID filter
+					}
 
 					cl->sidtabs.ok = account->sidtabs.ok;   // services
 					cl->sidtabs.no = account->sidtabs.no;   // services
 					cl->failban = account->failban;
 
-					memcpy(&cl->ctab, &account->ctab, sizeof(cl->ctab));
-					memcpy(&cl->ttab, &account->ttab, sizeof(cl->ttab));
+					caidtab_clone(&account->ctab, &cl->ctab);
+
+					tuntab_clone(&account->ttab, &cl->ttab);
 
 					webif_client_reset_lastresponsetime(cl);
 					if(account->uniq)
@@ -553,7 +558,7 @@ void cs_reinit_clients(struct s_auth *new_accounts)
 			{
 				if(get_module(cl)->type & MOD_CONN_NET)
 				{
-					cs_debug_mask(D_TRACE, "client '%s', thread=%8lX not found in db (or password changed)", cl->account->usr, (unsigned long)cl->thread);
+					cs_log_dbg(D_TRACE, "client '%s', thread=%8lX not found in db (or password changed)", cl->account->usr, (unsigned long)cl->thread);
 					kill_thread(cl);
 				}
 				else
@@ -610,7 +615,7 @@ void client_check_status(struct s_client *cl)
 		if((rdr->tcp_ito && is_cascading_reader(rdr)) || (rdr->typ == R_CCCAM) || (rdr->typ == R_CAMD35) || (rdr->typ == R_CS378X) || (rdr->typ == R_SCAM) || (rdr->tcp_ito != 0 && rdr->typ == R_RADEGAST))
 		{
 			time_t now = time(NULL);
-			int32_t time_diff = abs(now - rdr->last_check);
+			int32_t time_diff = llabs(now - rdr->last_check);
 			if(time_diff > 60 || (time_diff > 30 && (rdr->typ == R_CCCAM || rdr->typ == R_CAMD35 || rdr->typ == R_CS378X)) || ((time_diff > (rdr->tcp_rto?rdr->tcp_rto:60)) && rdr->typ == R_RADEGAST))     //check 1x per minute or every 30s for cccam/camd35 or reconnecttimeout radegast if 0 defaut 60s
 			{
 				add_job(rdr->client, ACTION_READER_IDLE, NULL, 0);
@@ -676,7 +681,7 @@ void free_client(struct s_client *cl)
 	// Clean reader. The cleaned structures should be only used by the reader thread, so we should be save without waiting
 	if(rdr)
 	{
-		add_garbage(rdr->emmcache);
+		ll_destroy_data(&rdr->emmstat);
 		remove_reader_from_active(rdr);
 
 		cs_sleepms(1000); //just wait a bit that really really nobody is accessing client data
@@ -719,11 +724,16 @@ void free_client(struct s_client *cl)
 		cl->ecmtask = NULL;
 	}
 
-	if(cl->cascadeusers)
-	{
-		ll_destroy_data(cl->cascadeusers);
-		cl->cascadeusers = NULL;
-	}
+	ll_destroy_data(&cl->cascadeusers);
+
+	ftab_clear(&cl->ftab);
+	ftab_clear(&cl->fchid);
+	tuntab_clear(&cl->ttab);
+	caidtab_clear(&cl->ctab);
+
+	NULLFREE(cl->cw_rass);
+	ll_destroy_data(&cl->ra_buf);
+	NULLFREE(cl->aes_keys);
 
 #ifdef MODULE_CCCAM
 	add_garbage(cl->cc);

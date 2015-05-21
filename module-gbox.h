@@ -1,15 +1,25 @@
 #ifndef MODULE_GBOX_H_
 #define MODULE_GBOX_H_
 
+/*
+ * WARNING! Enabling this will make gbox call external programs for OSD with parameters
+ * received from the network. this means that a rogue server that sends you SMS messages
+ * may execute code on your machine. do not enable this unless you know what you are
+ * doing and accept the posssible *BAD* consequences
+*/
+//#define GBOX_ENABLE_UNSAFE_OSD 1
+
 #ifdef MODULE_GBOX
 
 #define NO_GBOX_ID			0
 #define GBOX_MAXHOPS			10
 #define DEFAULT_GBOX_MAX_DIST		2
 #define DEFAULT_GBOX_MAX_ECM_SEND	3
+#define DEFAULT_GBOX_RESHARE		5
 #define DEFAULT_GBOX_RECONNECT		300
 #define CS_GBOX_MAX_LOCAL_CARDS		16
-#define GBOX_REBROADCAST_TIMEOUT        1250
+#define GBOX_REBROADCAST_TIMEOUT	1250
+#define GBOX_MIN_REBROADCAST_TIME	100
 #define GBOX_SID_CONFIRM_TIME		3600
 #define GBOX_DEFAULT_CW_TIME		500
 
@@ -31,6 +41,34 @@
 #define GBOX_ECM_SENT_ALL	2
 #define GBOX_ECM_SENT_ALL_TWICE 3
 #define GBOX_ECM_ANSWERED	4
+
+#define GBOX_CARD_TYPE_GBOX	0
+#define GBOX_CARD_TYPE_LOCAL	1
+#define GBOX_CARD_TYPE_BETUN	2
+#define GBOX_CARD_TYPE_CCCAM	3
+#define GBOX_CARD_TYPE_PROXY	4
+
+#define FILE_GBOX_VERSION       "gbox.ver"
+#define FILE_SHARED_CARDS_INFO  "share.info"
+#define FILE_BACKUP_CARDS_INFO  "expired.info"
+#define FILE_ATTACK_INFO        "attack.txt"
+#define FILE_GBOX_PEER_ONL      "share.onl"
+#define FILE_STATS              "stats.info"
+#define FILE_GOODNIGHT_OSD      "goodnight.osd"
+#define FILE_LOCAL_CARDS_INFO   "sc.info"
+
+#define GBOX_STAT_HELLOL        0
+#define GBOX_STAT_HELLOS        1
+#define GBOX_STAT_HELLOR        2
+#define GBOX_STAT_HELLO3        3
+#define GBOX_STAT_HELLO4        4
+
+#define GBOX_DELETE_FROM_PEER	0
+#define GBOX_DELETE_WITH_ID	1
+#define GBOX_DELETE_WITH_TYPE	2
+
+#define GBOX_PEER_OFFLINE	0
+#define GBOX_PEER_ONLINE	1
 
 struct gbox_rbc_thread_args 
 {
@@ -72,10 +110,7 @@ struct gbox_card_pending
 struct gbox_card
 {
     struct gbox_card_id id;
-    uint16_t caid;
-    uint32_t provid;
-    uint32_t provid_1;
-    uint8_t slot;
+    uint32_t caprovid;
     uint8_t dist;
     uint8_t lvl;
     uint8_t type;
@@ -83,29 +118,29 @@ struct gbox_card
     LLIST *goodsids; //sids that could be decoded (struct gbox_srvid)
     uint32_t no_cws_returned;
     uint32_t average_cw_time;
+    struct gbox_peer *origin_peer;
 };
-
+                    
 struct gbox_data
 {
     uint16_t id;
-    uint32_t  password;
-    uchar checkcode[7];
+    uint32_t password;
     uint8_t minor_version;
     uint8_t cpu_api;
-    LLIST *cards;
 };
 
 struct gbox_peer
 {
     struct gbox_data gbox;
     uchar *hostname;
-    int32_t online;
-    int32_t hello_stat;
+    uchar checkcode[7];
+    int8_t online;
     uint8_t next_hello;
     uchar ecm_idx;
     CS_MUTEX_LOCK lock;
     struct s_client *my_user;
-    LL_ITER last_it;
+    uint16_t filtered_cards;
+    uint16_t total_cards;
 };
 
 struct gbox_ecm_request_ext
@@ -113,16 +148,14 @@ struct gbox_ecm_request_ext
 //    uint32_t        gbox_crc;       // rcrc for gbox, used to identify ECM
 //    uint16_t        gbox_ecm_id;
 //    uint8_t         gbox_ecm_ok;
-    uint8_t         gbox_hops;
-    uint16_t        gbox_peer;
-    uint16_t        gbox_mypeer;
-    uint16_t        gbox_caid;      //could be calculated 0x05 and 0x0D are
-    uint16_t        gbox_prid;      //same as gbox_caid
-    uint8_t         gbox_slot;
-    uint8_t         gbox_version;
-    uint8_t         gbox_unknown;   //byte between version and cpu info of
-    uint8_t         gbox_type;
-    uchar           gbox_routing_info[GBOX_MAXHOPS];  //support max 10 hops
+    uint8_t	gbox_hops;
+    uint16_t	gbox_peer;
+    uint16_t	gbox_mypeer;
+    uint8_t	gbox_slot;
+    uint8_t	gbox_version;
+    uint8_t	gbox_unknown;   //byte between version and cpu info of
+    uint8_t	gbox_type;
+    uchar	gbox_routing_info[GBOX_MAXHOPS];  //support max 10 hops
 };
 
 char *get_gbox_tmp_fname(char *fext);
@@ -130,14 +163,11 @@ uint16_t gbox_get_local_gbox_id(void);
 uint32_t gbox_get_local_gbox_password(void);
 void gbox_send(struct s_client *cli, uchar *buf, int32_t l);
 int8_t gbox_message_header(uchar *buf, uint16_t cmd, uint32_t peer_password, uint32_t local_password);
-static inline void gbox_free_cards_pending(ECM_REQUEST *er)
-{
-    LLIST *l = er->gbox_cards_pending;
-    er->gbox_cards_pending = NULL;
-    ll_destroy_free_data(l);
-}
+void gbox_free_cards_pending(ECM_REQUEST *er);
+void gbox_send_good_night(void);
 #else
 static inline void gbox_free_cards_pending(ECM_REQUEST *UNUSED(er)) { }
+static inline void gbox_send_good_night(void) { }
 #endif
 
 #endif

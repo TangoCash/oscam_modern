@@ -77,8 +77,11 @@ void IO_Serial_Ioctl_Lock(struct s_reader *reader, int32_t flag)
 
 bool IO_Serial_DTR_RTS(struct s_reader *reader, int32_t *dtr, int32_t *rts)
 {
-	if(reader->crdr.set_DTS_RTS)
-		{ return reader->crdr.set_DTS_RTS(reader, dtr, rts); }
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
+	if(crdr_ops->set_DTS_RTS)
+		{ return crdr_ops->set_DTS_RTS(reader, dtr, rts); }
 
 	uint32_t msr;
 	uint32_t mbit;
@@ -99,7 +102,7 @@ bool IO_Serial_DTR_RTS(struct s_reader *reader, int32_t *dtr, int32_t *rts)
 		if(ioctl(reader->handle, TIOCMSET, &msr) < 0)
 			{ return ERROR; }
 #endif
-		rdr_debug_mask(reader, D_DEVICE, "Setting %s=%i", "DTR", *dtr);
+		rdr_log_dbg(reader, D_DEVICE, "Setting %s=%i", "DTR", *dtr);
 	}
 
 	if(rts)
@@ -118,7 +121,7 @@ bool IO_Serial_DTR_RTS(struct s_reader *reader, int32_t *dtr, int32_t *rts)
 		if(ioctl(reader->handle, TIOCMSET, &msr) < 0)
 			{ return ERROR; }
 #endif
-		rdr_debug_mask(reader, D_DEVICE, "Setting %s=%i", "RTS", *rts);
+		rdr_log_dbg(reader, D_DEVICE, "Setting %s=%i", "RTS", *rts);
 	}
 
 	return OK;
@@ -146,7 +149,7 @@ bool IO_Serial_SetBitrate(struct s_reader *reader, uint32_t bitrate, struct term
 		//no overclocking
 		cfsetospeed(tio, IO_Serial_Bitrate(bitrate));
 		cfsetispeed(tio, IO_Serial_Bitrate(bitrate));
-		rdr_debug_mask(reader, D_DEVICE, "standard baudrate: cardmhz=%d mhz=%d -> effective baudrate %u",
+		rdr_log_dbg(reader, D_DEVICE, "standard baudrate: cardmhz=%d mhz=%d -> effective baudrate %u",
 					   reader->cardmhz, reader->mhz, bitrate);
 	}
 #if defined(__linux__)
@@ -164,7 +167,7 @@ bool IO_Serial_SetBitrate(struct s_reader *reader, uint32_t bitrate, struct term
 		int32_t custom_baud_asked = bitrate * reader->mhz / reader->cardmhz;
 		nuts.custom_divisor = (nuts.baud_base + (custom_baud_asked / 2)) / custom_baud_asked;
 		int32_t custom_baud_delivered =  nuts.baud_base / nuts.custom_divisor;
-		rdr_debug_mask(reader, D_DEVICE, "custom baudrate: cardmhz=%d mhz=%d custom_baud=%d baud_base=%d divisor=%d -> effective baudrate %d",
+		rdr_log_dbg(reader, D_DEVICE, "custom baudrate: cardmhz=%d mhz=%d custom_baud=%d baud_base=%d divisor=%d -> effective baudrate %d",
 					   reader->cardmhz, reader->mhz, custom_baud_asked, nuts.baud_base, nuts.custom_divisor, custom_baud_delivered);
 		int32_t baud_diff = custom_baud_delivered - custom_baud_asked;
 		if(baud_diff < 0)
@@ -281,11 +284,11 @@ bool IO_Serial_SetProperties(struct s_reader *reader, struct termios newtio)
 		{ return ERROR; }
 
 	int32_t mctl;
-	rdr_debug_mask(reader, D_DEVICE, "Getting readerstatus...");
+	rdr_log_dbg(reader, D_DEVICE, "Getting readerstatus...");
 	if(ioctl(reader->handle, TIOCMGET, &mctl) >= 0)      // get reader statusbits
 	{
 		mctl &= ~TIOCM_RTS;
-		rdr_debug_mask(reader, D_DEVICE, "Set reader ready to Send");
+		rdr_log_dbg(reader, D_DEVICE, "Set reader ready to Send");
 		ioctl(reader->handle, TIOCMSET, &mctl);   // set reader ready to send.
 	}
 	else { rdr_log(reader, "WARNING: Cant get readerstatus!"); }
@@ -320,7 +323,7 @@ int32_t IO_Serial_SetParity(struct s_reader *reader, unsigned char parity)
 
 	if(current_parity != parity)
 	{
-		rdr_debug_mask(reader, D_IFD, "Setting parity from %s to %s",
+		rdr_log_dbg(reader, D_IFD, "Setting parity from %s to %s",
 					   current_parity == PARITY_ODD ? "Odd" :
 					   current_parity == PARITY_NONE ? "None" :
 					   current_parity == PARITY_EVEN ? "Even" : "Unknown",
@@ -348,7 +351,7 @@ int32_t IO_Serial_SetParity(struct s_reader *reader, unsigned char parity)
 		}
 		if(IO_Serial_SetProperties(reader, tio))
 		{
-			rdr_debug_mask(reader, D_IFD, "ERROR: could set parity!");
+			rdr_log_dbg(reader, D_IFD, "ERROR: could set parity!");
 			return ERROR;
 		}
 	}
@@ -395,10 +398,10 @@ bool IO_Serial_Read(struct s_reader *reader, uint32_t delay, uint32_t timeout, u
 	{
 		if(reader->read_timeout != 0) { timeout = reader->read_timeout; }
 		else { timeout = 9990000; }   // hope 99990000 is long enough!
-		rdr_debug_mask(reader, D_DEVICE, "Warning: read timeout 0 changed to %d us", timeout);
+		rdr_log_dbg(reader, D_DEVICE, "Warning: read timeout 0 changed to %d us", timeout);
 	}
 
-	rdr_debug_mask(reader, D_DEVICE, "Read timeout %d us, read delay %d us, to read %d char(s), chunksize %d char(s)", timeout, delay, size, size);
+	rdr_log_dbg(reader, D_DEVICE, "Read timeout %d us, read delay %d us, to read %d char(s), chunksize %d char(s)", timeout, delay, size, size);
 
 #if defined(WITH_STAPI) || defined(__SH4__) //internal stapi and sh4 readers need special treatment as they don't respond correctly to poll and some sh4 boxes only can read 1 byte at once
 	if(reader->typ == R_INTERNAL)
@@ -436,7 +439,7 @@ bool IO_Serial_Read(struct s_reader *reader, uint32_t delay, uint32_t timeout, u
 		}
 		if(count < size)
 		{
-			rdr_ddump_mask(reader, D_DEVICE, data, count, "Receiving:");
+			rdr_log_dump_dbg(reader, D_DEVICE, data, count, "Receiving:");
 			return ERROR;
 		}
 	}
@@ -449,7 +452,7 @@ bool IO_Serial_Read(struct s_reader *reader, uint32_t delay, uint32_t timeout, u
 AGAIN:
 			if(IO_Serial_WaitToRead(reader, delay, timeout))
 			{
-				rdr_debug_mask(reader, D_DEVICE, "Timeout in IO_Serial_WaitToRead, timeout=%d us", timeout);
+				rdr_log_dbg(reader, D_DEVICE, "Timeout in IO_Serial_WaitToRead, timeout=%d us", timeout);
 				return ERROR;
 			}
 
@@ -467,14 +470,14 @@ AGAIN:
 
 			if(readed == 0)
 			{
-				rdr_ddump_mask(reader, D_DEVICE, data, count, "Receiving:");
-				rdr_debug_mask(reader, D_DEVICE, "Received End of transmission");
+				rdr_log_dump_dbg(reader, D_DEVICE, data, count, "Receiving:");
+				rdr_log_dbg(reader, D_DEVICE, "Received End of transmission");
 				return ERROR;
 			}
 			count += readed;
 		}
 	}
-	rdr_ddump_mask(reader, D_DEVICE, data, count, "Receiving:");
+	rdr_log_dump_dbg(reader, D_DEVICE, data, count, "Receiving:");
 	return OK;
 }
 
@@ -485,17 +488,20 @@ int32_t IO_Serial_Receive(struct s_reader *reader, unsigned char *buffer, uint32
 
 bool IO_Serial_Write(struct s_reader *reader, uint32_t delay, uint32_t timeout, uint32_t size, const unsigned char *data)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	if(timeout == 0)   // General fix for readers not communicating timeout and delay
 	{
 		if(reader->char_delay != 0) { timeout = reader->char_delay; }
 		else { timeout = 1000000; }
-		rdr_debug_mask(reader, D_DEVICE, "Warning: write timeout 0 changed to %d us", timeout);
+		rdr_log_dbg(reader, D_DEVICE, "Warning: write timeout 0 changed to %d us", timeout);
 	}
 	uint32_t count, to_send, i_w;
 	unsigned char data_w[512];
 
 	to_send = (delay ? 1 : size); // calculate chars to send at one
-	rdr_debug_mask(reader, D_DEVICE, "Write timeout %d us, write delay %d us, to send %d char(s), chunksize %d char(s)", timeout, delay, size, to_send);
+	rdr_log_dbg(reader, D_DEVICE, "Write timeout %d us, write delay %d us, to send %d char(s), chunksize %d char(s)", timeout, delay, size, to_send);
 
 	for(count = 0; count < size; count += to_send)
 	{
@@ -506,7 +512,7 @@ bool IO_Serial_Write(struct s_reader *reader, uint32_t delay, uint32_t timeout, 
 		uint16_t errorcount = 0, to_do = to_send;
 		for(i_w = 0; i_w < to_send; i_w++)
 			{ data_w [i_w] = data [count + i_w]; }
-		rdr_ddump_mask(reader, D_DEVICE, data_w + (to_send - to_do), to_do, "Sending:");
+		rdr_log_dump_dbg(reader, D_DEVICE, data_w + (to_send - to_do), to_do, "Sending:");
 AGAIN:
 		if(!IO_Serial_WaitToWrite(reader, delay, timeout))
 		{
@@ -533,7 +539,7 @@ AGAIN:
 				{
 					to_do -= u;
 					errorcount = 0;
-					if(reader->crdr.read_written)
+					if(crdr_ops->read_written)
 						{ reader->written += u; } // these readers echo transmitted chars
 				}
 			}
@@ -541,28 +547,28 @@ AGAIN:
 		else
 		{
 			rdr_log(reader, "Timeout in IO_Serial_WaitToWrite, delay=%d us, timeout=%d us", delay, timeout);
-			if(reader->crdr.read_written && reader->written > 0)    // these readers need to read all transmitted chars before they can receive!
+			if(crdr_ops->read_written && reader->written > 0)    // these readers need to read all transmitted chars before they can receive!
 			{
 				unsigned char buf[256];
-				rdr_debug_mask(reader, D_DEVICE, "Reading %d echoed transmitted chars...", reader->written);
+				rdr_log_dbg(reader, D_DEVICE, "Reading %d echoed transmitted chars...", reader->written);
 				int32_t n = reader->written;
 				if(IO_Serial_Read(reader, 0, 9990000, n, buf))   // use 9990000 = aprox 10 seconds (since written chars could be hughe!)
 					{ return ERROR; }
 				reader->written = 0;
-				rdr_debug_mask(reader, D_DEVICE, "Reading of echoed transmitted chars done!");
+				rdr_log_dbg(reader, D_DEVICE, "Reading of echoed transmitted chars done!");
 			}
 			return ERROR;
 		}
 	}
-	if(reader->crdr.read_written && reader->written > 0)    // these readers need to read all transmitted chars before they can receive!
+	if(crdr_ops->read_written && reader->written > 0)    // these readers need to read all transmitted chars before they can receive!
 	{
 		unsigned char buf[256];
-		rdr_debug_mask(reader, D_DEVICE, "Reading %d echoed transmitted chars...", reader->written);
+		rdr_log_dbg(reader, D_DEVICE, "Reading %d echoed transmitted chars...", reader->written);
 		int32_t n = reader->written;
 		if(IO_Serial_Read(reader, 0, 9990000, n, buf))   // use 9990000 = aprox 10 seconds (since written chars could be hughe!)
 			{ return ERROR; }
 		reader->written = 0;
-		rdr_debug_mask(reader, D_DEVICE, "Reading of echoed transmitted chars done!");
+		rdr_log_dbg(reader, D_DEVICE, "Reading of echoed transmitted chars done!");
 	}
 	return OK;
 }
@@ -584,7 +590,7 @@ int32_t IO_Serial_Transmit(struct s_reader *reader, unsigned char *buffer, uint3
 int32_t IO_Serial_Close(struct s_reader *reader)
 {
 
-	rdr_debug_mask(reader, D_DEVICE, "Closing serial port %s", reader->device);
+	rdr_log_dbg(reader, D_DEVICE, "Closing serial port %s", reader->device);
 	cs_sleepms(100); // maybe a dirty fix for the restart problem posted by wonderdoc
 	if(reader->fdmc >= 0) { close(reader->fdmc); }
 	if(reader->handle >= 0 && close(reader->handle) != 0)
@@ -827,7 +833,7 @@ int32_t IO_Serial_GetStatus(struct s_reader *reader, int32_t *status)
 
 int32_t IO_Serial_SetBaudrate(struct s_reader *reader, uint32_t baudrate)
 {
-	rdr_debug_mask(reader, D_IFD, "Setting baudrate to %u", baudrate);
+	rdr_log_dbg(reader, D_IFD, "Setting baudrate to %u", baudrate);
 	// Get current settings
 	struct termios tio;
 	call(tcgetattr(reader->handle, &tio) != 0);

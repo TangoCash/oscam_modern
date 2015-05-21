@@ -38,17 +38,18 @@
 #define BOXTYPE_PC_NODMX    12
 #define BOXTYPES        12
 #define DMXMD5HASHSIZE  16  // use MD5() 
-#define REMOVED_STREAMPID_LASTINDEX 2
 #define REMOVED_STREAMPID_INDEX 1
+#define REMOVED_STREAMPID_LASTINDEX 2
+#define REMOVED_DECODING_STREAMPID_INDEX 3
 #define NO_STREAMPID_LISTED 0
 #define FOUND_STREAMPID_INDEX 0
 #define ADDED_STREAMPID_INDEX 1
-#define CA_IS_IN_USE 1
-#define CA_IS_CLEAR 0
+#define FIRST_STREAMPID_INDEX 2
+#define CA_IS_CLEAR -1
 #define DUMMY_FD    0xFFFF
 
 //constants used int socket communication:
-#define DVBAPI_PROTOCOL_VERSION         1
+#define DVBAPI_PROTOCOL_VERSION         2
 
 #define DVBAPI_CA_SET_PID      0x40086f87
 #define DVBAPI_CA_SET_DESCR    0x40106f86
@@ -61,6 +62,9 @@
 #define DVBAPI_FILTER_DATA     0xFFFF0000
 #define DVBAPI_CLIENT_INFO     0xFFFF0001
 #define DVBAPI_SERVER_INFO     0xFFFF0002
+#define DVBAPI_ECM_INFO        0xFFFF0003
+
+#define DVBAPI_MAX_PACKET_SIZE 262         //maximum possible packet size
 
 struct box_devices
 {
@@ -122,7 +126,7 @@ typedef struct demux_s
 {
 	int8_t demux_index;
 	FILTERTYPE demux_fd[MAX_FILTER];
-	int32_t ca_mask;
+	uint32_t ca_mask;
 	int8_t adapter_index;
 	int32_t socket_fd;
 	int8_t ECMpidcount;
@@ -148,6 +152,7 @@ typedef struct demux_s
 	char pmt_file[30];
 	time_t pmt_time;
 	uint8_t stopdescramble;
+	uint8_t running;
 	uint8_t old_ecmfiltercount; // previous ecm filtercount
 	uint8_t old_emmfiltercount; // previous emm filtercount
 	pthread_mutex_t answerlock; // requestmode 1 avoid race	
@@ -156,6 +161,8 @@ typedef struct demux_s
 	int32_t desc_pidcount;
 	uint32_t slot_assc[PTINUM][SLOTNUM];
 #endif
+	int8_t decodingtries; // -1 = first run
+	struct timeb decstart,decend;
 } DEMUXTYPE;
 
 typedef struct s_streampid
@@ -163,6 +170,7 @@ typedef struct s_streampid
 	uint8_t		cadevice; // holds ca device
 	uint16_t 	streampid; // holds pids
 	uint32_t	activeindexers; // bitmask indexers if streampid enabled for index bit is set
+	uint32_t	caindex; // holds index that is used to decode on ca device
 }STREAMPIDTYPE;
 
 struct s_dvbapi_priority
@@ -260,6 +268,7 @@ typedef struct ca_pid
 // --------------------------------------------------------------------
 
 void dvbapi_stop_descrambling(int);
+void dvbapi_stop_all_descrambling(void);
 void dvbapi_process_input(int32_t demux_id, int32_t filter_num, uchar *buffer, int32_t len);
 int32_t dvbapi_open_device(int32_t, int32_t, int);
 int32_t dvbapi_stop_filternum(int32_t demux_index, int32_t num);
@@ -271,7 +280,7 @@ int32_t dvbapi_parse_capmt(unsigned char *buffer, uint32_t length, int32_t connf
 void request_cw(struct s_client *client, ECM_REQUEST *er, int32_t demux_id, uint8_t delayed_ecm_check);
 void dvbapi_try_next_caid(int32_t demux_id, int8_t checked);
 void dvbapi_read_priority(void);
-int32_t dvbapi_set_section_filter(int32_t demux_index, ECM_REQUEST *er);
+int32_t dvbapi_set_section_filter(int32_t demux_index, ECM_REQUEST *er, int32_t n);
 int32_t dvbapi_activate_section_filter(int32_t demux_index, int32_t num, int32_t fd, int32_t pid, uchar *filter, uchar *mask);
 int32_t dvbapi_check_ecm_delayed_delivery(int32_t demux_index, ECM_REQUEST *er);
 int32_t dvbapi_get_filternum(int32_t demux_index, ECM_REQUEST *er, int32_t type);
@@ -280,21 +289,13 @@ void dvbapi_set_pid(int32_t demux_id, int32_t num, int32_t idx, bool enable);
 int8_t update_streampid_list(uint8_t cadevice, uint16_t pid, int32_t idx);
 int8_t remove_streampid_from_list(uint8_t cadevice, uint16_t pid, int32_t idx);
 void disable_unused_streampids(int16_t demux_id);
-int8_t is_ca_used(uint8_t cadevice);
+int8_t is_ca_used(uint8_t cadevice, int32_t pid);
 const char *dvbapi_get_client_name(void);
+void rotate_emmfilter(int32_t demux_id);
 uint16_t dvbapi_get_client_proto_version(void);
 void delayer(ECM_REQUEST *er);
 void check_add_emmpid(int32_t demux_index, uchar *filter, int32_t l, int32_t emmtype);
 void *dvbapi_start_handler(struct s_client *cl, uchar *mbuf, int32_t module_idx, void * (*_main_func)(void *));
-
-#ifdef DVBAPI_LOG_PREFIX
-#undef cs_log
-#define cs_log(txt, x...)   cs_log_int(0, 1, NULL, 0, "dvbapi: "txt, ##x)
-#ifdef WITH_DEBUG
-#undef cs_debug_mask
-#define cs_debug_mask(x,txt,y...)   cs_log_int(x, 1, NULL, 0, "dvbapi: "txt, ##y)
-#endif
-#endif
 
 #if defined(WITH_AZBOX) || defined(WITH_MCA)
 #define USE_OPENXCAS 1
@@ -313,9 +314,12 @@ static inline void openxcas_set_provid(uint32_t UNUSED(_provid)) { }
 #endif
 
 bool is_dvbapi_usr(char *usr);
+static inline bool module_dvbapi_enabled(void) { return cfg.dvbapi_enabled; }
 #else
+static inline void dvbapi_stop_all_descrambling(void) { }
 static inline void dvbapi_read_priority(void) { }
 static inline bool is_dvbapi_usr(char *UNUSED(usr)) { return 0; }
+static inline bool module_dvbapi_enabled(void) { return 0; }
 #endif // WITH_DVBAPI
 
 #endif // MODULE_DVBAPI_H_

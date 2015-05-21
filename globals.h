@@ -27,6 +27,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
+#include <strings.h>
 #include <signal.h>
 #include <errno.h>
 #include <pthread.h>
@@ -94,6 +95,14 @@
 
 #ifdef __uClinux__
 #define fork() 0
+#endif
+
+// Prevent warnings about openssl functions. Apple may consider 'openssl'
+// deprecated but changing perfectly working portable code just because they
+// introduced some proprietary API is not going to happen.
+#if defined(__APPLE__)
+#define __AVAILABILITY_MACROS_USES_AVAILABILITY 0
+#define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_6
 #endif
 
 #include "cscrypt/aes.h"
@@ -206,7 +215,7 @@ typedef unsigned char uchar;
 #ifdef WITH_DEBUG
 # define call(arg) \
     if (arg) { \
-        cs_debug_mask(D_TRACE, "ERROR, function call %s returns error.",#arg); \
+        cs_log_dbg(D_TRACE, "ERROR, function call %s returns error.",#arg); \
         return ERROR; \
     }
 #else
@@ -224,7 +233,7 @@ typedef unsigned char uchar;
  * =========================== */
 #define CS_VERSION    "1.20-modern_svn"
 #ifndef CS_SVN_VERSION
-#   define CS_SVN_VERSION "test"
+#   define CS_SVN_VERSION "tested"
 #endif
 #ifndef CS_TARGET
 #   define CS_TARGET "unknown"
@@ -237,11 +246,8 @@ typedef unsigned char uchar;
 #endif
 #define CS_QLEN       128 // size of request queue
 #define CS_MAXCAIDTAB 32  // max. caid-defs/user
-#define CS_MAXTUNTAB  100  // max. betatunnel mappings
 #define CS_MAXPROV    32
 #define CS_MAXPORTS   32  // max server ports
-#define CS_MAXFILTERS   16
-#define CS_MAX_CAIDVALUETAB 16
 #define CS_CLIENT_HASHBUCKETS 32
 
 #define CS_ECMSTORESIZE   16  // use MD5()
@@ -308,6 +314,7 @@ typedef unsigned char uchar;
 
 #define is_network_reader(__X) (__X->typ & R_IS_NETWORK)
 #define is_cascading_reader(__X) (__X->typ & R_IS_CASCADING)
+#define is_smargo_reader(__X) (__X->crdr && strcmp(__X->crdr->desc, "smargo") == 0)
 
 //ECM rc codes:
 #define E_FOUND         0
@@ -338,9 +345,6 @@ typedef unsigned char uchar;
 #define MOD_CONN_SERIAL 4
 #define MOD_NO_CONN 8
 
-#define MOD_CARDSYSTEM  16
-#define MOD_ADDON       32
-
 #define EMM_UNIQUE 1
 #define EMM_SHARED 2
 #define EMM_GLOBAL 4
@@ -365,16 +369,6 @@ typedef unsigned char uchar;
 #define UNIQUE  1
 #define SHARED  2
 #define GLOBAL  3
-
-#define PIP_ID_ECM    0
-#define PIP_ID_EMM    1
-#define PIP_ID_CIN    2  // CARD_INFO
-#define PIP_ID_UDP    3
-#define PIP_ID_MAX    PIP_ID_UDP
-#define PIP_ID_ERR    (-1)
-#define PIP_ID_NUL    (-2)
-
-#define cdiff *c_start
 
 #define NCD_AUTO    0
 #define NCD_524     1
@@ -530,11 +524,16 @@ typedef struct cs_mutexlock
 
 #include "oscam-llist.h"
 
+typedef struct s_caidvaluetab_data
+{
+	uint16_t			caid;
+	uint16_t			value;
+} CAIDVALUETAB_DATA;
+
 typedef struct s_caidvaluetab
 {
-	uint16_t        n;
-	uint16_t        caid[CS_MAX_CAIDVALUETAB];
-	uint16_t        value[CS_MAX_CAIDVALUETAB];
+	int32_t				cvnum;
+	CAIDVALUETAB_DATA	*cvdata;
 } CAIDVALUETAB;
 
 typedef struct s_classtab
@@ -545,19 +544,30 @@ typedef struct s_classtab
 	uchar           bclass[31];
 } CLASSTAB;
 
+typedef struct s_caidtab_data
+{
+	uint16_t		caid;
+	uint16_t		mask;
+	uint16_t		cmap;
+} CAIDTAB_DATA;
+
 typedef struct s_caidtab
 {
-	uint16_t        caid[CS_MAXCAIDTAB];
-	uint16_t        mask[CS_MAXCAIDTAB];
-	uint16_t        cmap[CS_MAXCAIDTAB];
+	int32_t			ctnum;
+	CAIDTAB_DATA	*ctdata;
 } CAIDTAB;
+
+typedef struct s_tuntab_data
+{
+	uint16_t        bt_caidfrom;
+	uint16_t        bt_caidto;
+	uint16_t        bt_srvid;
+} TUNTAB_DATA;
 
 typedef struct s_tuntab
 {
-	uint16_t        n;
-	uint16_t        bt_caidfrom[CS_MAXTUNTAB];
-	uint16_t        bt_caidto[CS_MAXTUNTAB];
-	uint16_t        bt_srvid[CS_MAXTUNTAB];
+	int32_t         ttnum;
+	TUNTAB_DATA     *ttdata;
 } TUNTAB;
 
 typedef struct s_sidtab
@@ -582,14 +592,20 @@ typedef struct s_filter
 typedef struct s_ftab
 {
 	int32_t         nfilts;
-	FILTER          filts[CS_MAXFILTERS];
+	FILTER          *filts;
 } FTAB;
+
+typedef struct s_ncd_ftab
+{
+	int32_t         nfilts;
+	FILTER          filts[16];
+} NCD_FTAB;
 
 struct ncd_port
 {
 	bool            ncd_key_is_set;
 	uint8_t         ncd_key[14];
-	FTAB            ncd_ftab;
+	NCD_FTAB        ncd_ftab;
 };
 
 typedef struct s_port
@@ -632,11 +648,23 @@ struct s_ecm
 	time_t          time;
 };
 
-struct s_emm
+struct s_emmstat
 {
 	uchar           emmd5[CS_EMMSTORESIZE];
 	uchar           type;
 	int32_t         count;
+	struct timeb    firstwritten;
+	struct timeb    lastwritten;
+};
+
+struct s_emmcache
+{
+	uchar			emmd5[CS_EMMSTORESIZE];
+	uchar			type;
+	uchar			len;
+	uchar			emm[258];
+	struct timeb    firstseen;
+	struct timeb    lastseen;
 };
 
 struct s_csystem_emm_filter
@@ -688,11 +716,10 @@ struct demux_s ;
 
 struct s_module
 {
-	int8_t          active;
+	const char      *desc;
 	int8_t          type;
 	int8_t          large_ecm_support;
 	int16_t         listenertype;
-	char            *desc;
 	//int32_t       s_port;
 	IN_ADDR_T       s_ip;
 	uint16_t        bufsize;
@@ -726,9 +753,24 @@ struct s_module
 
 struct s_ATR ;
 
+struct s_cardreader_settings
+{
+	uint32_t ETU;
+	uint32_t EGT;
+	unsigned char P;
+	uint32_t I;
+	uint32_t F;
+	uint32_t Fi;
+	unsigned char Di;
+	unsigned char Ni;
+	uint32_t WWT;
+	uint32_t BGT;
+	uint8_t D;
+};
+
 struct s_cardreader
 {
-	char            *desc;
+	const char      *desc;
 	int32_t (*reader_init)(struct s_reader *);
 	int32_t (*get_status)(struct s_reader *, int *);
 	int32_t (*activate)(struct s_reader *, struct s_ATR *);
@@ -739,19 +781,7 @@ struct s_cardreader
 	void (*unlock)(struct s_reader *);
 	int32_t (*close)(struct s_reader *);
 	int32_t (*set_parity)(struct s_reader *, uchar parity);
-	// FIXME: All parameters passed to write_settingsX should be put in a struct
-	int32_t (*write_settings)(struct s_reader *,
-							  uint32_t ETU,
-							  uint32_t EGT,
-							  unsigned char P,
-							  unsigned char I,
-							  uint16_t Fi,
-							  unsigned char Di,
-							  unsigned char Ni);
-	// FIXME: write_settings2 is used by coolstream reader
-	int32_t (*write_settings2)(struct s_reader *, uint16_t F, uint8_t D, uint32_t WWT, uint32_t EGT, uint32_t BGT);
-	// FIXME: write_settings3 is used by sci reader
-	int32_t (*write_settings3)(struct s_reader *, uint32_t ETU, uint32_t F, uint32_t WWT, uint32_t CWT, uint32_t BWT, uint32_t EGT, uint32_t I);
+	int32_t (*write_settings)(struct s_reader *, struct s_cardreader_settings *s);
 	int32_t (*set_protocol)(struct s_reader *,
 							unsigned char *params,
 							uint32_t *length,
@@ -785,18 +815,19 @@ struct s_cardreader
 
 struct s_cardsystem
 {
-	int8_t          active;
-	char            *desc;
+	const char      *desc;
+	const uint16_t  *caids;
 	int32_t (*card_init)(struct s_reader *reader, struct s_ATR *);
+	void    (*card_done)(struct s_reader *reader);
 	int32_t (*card_info)(struct s_reader *);
+	void	(*poll_status)(struct s_reader *);
 	int32_t (*do_ecm)(struct s_reader *, const struct ecm_request_t *, struct s_ecm_answer *);
-	int32_t (*do_emm_reassembly)(struct s_client *, struct emm_packet_t *);     // Returns 1/true if the EMM is ready to be written in the card
+	int32_t (*do_emm_reassembly)(struct s_reader *, struct s_client *, struct emm_packet_t *);     // Returns 1/true if the EMM is ready to be written in the card
 	int32_t (*do_emm)(struct s_reader *, struct emm_packet_t *);
 	void (*post_process)(struct s_reader *);
 	int32_t (*get_emm_type)(struct emm_packet_t *, struct s_reader *);
 	int32_t (*get_emm_filter)(struct s_reader *, struct s_csystem_emm_filter **, unsigned int *);
 	int32_t (*get_tunemm_filter)(struct s_reader *, struct s_csystem_emm_filter **, unsigned int *);
-	uint16_t        caids[9];
 };
 
 #define MAX_ECM_SIZE 512
@@ -857,8 +888,8 @@ typedef struct ecm_request_t
 	void            *src_data;
 	int32_t         csp_hash; 					// csp has its own hash
 
-#ifdef CS_CACHEEX
 	struct s_client *cacheex_src;               // Cacheex origin
+#ifdef CS_CACHEEX
 	int8_t          cacheex_pushed;             // to avoid duplicate pushs
 	uint8_t         csp_answered;               // =1 if er get answer by csp
 	LLIST           *csp_lastnodes;             // last 10 Cacheex nodes atm cc-proto-only
@@ -949,6 +980,14 @@ struct s_zap_list
 	time_t		lasttime;
 };
 
+// EMM reassemply
+struct emm_rass
+{
+	int16_t         emmlen;
+	int32_t			provid;
+	uint8_t         emm[512];
+};
+
 struct s_client
 {
 	uint32_t        tid;
@@ -977,14 +1016,8 @@ struct s_client
 	int8_t          dup;
 	LLIST           *aureader_list;
 	int8_t          autoau;
-#ifdef READER_VIACCESS
-	int16_t         via_rass_emmlen;
-	uint8_t         via_rass_emm[512];
-#endif
-#ifdef READER_CRYPTOWORKS
-	int16_t         cw_rass_emmlen;
-	uint8_t         cw_rass_emm[512];
-#endif
+	LLIST           *ra_buf;         // EMM reassembly buffer for viaccess
+	struct emm_rass *cw_rass;          // EMM reassembly buffer for cryptoworks
 	int8_t          monlvl;
 	CAIDTAB         ctab;
 	TUNTAB          ttab;
@@ -1042,7 +1075,7 @@ struct s_client
 
 	uchar           ucrc[4];            // needed by monitor and used by camd35
 	uint32_t        pcrc;               // password crc
-	struct aes_keys aes_keys;
+	struct aes_keys *aes_keys;          // used by camd33 and camd35
 	uint16_t        ncd_msgid;
 	uint16_t        ncd_client_id;
 	uchar           ncd_skey[16];       //Also used for camd35 Cacheex to store remote node id
@@ -1127,34 +1160,32 @@ struct s_client
 	struct s_client *nexthashed;
 };
 
-struct s_ecmWhitelist
+typedef struct s_ecm_whitelist_data
 {
-	uint16_t                    caid;
-	struct s_ecmWhitelistIdent  *idents;
-	struct s_ecmWhitelist       *next;
-};
+	uint16_t		len;
+	uint16_t		caid;
+	uint32_t		ident;
+} ECM_WHITELIST_DATA;
 
-struct s_ecmWhitelistIdent
+typedef struct s_ecm_whitelist
 {
-	uint32_t                    ident;
-	struct s_ecmWhitelistLen    *lengths;
-	struct s_ecmWhitelistIdent  *next;
-};
+	int32_t				ewnum;
+	ECM_WHITELIST_DATA	*ewdata;
+} ECM_WHITELIST;
 
-struct s_ecmWhitelistLen
+typedef struct s_ecm_hdr_whitelist_data
 {
-	int16_t                     len;
-	struct s_ecmWhitelistLen    *next;
-};
+	uint16_t		len;
+	uint16_t		caid;
+	uint32_t		provid;
+	uint8_t			header[20];
+} ECM_HDR_WHITELIST_DATA;
 
-struct s_ecmHeaderwhitelist
+typedef struct s_ecm_hdr_whitelist
 {
-	uint16_t                caid;
-	uint32_t                provid;
-	uchar                   header[20];
-	int16_t                 len;
-	struct s_ecmHeaderwhitelist     *next;
-};
+	int32_t						ehnum;
+	ECM_HDR_WHITELIST_DATA		*ehdata;
+} ECM_HDR_WHITELIST;
 
 //ratelimit
 struct ecmrl
@@ -1172,7 +1203,6 @@ struct ecmrl
 };
 #define MAXECMRATELIMIT 20
 
-#ifdef CS_CACHEEX
 typedef struct ce_csp_tab
 {
 	uint16_t    n;
@@ -1211,7 +1241,6 @@ typedef struct ce_csp_t
 	uint8_t         drop_csp;
 	uint8_t         allow_filter;
 } CECSP;
-#endif
 
 struct s_emmlen_range
 {
@@ -1241,9 +1270,6 @@ struct s_reader                                     //contains device info, read
 	int8_t          fallback;
 	FTAB            fallback_percaid;
 	FTAB            localcards;
-#ifdef MODULE_CAMD35
-	int8_t			via_emm_global;					// to enable global emm viaccess on camd35
-#endif
 #ifdef CS_CACHEEX
 	CECSP           cacheex; //CacheEx Settings
 #endif
@@ -1255,6 +1281,7 @@ struct s_reader                                     //contains device info, read
 	char            device[128];
 	uint16_t        slot;                           // in case of multiple slots like sc8in1; first slot = 1
 	int32_t         handle;                         // device handle
+	int64_t         handle_nr;                      // device handle_nr for mutiple readers same driver
 	int32_t         fdmc;                           // device handle for multicam
 	int32_t         detect;
 	int32_t         mhz;                            // actual clock rate of reader in 10khz steps
@@ -1281,6 +1308,8 @@ struct s_reader                                     //contains device info, read
 	int32_t         nprov;
 	uchar           prid[CS_MAXPROV][8];
 	uchar           sa[CS_MAXPROV][4];              // viaccess & seca
+	uint8_t			read_old_classes;               // viaccess
+	uint8_t			maturity;						// viaccess & seca maturity level
 	uint16_t        caid;
 	uint16_t        b_nano;
 	uint16_t        s_nano;
@@ -1294,13 +1323,16 @@ struct s_reader                                     //contains device info, read
 	int8_t          logemm;
 	int8_t          cachemm;
 	int16_t         rewritemm;
+	int16_t			deviceemm;						// catch device specific emms (so far only used for viaccess)
 	int8_t          card_status;
 	int8_t          deprecated;                     //if 0 ATR obeyed, if 1 default speed (9600) is chosen; for devices that cannot switch baudrate
 	struct s_module ph;
-	struct s_cardreader crdr;
+	const struct s_cardreader *crdr;
 	void            *crdr_data; // Private card reader data
-	struct s_cardsystem csystem;
+	bool            crdr_flush; // sci readers may disable flush per reader
+	const struct s_cardsystem *csystem;
 	void            *csystem_data; // Private card system data
+	bool            csystem_active;
 	uint8_t         ncd_key[14];
 	uchar           ncd_skey[16];
 	int8_t          ncd_connect_on_init;
@@ -1330,11 +1362,12 @@ struct s_reader                                     //contains device info, read
 	time_t          last_g;                         // get (if last_s-last_g>tcp_rto - reconnect )
 	time_t          last_s;                         // send
 	time_t          last_check;                     // last checked
+	time_t			last_poll;						// last poll
 	FTAB            fchid;
 	FTAB            ftab;
 	CLASSTAB        cltab;
-	struct s_ecmWhitelist *ecmWhitelist;
-	struct s_ecmHeaderwhitelist *ecmHeaderwhitelist;            // ECM Header Whitelist
+	ECM_WHITELIST   ecm_whitelist;
+	ECM_HDR_WHITELIST   ecm_hdr_whitelist;
 	int32_t         brk_pos;
 	int32_t         msg_idx;
 	int32_t         secatype;                       // 0=not determined, 2=seca2, 3=nagra(~seca3) this is only valid for localreaders!
@@ -1379,6 +1412,7 @@ struct s_reader                                     //contains device info, read
 #endif
 	unsigned char   rom[15];
 	unsigned char   irdId[4];
+	unsigned char	payload4C[15];
 	uint16_t		VgCredit;
 	uint16_t        VgPin;
 	unsigned char   VgFuse;
@@ -1418,16 +1452,18 @@ struct s_reader                                     //contains device info, read
 	struct ecmrl    rlecmh[MAXECMRATELIMIT];
 	int8_t          fix_07;
 	int8_t          fix_9993;
+	int8_t			readtiers;							// method to get videoguard tiers
 	uint8_t         ins7E[0x1A + 1];
 	uint8_t         ins7E11[0x01 + 1];
 	uint8_t         ins2e06[0x04 + 1];
 	int8_t          ins7e11_fast_reset;
 	uint8_t         sc8in1_dtrrts_patch; // fix for kernel commit 6a1a82df91fa0eb1cc76069a9efe5714d087eccd
 #ifdef MODULE_GBOX
-	int8_t          gbox_maxdist;
-	int8_t          gbox_maxecmsend;
-	int8_t          gbox_reshare;
-	char            last_gsms[128];	
+	uint8_t		gbox_maxdist;
+	uint8_t		gbox_maxecmsend;
+	uint8_t		gbox_reshare;
+	uint8_t		gbox_cccam_reshare;
+	char		last_gsms[128];
 #endif
 
 #ifdef MODULE_PANDORA
@@ -1437,8 +1473,8 @@ struct s_reader                                     //contains device info, read
 	uint8_t         ghttp_use_ssl;
 #endif
 	uint8_t cnxlastecm; // == 0 - las ecm has not been paired ecm, > 0 last ecm has been paired ecm
-	int16_t          rotate;
-	struct s_emm    *emmcache;
+	LLIST           *emmstat; //emm stats
+	CS_MUTEX_LOCK   emmstat_lock;
 	struct s_reader *next;
 };
 
@@ -1673,7 +1709,7 @@ struct s_config
 	char            *http_user;
 	char            *http_pwd;
 	char            *http_css;
-	int32_t         http_prepend_embedded_css;
+	int8_t          http_prepend_embedded_css;
 	char            *http_jscript;
 	char            *http_tpl;
 	char            *http_piconpath;
@@ -1703,6 +1739,9 @@ struct s_config
 	char            *http_help_lang;
 	char            *http_locale;
 	char            *http_oscam_label;
+	int32_t         http_emmu_clean;
+	int32_t         http_emms_clean;
+	int32_t         http_emmg_clean;
 #endif
 	int8_t          http_full_cfg;
 	int8_t          http_overwrite_bak_file;
@@ -1767,7 +1806,6 @@ struct s_config
 	char		gbox_my_cpu_api[3];
 	uint8_t		gsms_dis;
 	char            *gbox_tmp_dir;      
-	uint8_t		ccc_reshare;	
 #endif
 #ifdef MODULE_SERIAL
 	char            *ser_device;
@@ -2007,5 +2045,20 @@ char *get_servicename_or_null(struct s_client *cl, uint16_t srvid, uint16_t caid
 char *get_tiername(uint16_t tierid, uint16_t caid, char *buf);
 char *get_provider(uint16_t caid, uint32_t provid, char *buf, uint32_t buflen);
 void add_provider(uint16_t caid, uint32_t provid, const char *name, const char *sat, const char *lang);
+bool boxtype_is(const char *boxtype);
+bool boxname_is(const char *boxname);
+const char *boxtype_get(void);
+const char *boxname_get(void);
+static inline bool caid_is_fake(uint16_t caid) { return caid == 0xffff; }
+static inline bool caid_is_biss(uint16_t caid) { return caid >> 8 == 0x26; }
+static inline bool caid_is_seca(uint16_t caid) { return caid >> 8 == 0x01; }
+static inline bool caid_is_viaccess(uint16_t caid) { return caid >> 8 == 0x05; }
+static inline bool caid_is_irdeto(uint16_t caid) { return caid >> 8 == 0x06; }
+static inline bool caid_is_videoguard(uint16_t caid) { return caid >> 8 == 0x09; }
+static inline bool caid_is_cryptoworks(uint16_t caid) { return caid >> 8 == 0x0D; }
+static inline bool caid_is_betacrypt(uint16_t caid) { return caid >> 8 == 0x17; }
+static inline bool caid_is_nagra(uint16_t caid) { return caid >> 8 == 0x18; }
+static inline bool caid_is_bulcrypt(uint16_t caid) { return caid == 0x5581 || caid == 0x4AEE; }
+char *get_cardsystem_desc_by_caid(uint16_t caid);
 
 #endif

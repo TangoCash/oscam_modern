@@ -74,7 +74,7 @@ static int32_t Cool_SetClockrate(struct s_reader *reader, int32_t mhz)
 	int32_t ret = cnxt_smc_set_clock_freq(crdr_data->handle, clk);
 	coolapi_check_error("cnxt_smc_set_clock_freq", ret);
 	call(Cool_FastReset(reader));
-	rdr_debug_mask(reader, D_DEVICE, "COOL: clock succesfully set to %i", clk);
+	rdr_log_dbg(reader, D_DEVICE, "COOL: clock succesfully set to %i", clk);
 	return OK;
 }
 
@@ -117,7 +117,7 @@ static int32_t Cool_Reset(struct s_reader *reader, ATR *atr)
 		coolapi_check_error("cnxt_smc_get_clock_freq", ret);
 		if(clk / 10000 != (uint32_t)reader->cardmhz)
 		{
-			rdr_debug_mask(reader, D_DEVICE, "COOL: clock freq: %i, scheduling change to %i for card reset",
+			rdr_log_dbg(reader, D_DEVICE, "COOL: clock freq: %i, scheduling change to %i for card reset",
 						   clk, reader->cardmhz * 10000);
 			call(Cool_SetClockrate(reader, reader->cardmhz));
 		}
@@ -162,7 +162,7 @@ static int32_t Cool_Transmit(struct s_reader *reader, unsigned char *sent, uint3
 
 	coolapi_check_error("cnxt_smc_read_write", ret);
 
-	rdr_ddump_mask(reader, D_DEVICE, sent, size, "COOL Transmit:");
+	rdr_log_dump_dbg(reader, D_DEVICE, sent, size, "COOL Transmit:");
 
 	if(ret)
 		{ return ERROR; }
@@ -177,7 +177,7 @@ static int32_t Cool_Receive(struct s_reader *reader, unsigned char *data, uint32
 	memcpy(data, crdr_data->cardbuffer, size);
 	crdr_data->cardbuflen -= size;
 	memmove(crdr_data->cardbuffer, crdr_data->cardbuffer + size, crdr_data->cardbuflen);
-	rdr_ddump_mask(reader, D_DEVICE, data, size, "COOL Receive:");
+	rdr_log_dump_dbg(reader, D_DEVICE, data, size, "COOL Receive:");
 	return OK;
 }
 
@@ -212,7 +212,7 @@ static void Cool_Print_Comm_Parameters(struct s_reader *reader)
 
 }
 
-static int32_t Cool_WriteSettings(struct s_reader *reader, uint16_t F, uint8_t D, uint32_t WWT, uint32_t EGT, uint32_t BGT)
+static int32_t Cool_WriteSettings(struct s_reader *reader, struct s_cardreader_settings *s)
 {
 	struct cool_data *crdr_data = reader->crdr_data;
 	//first set freq back to reader->mhz if necessary
@@ -221,7 +221,7 @@ static int32_t Cool_WriteSettings(struct s_reader *reader, uint16_t F, uint8_t D
 	coolapi_check_error("cnxt_smc_get_clock_freq", ret);
 	if(clk / 10000 != (uint32_t)reader->mhz)
 	{
-		rdr_debug_mask(reader, D_DEVICE, "COOL: clock freq: %i, scheduling change to %i", clk, reader->mhz * 10000);
+		rdr_log_dbg(reader, D_DEVICE, "COOL: clock freq: %i, scheduling change to %i", clk, reader->mhz * 10000);
 		call(Cool_SetClockrate(reader, reader->mhz));
 	}
 
@@ -234,13 +234,13 @@ static int32_t Cool_WriteSettings(struct s_reader *reader, uint16_t F, uint8_t D
 			{ BLKTime = (reader->BWT - 11); }
 		if(reader->CWT > 11)
 			{ CHTime = (reader->CWT - 11); }
-		if(BGT > 11)
-			{ BKGuardTime = (BGT - 11); }
+		if(s->BGT > 11)
+			{ BKGuardTime = (s->BGT - 11); }
 		else
 			{ BKGuardTime = 11; } //For T1, the BGT minimum time shall be 22 work etus. BGT is effectively offset by 11 etus internally.
 		if(!crdr_data->pps)
 		{
-			ret = cnxt_smc_set_F_D_factors(crdr_data->handle, F, D);
+			ret = cnxt_smc_set_F_D_factors(crdr_data->handle, s->F, s->D);
 			coolapi_check_error("cnxt_smc_set_F_D_factors", ret);
 		}
 		break;
@@ -248,10 +248,10 @@ static int32_t Cool_WriteSettings(struct s_reader *reader, uint16_t F, uint8_t D
 	case ATR_PROTOCOL_TYPE_T14:
 	default:
 		BLKTime = 0;
-		if(WWT > 12)
-			{ CHTime = (WWT - 12); }
-		if(BGT > 12)
-			{ BKGuardTime = (BGT - 12); }
+		if(s->WWT > 12)
+			{ CHTime = (s->WWT - 12); }
+		if(s->BGT > 12)
+			{ BKGuardTime = (s->BGT - 12); }
 		if(BKGuardTime < 4)
 			{ BKGuardTime = 4; } //For T0, the BGT minimum time shall be 16 work etus. BGT is effectively offset by 12 etus internally.
 		if(!crdr_data->pps)
@@ -262,7 +262,7 @@ static int32_t Cool_WriteSettings(struct s_reader *reader, uint16_t F, uint8_t D
 			}
 			else
 			{
-				ret = cnxt_smc_set_F_D_factors(crdr_data->handle, F, D);
+				ret = cnxt_smc_set_F_D_factors(crdr_data->handle, s->F, s->D);
 			}
 			coolapi_check_error("cnxt_smc_set_F_D_factors", ret);
 		}
@@ -276,7 +276,7 @@ static int32_t Cool_WriteSettings(struct s_reader *reader, uint16_t F, uint8_t D
 	coolapi_check_error("cnxt_smc_get_config_timeout", ret);
 	timeout.BLKTime = BLKTime;
 	timeout.CHTime = CHTime;
-	timeout.CHGuardTime = EGT;
+	timeout.CHGuardTime = s->EGT;
 	timeout.BKGuardTime = BKGuardTime;
 	ret = cnxt_smc_set_config_timeout(crdr_data->handle, timeout);
 	coolapi_check_error("cnxt_smc_set_config_timeout", ret);
@@ -315,19 +315,19 @@ static int32_t Cool_SetProtocol(struct s_reader *reader, unsigned char *params, 
 	return OK;
 }
 
-void cardreader_internal_cool(struct s_cardreader *crdr)
+const struct s_cardreader cardreader_internal_cool =
 {
-	crdr->desc         = "internal";
-	crdr->typ          = R_INTERNAL;
-	crdr->max_clock_speed = 1;
-	crdr->reader_init  = Cool_Init;
-	crdr->get_status   = Cool_GetStatus;
-	crdr->activate     = Cool_Reset;
-	crdr->transmit     = Cool_Transmit;
-	crdr->receive      = Cool_Receive;
-	crdr->close        = Cool_Close;
-	crdr->write_settings2 = Cool_WriteSettings;
-	crdr->set_protocol  = Cool_SetProtocol;
-}
+	.desc            = "internal",
+	.typ             = R_INTERNAL,
+	.max_clock_speed = 1,
+	.reader_init     = Cool_Init,
+	.get_status      = Cool_GetStatus,
+	.activate        = Cool_Reset,
+	.transmit        = Cool_Transmit,
+	.receive         = Cool_Receive,
+	.close           = Cool_Close,
+	.write_settings  = Cool_WriteSettings,
+	.set_protocol    = Cool_SetProtocol,
+};
 
 #endif

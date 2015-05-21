@@ -382,7 +382,7 @@ table.configreader {
 /* entitlements_bit.html, entitlements_cccambit.html */
 table.stats {}
 /* emm.html */
-table.writeemm {}
+table.writeemm {width: 98%;}
 /* emm_running.html */
 table.emmrunning {}
 /* readerstats.html */
@@ -456,6 +456,10 @@ table#cachexstats {
 /* for settings in configuration of readers and users */
 table.invisible {
 	margin-left:0
+}
+.invisible table {
+	border-spacing:0; 
+	margin-left:0;
 }
 table.invisible tr:hover td {
 	background-color: #373F46 !important; 
@@ -621,8 +625,8 @@ td.readercol13,td.readercol14,
 td.readercol15 {
 	min-width:22px
 }
-/* ??? */
-table.config td:first-child {
+/* width of firstrow in config, readers and users */
+.configfirstrow td:first-child {
 	width:200px
 }
 .config tr:last-child:hover td,
@@ -1825,11 +1829,11 @@ tr.infocolswidth, tr.infocolswidth td, tr.infocolswidth th {
 	color:#FFFFFF
 }
 td.subservice, td.invisible{
-padding:5px;
+padding:0px;
 }
 
 div.extract {
-	width: 750px;
+	width: 98%;
 	margin-left: auto;
 	margin-right: auto;
 	text-align: left
@@ -1855,6 +1859,7 @@ th.sortable:last-child,tbody tr th:last-child{border-right: 1px solid #000000;}
 div.footer b {color: #FFFFFF;text-shadow: 1px 1px 1px #000;}
 div.footer li {color: #AAAAAA;text-shadow: 1px 1px 1px #000000;}
 tr#headline th,th.sortable,tbody tr th{border-right: 1px solid #FFFFFF;}
+tr#headline th:last-child,th.sortable:last-child,tbody tr th:last-child{border-right: 0px;}
 td.servicescol1,td.servicescol2,td.servicescol3{border-top: 1px solid #000000}
 div.footer .top_link { color:#FFFFFF; padding-left:12px; position:absolute; font-weight:bold; bottom:5px; left:7px; z-index:0; }
 div.footer .top_link a { color:#FFFFFF; }
@@ -1868,5 +1873,10 @@ table.config tbody tr td input,input.medium {width: 200px;}
 table.config tbody tr td input[type="checkbox"],td.invisible input[type="checkbox"],input#chb {width: 10px;}
 td.configcolsave input[type="submit"], input.withunit.short {width: 50px;}
 tr.configcontrol td.centered input[type="submit"] {width: 105px;}
-div#regexdata{ border: 5px solid red; padding-top: 20px; display: block; background-color: rgb(221, 221, 221); width: 850px; height: 170px; margin-left: auto; margin-right: auto;}
-
+div#regexdata{ border: 5px solid red; padding-top: 20px; background-color: rgb(221, 221, 221); width: 65%; height: 170px; margin-left: auto; margin-right: auto;}
+div#content form div.extract p.emmhead{margin-top: 10px;}
+div#content form div.extract pre{margin-top: 5px; margin-bottom: 10px;}
+textarea#singleemm{width: 100%;}
+a.tosingleemm{color:#FF0000;text-shadow: 2px 2px 2px #000000;}
+a.tosingleemm:hover{color:#FFFF00;text-shadow: 2px 2px 2px #000000;}
+ul#nav li div#regexdata ul li.regex{margin:10px;}

@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "scam"
+
 #include "globals.h"
 #ifdef MODULE_SCAM
 #include "oscam-client.h"
@@ -273,15 +275,15 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 	if(len != 2)		// invalid header length read
 	{
 		if(len <= 0)
-			{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "disconnected by remote server"); }
+			{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "disconnected by remote server"); }
 		else
-			{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid header length (expected 2, read %d)", len); }
+			{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid header length (expected 2, read %d)", len); }
 		return -1;
 	}
 	
 	if(buf[0] != 0x0F) 
 	{
-		cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid packet tag");
+		cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid packet tag");
 		return 0;			
 	}
 	
@@ -292,9 +294,9 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 		if(len != headerSize-2)		// invalid header length read
 		{
 			if(len <= 0)
-				{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "disconnected by remote server"); }
+				{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "disconnected by remote server"); }
 			else
-				{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid header length (expected %d, read %d)", headerSize, 2+len); }
+				{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid header length (expected %d, read %d)", headerSize, 2+len); }
 			return -1;
 		}	
 	}
@@ -306,13 +308,13 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 	{
 		if(dataLength%8 != 0)
 		{
-			cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "message data has invalid size (size=%d)", dataLength);
+			cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "message data has invalid size (size=%d)", dataLength);
 			return 0;
 		}		
 		
 		if(headerSize+dataLength > (uint32_t)maxlen)
 		{
-			cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "message too big (size=%d max=%d)", headerSize+dataLength, maxlen);
+			cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "message too big (size=%d max=%d)", headerSize+dataLength, maxlen);
 			return 0;
 		}
 
@@ -320,10 +322,10 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 		if((uint32_t)len != dataLength)
 		{
 			if(len <= 0) {
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "disconnected by remote"); 
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "disconnected by remote"); 
 			}
 			else {
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid message length read (expected %d, read %d)", dataLength, len);
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "invalid message length read (expected %d, read %d)", dataLength, len);
 			}
 			return -1;
 		}
@@ -345,7 +347,7 @@ static int32_t scam_recv(struct s_client *cl, uchar *buf, int32_t len)
 	n = scam_msg_recv(cl, buf, len); // recv and decrypt msg
 	if(n <= 0)
 	{
-		cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "connection closed by %s, n=%d.", remote_txt(), n);
+		cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "connection closed by %s, n=%d.", remote_txt(), n);
 		if(rdr)
 		{
 			scam_client_close(cl, 1);
@@ -393,7 +395,7 @@ static void scam_client_idle(void)
 	if(rdr->tcp_ito > 0)
 	{
 		int32_t time_diff;
-		time_diff = abs(now - rdr->last_s);
+		time_diff = llabs(now - rdr->last_s);
 		if(time_diff > (rdr->tcp_ito))
 		{
 			network_tcp_connection_close(rdr, "inactivity");
@@ -452,7 +454,7 @@ static void scam_client_recv_server_version(uint8_t *buf, uint32_t len)
 				break;
 					
 			default:
-				cs_debug_mask(D_READER, "unknown server version packet tag %X", buf[pos]); 
+				cs_log_dbg(D_READER, "unknown server version packet tag %X", buf[pos]); 
 				break;
 		}
 		
@@ -479,7 +481,7 @@ static void scam_client_recv_dcw(struct s_client *cl, uint8_t *buf, uint32_t len
 	//	C73882811721E31B	dcw2
 	
 	if(len != 29) {
-		cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "unknown server dcw packet length %d", len); 
+		cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "unknown server dcw packet length %d", len); 
 		return;
 	}
 	
@@ -588,8 +590,8 @@ static int32_t scam_client_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar 
 
 	ret = scam_send(cl, mbuf, packetLength);
 
-	cs_debug_mask(D_TRACE, "scam: sending ecm");
-	cs_ddump_mask(D_CLIENT, mbuf, packetLength, "ecm:");
+	cs_log_dbg(D_TRACE, "scam: sending ecm");
+	cs_log_dump_dbg(D_CLIENT, mbuf, packetLength, "ecm:");
 	NULLFREE(mbuf);
 	return ((ret < 1) ? (-1) : 0);
 }
@@ -621,7 +623,7 @@ static int32_t scam_client_init(struct s_client *cl)
 	cl->reader->card_status = CARD_INSERTED;
 	cl->reader->last_g = cl->reader->last_s = time((time_t *)0);
 
-	cs_debug_mask(D_CLIENT, "scam: last_s=%ld, last_g=%ld", cl->reader->last_s, cl->reader->last_g);
+	cs_log_dbg(D_CLIENT, "scam: last_s=%ld, last_g=%ld", cl->reader->last_s, cl->reader->last_g);
 
 	cl->pfd = cl->udp_fd;
 
@@ -655,7 +657,7 @@ static int32_t scam_client_handle(struct s_client *cl, uchar *dcw, int32_t *rc, 
 			case 0x10: // checksum
 				if(dataLength != 2) { break; }
 				if(b2i(2, &buf[pos+dataOffset]) != ccitt_crc(buf+pos+dataOffset+2, n-pos-dataOffset-2, 0xFFFF, 0)) {
-					cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "sent packet with invalid checksum"); 
+					cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "sent packet with invalid checksum"); 
 					return (-1);
 				}
 				break;
@@ -676,7 +678,7 @@ static int32_t scam_client_handle(struct s_client *cl, uchar *dcw, int32_t *rc, 
 				break;
 				
 			default:
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "unknown scam server packet %X", buf[pos]);
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "unknown scam server packet %X", buf[pos]);
 				break;
 		}
 		
@@ -775,7 +777,7 @@ static void scam_server_recv_ecm(struct s_client *cl, uchar *buf, int32_t len)
 				break;
 				
 			default:
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "sent unknown scam client ecm tag %X", buf[pos]); 
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "sent unknown scam client ecm tag %X", buf[pos]); 
 				break;
 		}
 		
@@ -822,8 +824,9 @@ static void scam_caidlist_add(uint16_t *caidlist, uint32_t listsize, uint32_t *c
 static void scam_server_send_caidlist(struct s_client *cl)
 {
 	uchar mbuf[5];
-	uint32_t i = 0, j = 0;
-	uint16_t caid = 0, caids[55];
+	int32_t j;
+	uint32_t i = 0;
+	uint16_t caids[55];
 	uint32_t cardcount = 0;
 	struct s_reader *rdr = NULL;
 	
@@ -831,19 +834,19 @@ static void scam_server_send_caidlist(struct s_client *cl)
 	for(rdr = first_active_reader; rdr; rdr = rdr->next)
 	{
 		if(rdr->caid && chk_ctab(rdr->caid, &cl->ctab)) {
-			scam_caidlist_add(caids, 55, &cardcount, rdr->caid);
+			scam_caidlist_add(caids, ARRAY_SIZE(caids), &cardcount, rdr->caid);
 		}
 		
-		for(j=0; j<CS_MAXCAIDTAB; j++) {
-			caid = rdr->ctab.caid[j];
-			if(caid && chk_ctab(caid, &cl->ctab)) {
-				scam_caidlist_add(caids, 55, &cardcount, caid);
-			}			
-		}	
+		for(j = 0; j < rdr->ctab.ctnum; j++) {
+			CAIDTAB_DATA *d = &rdr->ctab.ctdata[j];
+			if(d->caid && chk_ctab(d->caid, &cl->ctab)) {
+				scam_caidlist_add(caids, ARRAY_SIZE(caids), &cardcount, d->caid);
+			}
+		}
 	}
 	cs_readunlock(&readerlist_lock);
 
-	for(j=0; j<cardcount; j++) {
+	for(j=0; j < (int32_t)cardcount; j++) {
 		i = 0;
 		mbuf[i++] = 0x20; // caid	data type
 		mbuf[i++] = 0x03; // length
@@ -909,7 +912,7 @@ static void scam_server_recv_auth(struct s_client *cl, uchar *buf, int32_t len)
 				break;
 				
 			default:
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "unknown client auth packet tag %X", buf[pos]); 
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "unknown client auth packet tag %X", buf[pos]); 
 				break;
 		}
 		
@@ -1023,7 +1026,7 @@ static void *scam_server_handle(struct s_client *cl, uchar *buf, int32_t n)
 			case 0x10: // checksum
 				if(dataLength != 2) { break; }
 				if(b2i(2, &buf[pos+dataOffset]) != ccitt_crc(buf+pos+dataOffset+2, n-pos-dataOffset-2, 0xFFFF, 0)) {
-					cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "sent packet with invalid checksum"); 
+					cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "sent packet with invalid checksum"); 
 					return NULL;
 				}
 				if(scam->login_pending) {
@@ -1061,7 +1064,7 @@ static void *scam_server_handle(struct s_client *cl, uchar *buf, int32_t n)
 				break;
 				
 			default:
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "sent unknown scam client packet %X", buf[pos]); 
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "sent unknown scam client packet %X", buf[pos]); 
 				break;
 		}
 		

@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "config"
+
 #include "globals.h"
 #include "oscam-conf-mk.h"
 #include "oscam-net.h"
@@ -6,63 +8,29 @@
 /*
  * Creates a string ready to write as a token into config or WebIf for CAIDs. You must free the returned value through free_mk_t().
  */
-char *mk_t_caidtab(CAIDTAB *ctab)
+char *mk_t_caidtab(CAIDTAB *caidtab)
 {
-	int32_t i = 0, needed = 1, pos = 0;
-	while(ctab->caid[i])
+	if (!caidtab || !caidtab->ctnum) return "";
+	// Max entry length is strlen("1234&ffff:1234,") == 15
+	int32_t i, maxlen = 16 * caidtab->ctnum, pos = 0;
+	char *ret;
+	if (!cs_malloc(&ret, maxlen))
+		return "";
+	const char *comma = "";
+	for(i = 0; i < caidtab->ctnum; i++)
 	{
-		if(ctab->mask[i]) { needed += 10; }
-		else { needed += 5; }
-		if(ctab->cmap[i]) { needed += 5; }
-		++i;
-	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed)) { return ""; }
-	char *saveptr = value;
-	i = 0;
-	while(ctab->caid[i])
-	{
-		if(ctab->caid[i] < 0x0100)    //for "ignore provider for" option, caid-shortcut, just first 2 bytes:
-		{
-			if(i == 0)
-			{
-				snprintf(value + pos, needed - (value - saveptr), "%02X", ctab->caid[i]);
-				pos += 2;
-			}
-			else
-			{
-				snprintf(value + pos, needed - (value - saveptr), ",%02X", ctab->caid[i]);
-				pos += 3;
-			}
-		}
+		CAIDTAB_DATA *d = &caidtab->ctdata[i];
+		if (d->caid < 0x0100)
+			pos += snprintf(ret + pos, maxlen - pos, "%s%02X", comma, d->caid);
 		else
-		{
-			if(i == 0)
-			{
-				snprintf(value + pos, needed - (value - saveptr), "%04X", ctab->caid[i]);
-				pos += 4;
-			}
-			else
-			{
-				snprintf(value + pos, needed - (value - saveptr), ",%04X", ctab->caid[i]);
-				pos += 5;
-			}
-		}
-
-		if((ctab->mask[i]) && (ctab->mask[i] != 0xFFFF))
-		{
-			snprintf(value + pos, needed - (value - saveptr), "&%04X", ctab->mask[i]);
-			pos += 5;
-		}
-		if(ctab->cmap[i])
-		{
-			snprintf(value + pos, needed - (value - saveptr), ":%04X", ctab->cmap[i]);
-			pos += 5;
-		}
-		++i;
+			pos += snprintf(ret + pos, maxlen - pos, "%s%04X", comma, d->caid);
+		if (d->mask && d->mask != 0xffff)
+			pos += snprintf(ret + pos, maxlen - pos, "&%04X", d->mask);
+		if (d->cmap)
+			pos += snprintf(ret + pos, maxlen - pos, ":%04X", d->cmap);
+		comma = ",";
 	}
-	value[pos] = '\0';
-	return value;
+	return ret;
 }
 
 /*
@@ -70,45 +38,23 @@ char *mk_t_caidtab(CAIDTAB *ctab)
  */
 char *mk_t_tuntab(TUNTAB *ttab)
 {
-	int32_t i, needed = 1, pos = 0;
-	for(i = 0; i < ttab->n && i <= CS_MAXTUNTAB ; i++)
+	if (!ttab || !ttab->ttnum) return "";
+	// Each entry max length is strlen("aaaa.bbbb:cccc,") == 15
+	int32_t i, maxlen = 16 * ttab->ttnum, pos = 0;
+	char *ret;
+	if (!cs_malloc(&ret, maxlen))
+		return "";
+	const char *comma = "";
+	for(i = 0; i < ttab->ttnum; i++)
 	{
-		// ttab->bt_srvid[i] or 0000 for EMM-only tunnel
-		needed += 10;
-		if(ttab->bt_caidto[i]) { needed += 5; }
+		TUNTAB_DATA *d = &ttab->ttdata[i];
+		pos += snprintf(ret + pos, maxlen - pos, "%s%04X", comma, d->bt_caidfrom);
+		pos += snprintf(ret + pos, maxlen - pos, ".%04X", d->bt_srvid);
+		if (d->bt_caidto)
+			pos += snprintf(ret + pos, maxlen - pos, ":%04X", d->bt_caidto);
+		comma = ",";
 	}
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed)) { return ""; }
-	char *saveptr = value;
-	for(i = 0; i < ttab->n && i <= CS_MAXTUNTAB; i++)
-	{
-		if(i == 0)
-		{
-			snprintf(value + pos, needed - (value - saveptr), "%04X", ttab->bt_caidfrom[i]);
-			pos += 4;
-		}
-		else
-		{
-			snprintf(value + pos, needed - (value - saveptr), ",%04X", ttab->bt_caidfrom[i]);
-			pos += 5;
-		}
-		if(ttab->bt_srvid[i])
-		{
-			snprintf(value + pos, needed - (value - saveptr), ".%04X", ttab->bt_srvid[i]);
-		}
-		else
-		{
-			snprintf(value + pos, needed - (value - saveptr), ".%04X", 0);
-		}
-		pos += 5;
-		if(ttab->bt_caidto[i])
-		{
-			snprintf(value + pos, needed - (value - saveptr), ":%04X", ttab->bt_caidto[i]);
-			pos += 5;
-		}
-	}
-	value[pos] = '\0';
-	return value;
+	return ret;
 }
 
 /*
@@ -157,36 +103,29 @@ char *mk_t_group(uint64_t grp)
  */
 char *mk_t_ftab(FTAB *ftab)
 {
-	int32_t i = 0, j = 0, needed = 1, pos = 0;
-
-	if(ftab->nfilts != 0)
+	if (!ftab || !ftab->nfilts) return "";
+	// Worst case scenario where each entry have different
+	// caid, ident and only one length in it is strlen("1234:123456,") == 12
+	int32_t i, j, maxlen = 13 * ftab->nfilts, pos = 0;
+	for(i = 0; i < ftab->nfilts; i++)
+		maxlen += ftab->filts[i].nprids * 7; /* strlen("123456,") == 7 */
+	char *ret;
+	if (!cs_malloc(&ret, maxlen))
+		return "";
+	const char *semicolon = "", *comma = "";
+	for(i = 0; i < ftab->nfilts; i++)
 	{
-		needed = ftab->nfilts * 5;
-		for(i = 0; i < ftab->nfilts && i < CS_MAXFILTERS; ++i)
-			{ needed += ftab->filts[i].nprids * 7; }
-	}
-
-	char *value;
-	if(needed == 1 || !cs_malloc(&value, needed)) { return ""; }
-	char *saveptr = value;
-	char *dot = "";
-	for(i = 0; i < ftab->nfilts && i < CS_MAXFILTERS; ++i)
-	{
-		snprintf(value + pos, needed - (value - saveptr), "%s%04X", dot, ftab->filts[i].caid);
-		pos += 4;
-		if(i > 0) { pos += 1; }
-		dot = ":";
-		for(j = 0; j < ftab->filts[i].nprids; ++j)
+		FILTER *cur = &ftab->filts[i];
+		pos += snprintf(ret + pos, maxlen - pos, "%s%04X:", semicolon, cur->caid);
+		semicolon = ";";
+		comma = "";
+		for (j = 0; j < cur->nprids; j++)
 		{
-			snprintf(value + pos, needed - (value - saveptr), "%s%06X", dot, ftab->filts[i].prids[j]);
-			pos += 7;
-			dot = ",";
+			pos += snprintf(ret + pos, maxlen - pos, "%s%06X", comma, cur->prids[j]);
+			comma = ",";
 		}
-		dot = ";";
 	}
-
-	value[pos] = '\0';
-	return value;
+	return ret;
 }
 
 /*
@@ -534,111 +473,79 @@ char *mk_t_logfile(void)
 /*
  * Creates a string ready to write as a token into config or WebIf for the ecm whitelist. You must free the returned value through free_mk_t().
  */
-char *mk_t_ecmwhitelist(struct s_ecmWhitelist *whitelist)
+char *mk_t_ecm_whitelist(struct s_ecm_whitelist *ecm_whitelist)
 {
-	int32_t needed = 1, pos = 0;
-	struct s_ecmWhitelist *cip;
-	struct s_ecmWhitelistIdent *cip2;
-	struct s_ecmWhitelistLen *cip3;
-	char *value, *dot = "", *dot2 = "";
-	for(cip = whitelist; cip; cip = cip->next)
+	if (!ecm_whitelist || !ecm_whitelist->ewnum) return "";
+	// Worst case scenario where each entry have different
+	// caid, ident and only one length in it is strlen("1234@123456:01;") == 15
+	int32_t i, maxlen = 16 * ecm_whitelist->ewnum, pos = 0;
+	char *ret;
+	if (!cs_malloc(&ret, maxlen))
+		return "";
+	const char *semicolon = "", *comma = "";
+	ECM_WHITELIST_DATA *last = NULL;
+	for(i = 0; i < ecm_whitelist->ewnum; i++)
 	{
-		needed += 7;
-		for(cip2 = cip->idents; cip2; cip2 = cip2->next)
+		ECM_WHITELIST_DATA *cur = &ecm_whitelist->ewdata[i];
+		bool change = !last || last->caid != cur->caid || last->ident != cur->ident;
+		if (change)
 		{
-			needed += 7;
-			for(cip3 = cip2->lengths; cip3; cip3 = cip3->next) { needed += 3; }
+			if (cur->caid && cur->ident)
+				pos += snprintf(ret + pos, maxlen - pos, "%s%04X@%06X:", semicolon, cur->caid, cur->ident);
+			else if (cur->caid)
+				pos += snprintf(ret + pos, maxlen - pos, "%s%04X:", semicolon, cur->caid);
+			else if (cur->ident)
+				pos += snprintf(ret + pos, maxlen - pos, "%s@%06X:", semicolon, cur->ident);
+			else
+				pos += snprintf(ret + pos, maxlen - pos, "%s", semicolon);
+			semicolon = ";";
+			comma = "";
 		}
+		pos += snprintf(ret + pos, maxlen - pos, "%s%02X", comma, cur->len);
+		comma = ",";
+		last = &ecm_whitelist->ewdata[i];
 	}
-
-	char tmp[needed];
-
-	for(cip = whitelist; cip; cip = cip->next)
-	{
-		for(cip2 = cip->idents; cip2; cip2 = cip2->next)
-		{
-			if(cip2->lengths != NULL)
-			{
-				if(cip->caid != 0)
-				{
-					if(cip2->ident == 0)
-						{ pos += snprintf(tmp + pos, needed - pos, "%s%04X:", dot, cip->caid); }
-					else
-						{ pos += snprintf(tmp + pos, needed - pos, "%s%04X@%06X:", dot, cip->caid, cip2->ident); }
-				}
-				else { pos += snprintf(tmp + pos, needed - pos, "%s", dot); }
-			}
-			dot2 = "";
-			for(cip3 = cip2->lengths; cip3; cip3 = cip3->next)
-			{
-				pos += snprintf(tmp + pos, needed - pos, "%s%02X", dot2, cip3->len);
-				dot2 = ",";
-			}
-			dot = ";";
-		}
-	}
-	if(pos == 0 || !cs_malloc(&value, pos + 1)) { return ""; }
-	memcpy(value, tmp, pos + 1);
-	return value;
+	return ret;
 }
 
 /*
  * Creates a string ready to write as a token into config or WebIf for the ECM Headerwhitelist. You must free the returned value through free_mk_t().
  */
-char *mk_t_ecmheaderwhitelist(struct s_ecmHeaderwhitelist *headerlist)
+char *mk_t_ecm_hdr_whitelist(struct s_ecm_hdr_whitelist *ecm_hdr_whitelist)
 {
-	int32_t needed = 1, pos = 0;
-	struct s_ecmHeaderwhitelist *cip;
-	for(cip = headerlist; cip; cip = cip->next) { needed += 51; }
-	char *value, *dot = "";
-	char tmp[needed];
-	int16_t i;
-	int16_t ccache = 0;
-	uint32_t pcache = 0;
-	tmp[0] = '\0';
-	for(cip = headerlist; cip; cip = cip->next)
+	if (!ecm_hdr_whitelist || !ecm_hdr_whitelist->ehnum) return "";
+	// Worst case scenario where each entry have different
+	// caid, provid and only one header in it is strlen("1234@123456:0102030405060708091011121314151617181920;") == 52 ((sizeof(header) / 2) + 12)
+	int32_t i, r, maxlen = 53 * ecm_hdr_whitelist->ehnum, pos = 0;
+	char *ret;
+	if (!cs_malloc(&ret, maxlen))
+		return "";
+	const char *semicolon = "", *comma = "";
+	ECM_HDR_WHITELIST_DATA *last = NULL;
+	for(i = 0; i < ecm_hdr_whitelist->ehnum; i++)
 	{
-		dot = "";
-		if(ccache == cip->caid && pcache == cip->provid)
+		ECM_HDR_WHITELIST_DATA *cur = &ecm_hdr_whitelist->ehdata[i];
+		bool change = !last || last->caid != cur->caid || last->provid != cur->provid;
+		if (change)
 		{
-			if(pos)
-				{ pos -= 1; }
-			if(strlen(tmp))
-				{ pos += snprintf(tmp + pos, needed - pos, ","); }
+			if (cur->caid && cur->provid)
+				pos += snprintf(ret + pos, maxlen - pos, "%s%04X@%06X:", semicolon, cur->caid, cur->provid);
+			else if (cur->caid)
+				pos += snprintf(ret + pos, maxlen - pos, "%s%04X:", semicolon, cur->caid);
+			else if (cur->provid)
+				pos += snprintf(ret + pos, maxlen - pos, "%s@%06X:", semicolon, cur->provid);
+			else
+				pos += snprintf(ret + pos, maxlen - pos, "%s", semicolon);
+			semicolon = ";";
+			comma = "";
 		}
-		else
-		{
-			if(cip->header != NULL && cip->caid != 0 && cip->provid == 0)
-			{
-				pos += snprintf(tmp + pos, needed - pos, "%s%04X:", dot, cip->caid);
-				ccache = cip->caid;
-				pcache = 0;
-			}
-
-			if(cip->header != NULL && cip->caid != 0 && cip->provid != 0)
-			{
-				pos += snprintf(tmp + pos, needed - pos, "%s%04X@%06X:", dot, cip->caid, cip->provid);
-				ccache = cip->caid;
-				pcache = cip->provid;
-			}
-		}
-		if(cip->header != NULL)
-		{
-			for(i = 0; i < cip->len / 2; i++)
-			{
-				pos += snprintf(tmp + pos, needed - pos, "%s%02X", dot, cip->header[i]);
-				if(i == cip->len / 2 - 1) { pos += snprintf(tmp + pos, needed - pos, ","); }
-				ccache = cip->caid;
-				pcache = cip->provid;
-			}
-		}
-		if(pos)
-			{ pos -= 1; }
-		pos += snprintf(tmp + pos, needed - pos, ";");
+		pos += snprintf(ret + pos, maxlen - pos, "%s", comma);
+		for(r = 0; r < cur->len / 2; r++)
+			pos += snprintf(ret + pos, maxlen - pos, "%02X", cur->header[r]);
+		comma = ",";
+		last = &ecm_hdr_whitelist->ehdata[i];
 	}
-	if(pos == 0 || !cs_malloc(&value, pos + 1)) { return ""; }
-	memcpy(value, tmp, pos - 1);
-	return value;
+	return ret;
 }
 
 /*
@@ -695,27 +602,27 @@ char *mk_t_cltab(CLASSTAB *clstab)
 /*
  * Creates a string ready to write as a token into config or WebIf. You must free the returned value through free_mk_t().
  */
-char *mk_t_caidvaluetab(CAIDVALUETAB *tab)
+char *mk_t_caidvaluetab(CAIDVALUETAB *caidvaluetab)
 {
-	if(!tab->n) { return ""; }
-	int32_t i, size = 2 + tab->n * (4 + 1 + 5 + 1); //caid + ":" + time + ","
-	char *buf;
-	if(!cs_malloc(&buf, size))
-		{ return ""; }
-	char *ptr = buf;
-
-	for(i = 0; i < tab->n && tab->n <= CS_MAX_CAIDVALUETAB; i++)
+	if (!caidvaluetab || !caidvaluetab->cvnum) return "";
+	// Max entry length is strlen("1234@65535,") == 11
+	int32_t i, maxlen = 12 * caidvaluetab->cvnum, pos = 0;
+	char *ret;
+	if (!cs_malloc(&ret, maxlen))
+		return "";
+	const char *comma = "";
+	for(i = 0; i < caidvaluetab->cvnum; i++)
 	{
-		if(tab->caid[i] < 0x0100)  //Do not format 0D as 000D, its a shortcut for 0Dxx:
-			{ ptr += snprintf(ptr, size - (ptr - buf), "%s%02X:%d", i ? "," : "", tab->caid[i], tab->value[i]); }
+		CAIDVALUETAB_DATA *d = &caidvaluetab->cvdata[i];
+		if (d->caid < 0x0100)
+			pos += snprintf(ret + pos, maxlen - pos, "%s%02X:%d", comma, d->caid, d->value);
 		else
-			{ ptr += snprintf(ptr, size - (ptr - buf), "%s%04X:%d", i ? "," : "", tab->caid[i], tab->value[i]); }
+			pos += snprintf(ret + pos, maxlen - pos, "%s%04X:%d", comma, d->caid, d->value);
+		comma = ",";
 	}
-	*ptr = 0;
-	return buf;
+	return ret;
 }
 
-#ifdef CS_CACHEEX
 char *mk_t_cacheex_valuetab(CECSPVALUETAB *tab)
 {
 	if(!tab->n) { return ""; }
@@ -828,7 +735,6 @@ char *mk_t_cacheex_hitvaluetab(CECSPVALUETAB *tab)
 	*ptr = 0;
 	return buf;
 }
-#endif
 
 /*
  * returns string of comma separated values

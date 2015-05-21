@@ -90,7 +90,7 @@ static void read_tiers(struct s_reader *reader)
 		memset(&timeinfo, 0, sizeof(struct tm));
 		rev_date_calc_tm(&cta_res[4], &timeinfo, csystem_data->card_baseyear);
 		char tiername[83];
-		cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), tier_id, 0, 0, mktime(&timeinfo), 4);
+		cs_add_entitlement(reader, reader->caid, b2ll(4, reader->prid[0]), tier_id, 0, 0, mktime(&timeinfo), 4, 1);
 		rdr_log(reader, "tier: %04x, expiry date: %04d/%02d/%02d-%02d:%02d:%02d %s", tier_id, timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, get_tiername(tier_id, reader->caid, tiername));
 	}
 }
@@ -349,15 +349,16 @@ static int32_t videoguard1_card_info(struct s_reader *reader)
 	return OK;
 }
 
-void reader_videoguard1(struct s_cardsystem *ph)
+const struct s_cardsystem reader_videoguard1 =
 {
-	ph->do_emm = videoguard1_do_emm;
-	ph->do_ecm = videoguard1_do_ecm;
-	ph->card_info = videoguard1_card_info;
-	ph->card_init = videoguard1_card_init;
-	ph->get_emm_type = videoguard_get_emm_type;
-	ph->get_emm_filter = videoguard_get_emm_filter;
-	ph->caids[0] = 0x09;
-	ph->desc = "videoguard1";
-}
+	.desc           = "videoguard1",
+	.caids          = (uint16_t[]){ 0x09, 0 },
+	.do_emm         = videoguard1_do_emm,
+	.do_ecm         = videoguard1_do_ecm,
+	.card_info      = videoguard1_card_info,
+	.card_init      = videoguard1_card_init,
+	.get_emm_type   = videoguard_get_emm_type,
+	.get_emm_filter = videoguard_get_emm_filter,
+};
+
 #endif

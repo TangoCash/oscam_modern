@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "aes"
+
 #include "globals.h"
 #include "oscam-aes.h"
 #include "oscam-garbage.h"
@@ -7,6 +9,14 @@ void aes_set_key(struct aes_keys *aes, char *key)
 {
 	AES_set_decrypt_key((const unsigned char *)key, 128, &aes->aeskey_decrypt);
 	AES_set_encrypt_key((const unsigned char *)key, 128, &aes->aeskey_encrypt);
+}
+
+bool aes_set_key_alloc(struct aes_keys **aes, char *key)
+{
+	if (!cs_malloc(aes, sizeof(struct aes_keys)))
+		return false;
+	aes_set_key(*aes, key);
+	return true;
 }
 
 void aes_decrypt(struct aes_keys *aes, uchar *buf, int32_t n)

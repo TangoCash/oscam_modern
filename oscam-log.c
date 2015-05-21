@@ -1,5 +1,6 @@
 #include "globals.h"
 #include <syslog.h>
+#include "module-anticasc.h"
 #include "module-monitor.h"
 #include "oscam-client.h"
 #include "oscam-garbage.h"
@@ -27,10 +28,6 @@ static pthread_t log_thread;
 static pthread_cond_t log_thread_sleep_cond;
 static pthread_mutex_t log_thread_sleep_cond_mutex;
 
-#if defined(WEBIF) || defined(MODULE_MONITOR)
-static uint64_t counter = 0;
-#endif
-
 struct s_log
 {
 	char *txt;
@@ -40,13 +37,6 @@ struct s_log
 	char *cl_usr;
 	char *cl_text;
 };
-
-#if defined(WEBIF) || defined(MODULE_MONITOR)
-static CS_MUTEX_LOCK loghistory_lock;
-char *loghist = NULL;     // ptr of log-history
-char *loghistid = NULL;
-char *loghistptr = NULL;
-#endif
 
 #define LOG_BUF_SIZE 512
 
@@ -229,12 +219,19 @@ int32_t cs_open_logfiles(void)
 	// according to syslog docu: calling closelog is not necessary and calling openlog multiple times is safe
 	// We use openlog to set the default syslog settings so that it's possible to allow switching syslog on and off
 	openlog(syslog_ident, LOG_NDELAY | LOG_PID, LOG_DAEMON);
-	cs_log_nolock(">> OSCam <<  cardserver %s, version " CS_VERSION ", build r" CS_SVN_VERSION " (" CS_TARGET ")", starttext);
+	cs_log(">> OSCam <<  cardserver %s, version " CS_VERSION ", build r" CS_SVN_VERSION " (" CS_TARGET ")", starttext);
 
 	return (fp <= (FILE *)0);
 }
 
 #if defined(WEBIF) || defined(MODULE_MONITOR)
+static uint64_t counter = 0;
+static CS_MUTEX_LOCK loghistory_lock;
+// These are accessed in module-monitor and module-webif
+char *loghist = NULL;     // ptr of log-history
+char *loghistid = NULL;
+char *loghistptr = NULL;
+
 /*
  This function allows to reinit the in-memory loghistory with a new size.
 */
@@ -243,7 +240,7 @@ void cs_reinit_loghist(uint32_t size)
 	char *tmp = NULL, *tmp2, *tmp3 = NULL, *tmp4;
 	if(size != cfg.loghistorysize)
 	{
-		if(size == 0 || (cs_malloc(&tmp, size) && cs_malloc(&tmp3, size/3+8)))
+		if(cs_malloc(&tmp, size) && cs_malloc(&tmp3, size/3+8))
 		{
 			cs_writelock(&loghistory_lock);
 			tmp2 = loghist;
@@ -282,48 +279,38 @@ void cs_reinit_loghist(uint32_t size)
 
 static struct timeb log_ts;
 
-static int32_t get_log_header(int32_t m, char *txt)
+static int32_t get_log_header(char *txt, int32_t txt_size)
 {
 	struct s_client *cl = cur_client();
 	struct tm lt;
-	int32_t pos;
 
 	cs_ftime(&log_ts);
 	time_t walltime = cs_walltime(&log_ts);
 	localtime_r(&walltime, &lt);
 
-	pos = snprintf(txt, LOG_BUF_SIZE,  "[LOG000]%4d/%02d/%02d %02d:%02d:%02d ", lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
-
-	switch(m)
-	{
-	case 1: // Add thread id and reader type
-		return pos + snprintf(txt + pos, LOG_BUF_SIZE - pos, "%8X %c ", cl ? cl->tid : 0, cl ? cl->typ : ' ');
-	case 0: // Add thread id
-		return pos + snprintf(txt + pos, LOG_BUF_SIZE - pos, "%8X%-3.3s ", cl ? cl->tid : 0, "");
-	default: // Add empty thread id
-		return pos + snprintf(txt + pos, LOG_BUF_SIZE - pos, "%8X%-3.3s ", 0, "");
-	}
+	return snprintf(txt, txt_size,  "[LOG000]%4d/%02d/%02d %02d:%02d:%02d %8X %c ",
+		lt.tm_year + 1900,
+		lt.tm_mon + 1,
+		lt.tm_mday,
+		lt.tm_hour,
+		lt.tm_min,
+		lt.tm_sec,
+		cl ? cl->tid : 0,
+		cl ? cl->typ : ' '
+	);
 }
 
 static void write_to_log(char *txt, struct s_log *log, int8_t do_flush)
 {
 	(void)log; // Prevent warning when WEBIF, MODULE_MONITOR and CS_ANTICASC are disabled
 
-#ifdef CS_ANTICASC
-	extern FILE *ac_log;
-	if(!strncmp(txt + log->header_len, "acasc:", 6) && ac_log)
-	{
-		strcat(txt, "\n");
-		fputs(txt + 8, ac_log);
-		fflush(ac_log);
-	}
-	else
-#endif
+	// anticascading messages go to their own log
+	if (!anticasc_logging(txt + 8))
 	{
 		if(cfg.logtosyslog)
 			{ syslog(LOG_INFO, "%s", txt + 29); }
-		strcat(txt, "\n");
 	}
+	strcat(txt, "\n");
 	cs_write_log(txt + 8, do_flush);
 
 #if defined(WEBIF) || defined(MODULE_MONITOR)
@@ -453,128 +440,83 @@ static char last_log_txt[LOG_BUF_SIZE];
 static struct timeb last_log_ts;
 static unsigned int last_log_duplicates;
 
-void cs_log_int(uint16_t mask, int8_t lock __attribute__((unused)), const uchar *buf, int32_t n, const char *fmt, ...)
+static void __cs_log_check_duplicates(int32_t hdr_len)
 {
-	if((mask & cs_dblevel) || !mask)
+	bool repeated_line = strcmp(last_log_txt, log_txt + hdr_len) == 0;
+	if (last_log_duplicates > 0)
 	{
-		va_list params;
-
-		int32_t dupl_header_len, repeated_line, i, len = 0;
-		pthread_mutex_lock(&log_mutex);
-		if(fmt)
+		if (!cs_valid_time(&last_log_ts))  // Must be initialized once
+			last_log_ts = log_ts;
+		// Report duplicated lines when the new log line is different
+		// than the old or 60 seconds have passed.
+		int64_t gone = comp_timeb(&log_ts, &last_log_ts);
+		if (!repeated_line || gone >= 60*1000)
 		{
-			va_start(params, fmt);
-			len = get_log_header(1, log_txt);
-			vsnprintf(log_txt + len, sizeof(log_txt) - len, fmt, params);
-			va_end(params);
-			if(cfg.logduplicatelines)
-			{
-				memcpy(last_log_txt, log_txt + len, LOG_BUF_SIZE - len);
-				write_to_log_int(log_txt, len);
-			}
-			else
-			{
-				repeated_line = strcmp(last_log_txt, log_txt + len) == 0;
-				if(last_log_duplicates > 0)
-				{
-					if(!cs_valid_time(&last_log_ts))  // Must be initialized once
-						{ last_log_ts = log_ts; }
-					// Report duplicated lines when the new log line is different
-					// than the old or 60 seconds have passed.
-					int64_t gone = comp_timeb(&log_ts, &last_log_ts);
-					if(!repeated_line || gone >= 60*1000)
-					{
-						dupl_header_len = get_log_header(2, dupl);
-						snprintf(dupl + dupl_header_len - 1, sizeof(dupl) - dupl_header_len, "--- Skipped %u duplicated log lines ---", last_log_duplicates);
-						write_to_log_int(dupl, 0);
-						last_log_duplicates = 0;
-						last_log_ts = log_ts;
-					}
-				}
-				if(!repeated_line)
-				{
-					memcpy(last_log_txt, log_txt + len, LOG_BUF_SIZE - len);
-					write_to_log_int(log_txt, len);
-				}
-				else
-				{
-					last_log_duplicates++;
-				}
-			}
+			int32_t dupl_header_len = get_log_header(dupl, sizeof(dupl));
+			snprintf(dupl + dupl_header_len - 1, sizeof(dupl) - dupl_header_len, "        (-) -- Skipped %u duplicated log lines --", last_log_duplicates);
+			write_to_log_int(dupl, 0);
+			last_log_duplicates = 0;
+			last_log_ts = log_ts;
 		}
-		if(buf)
-		{
-			for(i = 0; i < n; i += 16)
-			{
-				len = get_log_header(0, log_txt);
-				cs_hexdump(1, buf + i, (n - i > 16) ? 16 : n - i, log_txt + len, sizeof(log_txt) - len);
-				write_to_log_int(log_txt, len);
-			}
-		}
-		pthread_mutex_unlock(&log_mutex);
+	}
+	if (!repeated_line)
+	{
+		memcpy(last_log_txt, log_txt + hdr_len, LOG_BUF_SIZE - hdr_len);
+		write_to_log_int(log_txt, hdr_len);
+	} else {
+		last_log_duplicates++;
 	}
 }
 
-void cs_log_int_nospace(uint16_t mask, int8_t lock __attribute__((unused)), const uchar *buf, int32_t n, const char *fmt, ...)
-{
-	if((mask & cs_dblevel) || !mask)
-	{
-		va_list params;
+#define __init_log_prefix(fmt) \
+	int32_t hdr_len = get_log_header(log_txt, sizeof(log_txt)); \
+	int32_t log_prefix_len = 0; \
+	do { \
+		if (log_prefix) { \
+			char _lp[16]; \
+			snprintf(_lp, sizeof(_lp), "(%s)", log_prefix); \
+			log_prefix_len = snprintf(log_txt + hdr_len, sizeof(log_txt) - hdr_len, fmt, _lp); \
+		} \
+	} while(0)
 
-		int32_t dupl_header_len, repeated_line, i, len = 0;
-		pthread_mutex_lock(&log_mutex);
-		if(fmt)
+#define __do_log() \
+	do { \
+		va_list params; \
+		va_start(params, fmt); \
+		__init_log_prefix("%10s "); \
+		vsnprintf(log_txt + hdr_len + log_prefix_len, sizeof(log_txt) - (hdr_len + log_prefix_len), fmt, params); \
+		va_end(params); \
+		if (cfg.logduplicatelines) \
+		{ \
+			memcpy(last_log_txt, log_txt + hdr_len, LOG_BUF_SIZE - hdr_len); \
+			write_to_log_int(log_txt, hdr_len); \
+		} else { \
+			__cs_log_check_duplicates(hdr_len); \
+		} \
+	} while(0)
+
+void cs_log_txt(const char *log_prefix, const char *fmt, ...)
+{
+	pthread_mutex_lock(&log_mutex);
+	__do_log();
+	pthread_mutex_unlock(&log_mutex);
+}
+
+void cs_log_hex(const char *log_prefix, const uint8_t *buf, int32_t n, const char *fmt, ...)
+{
+	pthread_mutex_lock(&log_mutex);
+	__do_log();
+	if(buf)
+	{
+		int32_t i;
+		__init_log_prefix("%10s   ");
+		for(i = 0; i < n; i += 16)
 		{
-			va_start(params, fmt);
-			len = get_log_header(1, log_txt);
-			vsnprintf(log_txt + len, sizeof(log_txt) - len, fmt, params);
-			va_end(params);
-			if(cfg.logduplicatelines)
-			{
-				memcpy(last_log_txt, log_txt + len, LOG_BUF_SIZE - len);
-				write_to_log_int(log_txt, len);
-			}
-			else
-			{
-				repeated_line = strcmp(last_log_txt, log_txt + len) == 0;
-				if(last_log_duplicates > 0)
-				{
-					if(!cs_valid_time(&last_log_ts))  // Must be initialized once
-						{ last_log_ts = log_ts; }
-					// Report duplicated lines when the new log line is different
-					// than the old or 60 seconds have passed.
-					int64_t gone = comp_timeb(&log_ts, &last_log_ts);
-					if(!repeated_line || gone >= 60*1000)
-					{
-						dupl_header_len = get_log_header(2, dupl);
-						snprintf(dupl + dupl_header_len - 1, sizeof(dupl) - dupl_header_len, "--- Skipped %u duplicated log lines ---", last_log_duplicates);
-						write_to_log_int(dupl, 0);
-						last_log_duplicates = 0;
-						last_log_ts = log_ts;
-					}
-				}
-				if(!repeated_line)
-				{
-					memcpy(last_log_txt, log_txt + len, LOG_BUF_SIZE - len);
-					write_to_log_int(log_txt, len);
-				}
-				else
-				{
-					last_log_duplicates++;
-				}
-			}
+			cs_hexdump(1, buf + i, (n - i > 16) ? 16 : n - i, log_txt + hdr_len + log_prefix_len, sizeof(log_txt) - (hdr_len + log_prefix_len));
+			write_to_log_int(log_txt, hdr_len);
 		}
-		if(buf)
-		{
-			for(i = 0; i < n; i += 32)
-			{
-				len = get_log_header(0, log_txt);
-				cs_hexdump(0, buf + i, (n - i > 32) ? 32 : n - i, log_txt + len, sizeof(log_txt) - len);
-				write_to_log_int(log_txt, len);
-			}
-		}
-		pthread_mutex_unlock(&log_mutex);
 	}
+	pthread_mutex_unlock(&log_mutex);
 }
 
 static void cs_close_log(void)
@@ -585,77 +527,6 @@ static void cs_close_log(void)
 		fclose(fp);
 		fp = (FILE *)0;
 	}
-}
-
-/*
- * This function writes the current CW from ECM struct to a cwl file.
- * The filename is re-calculated and file re-opened every time.
- * This will consume a bit cpu time, but nothing has to be stored between
- * each call. If not file exists, a header is prepended
- */
-void logCWtoFile(ECM_REQUEST *er, uchar *cw)
-{
-	FILE *pfCWL;
-	char srvname[128];
-	/* %s / %s   _I  %04X  _  %s  .cwl  */
-	char buf[256 + sizeof(srvname)];
-	char date[9];
-	unsigned char  i, parity, writeheader = 0;
-	struct tm timeinfo;
-
-	/*
-	* search service name for that id and change characters
-	* causing problems in file name
-	*/
-
-	get_servicename(cur_client(), er->srvid, er->caid, srvname);
-
-	for(i = 0; srvname[i]; i++)
-		if(srvname[i] == ' ') { srvname[i] = '_'; }
-
-	/* calc log file name */
-	time_t walltime = cs_time();
-	localtime_r(&walltime, &timeinfo);
-	strftime(date, sizeof(date), "%Y%m%d", &timeinfo);
-	snprintf(buf, sizeof(buf), "%s/%s_I%04X_%s.cwl", cfg.cwlogdir, date, er->srvid, srvname);
-
-	/* open failed, assuming file does not exist, yet */
-	if((pfCWL = fopen(buf, "r")) == NULL)
-	{
-		writeheader = 1;
-	}
-	else
-	{
-		/* we need to close the file if it was opened correctly */
-		fclose(pfCWL);
-	}
-
-	if((pfCWL = fopen(buf, "a+")) == NULL)
-	{
-		/* maybe this fails because the subdir does not exist. Is there a common function to create it?
-		    for the moment do not print32_t to log on every ecm
-		    cs_log(""error opening cw logfile for writing: %s (errno=%d %s)", buf, errno, strerror(errno)); */
-		return;
-	}
-	if(writeheader)
-	{
-		/* no global macro for cardserver name :( */
-		fprintf(pfCWL, "# OSCam cardserver v%s - http://www.streamboard.tv/oscam/\n", CS_VERSION);
-		fprintf(pfCWL, "# control word log file for use with tsdec offline decrypter\n");
-		strftime(buf, sizeof(buf), "DATE %Y-%m-%d, TIME %H:%M:%S, TZ %Z\n", &timeinfo);
-		fprintf(pfCWL, "# %s", buf);
-		fprintf(pfCWL, "# CAID 0x%04X, SID 0x%04X, SERVICE \"%s\"\n", er->caid, er->srvid, srvname);
-	}
-
-	parity = er->ecm[0] & 1;
-	fprintf(pfCWL, "%d ", parity);
-	for(i = parity * 8; i < 8 + parity * 8; i++)
-		{ fprintf(pfCWL, "%02X ", cw[i]); }
-	/* better use incoming time er->tps rather than current time? */
-	strftime(buf, sizeof(buf), "%H:%M:%S\n", &timeinfo);
-	fprintf(pfCWL, "# %s", buf);
-	fflush(pfCWL);
-	fclose(pfCWL);
 }
 
 int32_t cs_init_statistics(void)
@@ -768,8 +639,7 @@ void log_list_thread(void)
 			sleepms_on_cond(&log_thread_sleep_cond_mutex, &log_thread_sleep_cond, 60 * 1000);
 	}
 	while(log_running);
-	ll_destroy(log_list);
-	log_list = NULL;
+	ll_destroy(&log_list);
 }
 
 int32_t cs_init_log(void)

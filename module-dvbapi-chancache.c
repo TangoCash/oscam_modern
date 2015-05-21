@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "dvbapi"
+
 #include "globals.h"
 
 #ifdef HAVE_DVBAPI
@@ -12,20 +14,12 @@ extern DEMUXTYPE demux[MAX_DEMUX];
 
 static LLIST *channel_cache;
 
-void dvbapi_clear_channel_cache(void)
-{
-	if (USE_OPENXCAS) // Why?
-		return;
-		
-	if(channel_cache)
-	{
-		ll_destroy_data_NULL(channel_cache);
-	}
-}
-
 void dvbapi_save_channel_cache(void)
 {
+	if(boxtype_is("dbox2")) return; // dont save channelcache on these boxes, they lack resources and will crash!
+	
 	char fname[256];
+	int32_t result = 0;
 	get_config_filename(fname, sizeof(fname), "oscam.ccache");
 	FILE *file = fopen(fname, "w");
 
@@ -39,7 +33,21 @@ void dvbapi_save_channel_cache(void)
 	struct s_channel_cache *c;
 	while((c = ll_iter_next(&it)))
 	{
-		fprintf(file, "%04X,%06X,%04X,%04X,%06X\n", c->caid, c->prid, c->srvid, c->pid, c->chid);
+		result = fprintf(file, "%04X,%06X,%04X,%04X,%06X\n", c->caid, c->prid, c->srvid, c->pid, c->chid);
+		if(result < 0)
+		{
+			fclose(file);
+			result = remove(fname);
+			if(!result)
+			{
+				cs_log("error writing cache -> cache file removed!");
+			}
+			else
+			{
+				cs_log("error writing cache -> cache file could not be removed either!");
+			}
+			return;
+		}
 	}
 
 	fclose(file);
@@ -48,6 +56,8 @@ void dvbapi_save_channel_cache(void)
 
 void dvbapi_load_channel_cache(void)
 {
+	if(boxtype_is("dbox2")) return; // dont load channelcache on these boxes, they lack resources and will crash!
+	
 	if (USE_OPENXCAS) // Why?
 		return;
 
@@ -60,10 +70,10 @@ void dvbapi_load_channel_cache(void)
 	file = fopen(fname, "r");
 	if(!file)
 	{
-		cs_log("dvbapi channelcache can't read from file %s", fname);
+		cs_log_dbg(D_TRACE, "dvbapi channelcache can't read from file %s", fname);
 		return;
 	}
-
+	
 	int32_t i = 1;
 	int32_t valid = 0;
 	char *ptr, *saveptr1 = NULL;
@@ -139,7 +149,7 @@ struct s_channel_cache *dvbapi_find_channel_cache(int32_t demux_id, int32_t pidi
 #ifdef WITH_DEBUG
 				char buf[ECM_FMT_LEN];
 				ecmfmt(c->caid, 0, c->prid, c->chid, c->pid, c->srvid, 0, 0, 0, 0, buf, ECM_FMT_LEN, 0, 0);
-				cs_debug_mask(D_DVBAPI, "[DVBAPI] found in channel cache: %s", buf);
+				cs_log_dbg(D_DVBAPI, "Demuxer %d found in channel cache: %s", demux_id, buf);
 #endif
 				return c;
 			}
@@ -188,7 +198,7 @@ int32_t dvbapi_edit_channel_cache(int32_t demux_id, int32_t pidindex, uint8_t ad
 #ifdef WITH_DEBUG
 		char buf[ECM_FMT_LEN];
 		ecmfmt(c->caid, 0, c->prid, c->chid, c->pid, c->srvid, 0, 0, 0, 0, buf, ECM_FMT_LEN, 0, 0);
-		cs_debug_mask(D_DVBAPI, "[DVBAPI] added to channel cache: %s", buf);
+		cs_log_dbg(D_DVBAPI, "Demuxer %d added to channel cache: %s", demux_id, buf);
 #endif
 		count++;
 	}

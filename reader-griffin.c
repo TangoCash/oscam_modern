@@ -335,7 +335,7 @@ static int32_t griffin_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)
 		break;
 	default:
 		ep->type = UNKNOWN;
-		rdr_debug_mask(rdr, D_EMM, "UNKNOWN EMM TYPE:%02X SA:%02X %02X %02X %02X",
+		rdr_log_dbg(rdr, D_EMM, "UNKNOWN EMM TYPE:%02X SA:%02X %02X %02X %02X",
 					   ep->emm[0],
 					   ep->emm[3], ep->emm[4], ep->emm[5], ep->emm[6]);
 	}
@@ -435,7 +435,7 @@ static int32_t griffin_card_info(struct s_reader *rdr)
 	{
 		for(i = 0; i < cta_lr - 8; i += 9)
 		{
-			rdr_log(rdr, " Subscription stream #%d - %c%c%c%c%c%c",
+			rdr_log(rdr, " Subscription stream %d - %c%c%c%c%c%c",
 					r++, cta_res[i + 2], cta_res[i + 3], cta_res[i + 4],
 					cta_res[i + 5], cta_res[i + 6], cta_res[i + 7]);
 		}
@@ -453,23 +453,16 @@ static int32_t griffin_card_info(struct s_reader *rdr)
 	return OK;
 }
 
-void reader_griffin(struct s_cardsystem *ph)
+const struct s_cardsystem reader_griffin =
 {
-	ph->do_emm         = griffin_do_emm;
-	ph->do_ecm         = griffin_do_ecm;
-	ph->card_info      = griffin_card_info;
-	ph->card_init      = griffin_card_init;
-	ph->get_emm_type   = griffin_get_emm_type;
-	ph->get_emm_filter = griffin_get_emm_filter;
-	ph->desc           = "griffin";
-	ph->caids[0]       = 0x5501;
-	ph->caids[1]       = 0x5502;
-	ph->caids[2]       = 0x5504;
-	ph->caids[3]       = 0x5506;
-	ph->caids[4]       = 0x5508;
-	ph->caids[5]       = 0x5509;
-	ph->caids[6]       = 0x550E;
-	ph->caids[7]       = 0x5511;
-	ph->caids[8]       = 0x551A;
-}
+	.desc           = "griffin",
+	.caids          = (uint16_t[]){ 0x5501, 0x5502, 0x5504, 0x5506, 0x5508, 0x5509, 0x550E, 0x5511, 0x551A, 0 },
+	.do_emm         = griffin_do_emm,
+	.do_ecm         = griffin_do_ecm,
+	.card_info      = griffin_card_info,
+	.card_init      = griffin_card_init,
+	.get_emm_type   = griffin_get_emm_type,
+	.get_emm_filter = griffin_get_emm_filter,
+};
+
 #endif

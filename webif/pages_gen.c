@@ -1,6 +1,6 @@
 /*
  * OSCam WebIf pages generator
- * Copyright (C) 2013 Unix Solutions Ltd.
+ * Copyright (C) 2013-2015 Unix Solutions Ltd.
  *
  * Authors: Georgi Chorbadzhiyski (gf@unixsol.org)
  *
@@ -67,7 +67,7 @@ struct templates
 static struct templates templates;
 static FILE *output_file;
 
-static void die(const char *s, ...)
+__attribute__ ((noreturn)) static void die(const char *s, ...)
 {
 	va_list args;
 	va_start(args, s);
@@ -101,6 +101,7 @@ static void readfile(const char *filename, uint8_t **data, size_t *data_len)
 		{ die("%s(%s): can't alloc %zd bytes\n", __func__, filename, *data_len); }
 	if(read(fd, *data, *data_len) < 0)
 		{ die("read(%d, %zd): %s\n", fd, *data_len, strerror(errno)); }
+	close(fd);
 }
 
 static bool is_text(char *filename)
@@ -136,19 +137,10 @@ static uint8_t mime_type_from_filename(char *filename)
 
 static void parse_index_file(char *filename)
 {
-	unsigned long defined_file_exist=0,def_size=0;
-	struct stat sb;
-	if(stat(defined_file, &sb) == 0){
-		defined_file_exist=1;
-		def_size = sb.st_size;
-	}
-	char is_defined[def_size];
-	if(defined_file_exist){
-		FILE *def = xfopen(defined_file, "r");
-		if(!fread (is_defined, sizeof(is_defined), def_size, def))
-			{defined_file_exist=0;}
-		fclose(def);
-	}
+	uint8_t *is_defined = NULL;
+	size_t is_defined_len = 0;
+	if(access(defined_file, R_OK) != -1)
+		readfile(defined_file, &is_defined, &is_defined_len);
 	FILE *f = xfopen(filename, "r");
 	int max_fields = 3;
 	char line[1024];
@@ -157,7 +149,7 @@ static void parse_index_file(char *filename)
 		int field = 0, pos = 0;
 		char *ident = "", *file = "", *deps = "";
 		int len = strlen(line);
-		if(!len || !isalnum(line[0]))  // Skip comments and junk
+		if(!len || !isalnum((unsigned char)line[0]))  // Skip comments and junk
 			{ continue; }
 		// Parse text[   ]text[   ]text
 		do
@@ -190,21 +182,21 @@ static void parse_index_file(char *filename)
 		}
 		while(pos < len);
 
-		if(deps && strlen(deps) && defined_file_exist){
+		if(deps && strlen(deps) && is_defined){
 			if(strstr(deps, ",")){
 				int i,def_found=0;
 				char *ptr, *saveptr1 = NULL;
 				char *deps_sep = strdup(deps);
 	 			for(i = 0, ptr = strtok_r(deps_sep, ",", &saveptr1); ptr; ptr = strtok_r(NULL, ",", &saveptr1), i++)
 	 			{
-	 				if(strstr(is_defined, ptr))
+					if(strstr((char *)is_defined, ptr))
 	 					{ def_found = 1; }
 	 			}
 				free(deps_sep);
 				if(!def_found)
 					{ continue; }
 			}
-			else if( !strstr(is_defined, deps))
+			else if( !strstr((char *)is_defined, deps))
 				{ continue; }
 		}
 		if(!strlen(ident) || !strlen(file))
@@ -440,6 +432,8 @@ int main(void)
 
 	// Allocate template data and populate it
 #define data_len cur_pos
+	if(!data_len)
+		die("No defined templates");
 	uint8_t *data = calloc(1, data_len);
 	if(!data)
 		{ die("Can't alloc %u bytes", data_len); }
@@ -468,6 +462,8 @@ int main(void)
 	{
 		fprintf(stderr, "internal error - lzo_init() failed !!!\n");
 		fprintf(stderr, "(this usually indicates a compiler bug - try recompiling\nwithout optimizations, and enable '-DLZO_DEBUG' for diagnostics)\n");
+		free(out);
+		free(data);
 		return 3;
 	}
 
@@ -482,6 +478,8 @@ int main(void)
 	{
 		/* this should NEVER happen */
 		printf("internal error - compression failed: %d\n", r);
+		free(out);
+		free(data);
 		return 2;
 	}
 

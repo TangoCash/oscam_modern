@@ -1,6 +1,9 @@
+#define MODULE_LOG_PREFIX "cache"
+
 #include "globals.h"
 #include "module-cacheex.h"
 #include "module-cw-cycle-check.h"
+#include "oscam-cache.h"
 #include "oscam-chk.h"
 #include "oscam-client.h"
 #include "oscam-ecm.h"
@@ -23,9 +26,7 @@ typedef struct cw_t {
 	uint8_t			odd_even;			//odd/even byte (0x80 0x81)
 	uint8_t			cwc_cycletime;
 	uint8_t			cwc_next_cw_cycle;
-#ifdef CW_CYCLE_CHECK
-	uint8_t			got_bad_cwc;
-#endif
+	uint8_t			got_bad_cwc;		//used by cycle check
 	uint16_t		caid;				//first caid received
 	uint32_t		prid;				//first prid received
 	uint16_t		srvid;				//first srvid received
@@ -61,9 +62,9 @@ typedef struct cache_t {
 } ECMHASH;
 
 
-pthread_rwlock_t cache_lock;
-hash_table ht_cache;
-list ll_cache;
+static pthread_rwlock_t cache_lock;
+static hash_table ht_cache;
+static list ll_cache;
 
 void init_cache(void){
 	init_hash_table(&ht_cache, &ll_cache);
@@ -71,18 +72,25 @@ void init_cache(void){
 		cs_log("Error creating lock cache_lock!");
 }
 
+void free_cache(void){
+	cleanup_cache(true);
+	deinitialize_hash_table(&ht_cache);
+	pthread_rwlock_destroy(&cache_lock);
+}
+
 uint32_t cache_size(void){
 	return count_hash_table(&ht_cache);
 }
 
-uint8_t count_sort(CW *a, CW *b){
+static uint8_t count_sort(CW *a, CW *b){
 	if (a->count == b->count) return 0;
 	return (a->count > b->count) ? -1 : 1; 	//DESC order by count
 }
 
-uint8_t check_is_pushed(CW *cw, struct s_client *cl){
+uint8_t check_is_pushed(void *cwp, struct s_client *cl){
 
 	struct s_pushclient *cl_tmp;
+	CW* cw = (CW*)cwp;
 	bool pushed=false;
 
 	pthread_rwlock_rdlock(&cw->pushout_client_lock);
@@ -128,14 +136,8 @@ CW *get_first_cw(ECMHASH *ecmhash, ECM_REQUEST *er){
 	while (j) {
 		cw = get_data_from_node(j);
 
-		if(cw
-		   && cw->odd_even==get_odd_even(er)
-#ifdef CW_CYCLE_CHECK
-	       && !cw->got_bad_cwc
-#endif
-		){
+		if(cw && cw->odd_even == get_odd_even(er) && !cw->got_bad_cwc)
 			return cw;
-		}
 
 		j = j->next;
 	}
@@ -143,15 +145,34 @@ CW *get_first_cw(ECMHASH *ecmhash, ECM_REQUEST *er){
 	return NULL;
 }
 
-int compare_csp_hash(const void *arg, const void *obj){
+static int compare_csp_hash(const void *arg, const void *obj){
 	int32_t h = ((const ECMHASH*)obj)->csp_hash;
 	return memcmp(arg, &h, 4);
 }
 
-int compare_cw(const void *arg, const void *obj){
+static int compare_cw(const void *arg, const void *obj){
 	return memcmp(arg, ((const CW*)obj)->cw, 16);
 }
 
+static bool cwcycle_check_cache(struct s_client *cl, ECM_REQUEST *er, CW *cw)
+{
+	(void)cl; (void)er; (void)cw;
+#ifdef CW_CYCLE_CHECK
+	if(cw->got_bad_cwc)
+		return 0;
+	uint8_t cwc_ct   = cw->cwc_cycletime > 0 ? cw->cwc_cycletime : 0;
+	uint8_t cwc_ncwc = cw->cwc_next_cw_cycle < 2 ? cw->cwc_next_cw_cycle : 2;
+	if(checkcwcycle(cl, er, NULL, cw->cw, 0, cwc_ct, cwc_ncwc) != 0)
+	{
+		cs_log_dbg(D_CWC | D_LB, "{client %s, caid %04X, srvid %04X} [check_cache] cyclecheck passed ecm in INT. cache.", (cl ? cl->account->usr : "-"), er->caid, er->srvid);
+	}else{
+		cs_log_dbg(D_CWC, "cyclecheck [BAD CW Cycle] from Int. Cache detected.. {client %s, caid %04X, srvid %04X} [check_cache] -> skip cache answer", (cl ? cl->account->usr : "-"), er->caid, er->srvid);
+		cw->got_bad_cwc = 1; // no need to check it again
+		return 0;
+	}
+#endif
+	return 1;
+}
 
 /*
  * This function returns cw (mostly received) in cache for er, or NULL if not found.
@@ -175,11 +196,10 @@ struct ecm_request_t *check_cache(ECM_REQUEST *er, struct s_client *cl)
 
 	result = find_hash_table(&ht_cache, &er->csp_hash, sizeof(int32_t),&compare_csp_hash);
 	cw = get_first_cw(result, er);
+	if (!cw)
+		goto out_err;
 
 	if(
-		cw
-		&&
-	    (
 			cw->csp    //csp have no grp!
 			||
 			!grp		   			     //csp client(no grp) searching for cache
@@ -190,7 +210,6 @@ struct ecm_request_t *check_cache(ECM_REQUEST *er, struct s_client *cl)
 			  cw->grp  //ecm group --> only when readers/ex-clients answer (e_found) it
 			  && (grp & cw->grp)
 			)
-		 )
 	){
 
 
@@ -198,8 +217,7 @@ struct ecm_request_t *check_cache(ECM_REQUEST *er, struct s_client *cl)
 
 		//if preferlocalcards=2 for this ecm request, we can server ONLY cw from localcards readers until stage<3
 		if(er->preferlocalcards==2 && !cw->localcards && er->stage<3){
-		    pthread_rwlock_unlock(&cache_lock);
-		    return NULL;
+			goto out_err;
 		}
 
 		CWCHECK check_cw = get_cwcheck(er);
@@ -208,29 +226,12 @@ struct ecm_request_t *check_cache(ECM_REQUEST *er, struct s_client *cl)
 		   && cw->count < check_cw.counter
 		   && (check_cw.mode || !er->cacheex_wait_time_expired)
 		){
-		    pthread_rwlock_unlock(&cache_lock);
-		    return NULL;
+			goto out_err;
 		}
 #endif
 
-
-#ifdef CW_CYCLE_CHECK
-		uint8_t cwc_ct = cw->cwc_cycletime > 0 ? cw->cwc_cycletime : 0;
-		uint8_t cwc_ncwc = cw->cwc_next_cw_cycle < 2 ? cw->cwc_next_cw_cycle : 2;
-		if(cw->got_bad_cwc)
-		{
-			pthread_rwlock_unlock(&cache_lock);
-			return NULL;
-		}
-		if(checkcwcycle(cl, er, NULL, cw->cw, 0, cwc_ct, cwc_ncwc) != 0){
-			cs_debug_mask(D_CWC | D_LB, "{client %s, caid %04X, srvid %04X} [check_cache] cyclecheck passed ecm in INT. cache, ecm->rc %d", (cl ? cl->account->usr : "-"), er->caid, er->srvid, ecm ? ecm->rc : -1);
-		}else{
-			cs_debug_mask(D_CWC, "cyclecheck [BAD CW Cycle] from Int. Cache detected.. {client %s, caid %04X, srvid %04X} [check_cache] -> skip cache answer", (cl ? cl->account->usr : "-"), er->caid, er->srvid);
-			cw->got_bad_cwc = 1; // no need to check it again
-			pthread_rwlock_unlock(&cache_lock);
-			return NULL;
-		}
-#endif
+		if (!cwcycle_check_cache(cl, er, cw))
+			goto out_err;
 
 		if (cs_malloc(&ecm, sizeof(ECM_REQUEST))){
 			ecm->rc = E_FOUND;
@@ -240,26 +241,74 @@ struct ecm_request_t *check_cache(ECM_REQUEST *er, struct s_client *cl)
 			ecm->selected_reader = cw->selected_reader;
 			ecm->cwc_cycletime = cw->cwc_cycletime;
 			ecm->cwc_next_cw_cycle = cw->cwc_next_cw_cycle;
-#ifdef CS_CACHEEX
 			ecm->cacheex_src = cw->cacheex_src;
-#endif
 			ecm->cw_count = cw->count;
 		}
 	}
 
-    pthread_rwlock_unlock(&cache_lock);
-    return ecm;
+out_err:
+	pthread_rwlock_unlock(&cache_lock);
+	return ecm;
 }
 
+static void cacheex_cache_add(ECM_REQUEST *er, ECMHASH *result, CW *cw, bool add_new_cw)
+{
+	(void)er; (void)result; (void)cw; (void)add_new_cw;
+#ifdef CS_CACHEEX
+	er->cw_cache = cw;
+	cacheex_cache_push(er);
+
+	//cacheex debug log lines and cw diff stuff
+	if(!check_client(er->cacheex_src))
+		return;
+
+	if(!add_new_cw)
+	{
+		debug_ecm(D_CACHEEX| D_CSP, "got duplicate pushed ECM %s from %s", buf, er->from_csp ? "csp" : username(er->cacheex_src));
+		return;
+	}
+
+	debug_ecm(D_CACHEEX|D_CSP, "got pushed ECM %s from %s", buf, er->from_csp ? "csp" : username(er->cacheex_src));
+	CW *cw_first = get_first_cw(result, er);
+	if(!cw_first)
+		return;
+
+	//compare er cw with mostly counted cached cw
+	if(memcmp(er->cw, cw_first->cw, sizeof(er->cw)) != 0)
+	{
+		er->cacheex_src->cwcacheexerrcw++;
+		if (er->cacheex_src->account)
+			er->cacheex_src->account->cwcacheexerrcw++;
+
+		if (((0x0200| 0x0800) & cs_dblevel)) //avoid useless operations if debug is not enabled
+		{
+			char cw1[16*3+2], cw2[16*3+2];
+			cs_hexdump(0, er->cw, 16, cw1, sizeof(cw1));
+			cs_hexdump(0, cw_first->cw, 16, cw2, sizeof(cw2));
+
+			char ip1[20]="", ip2[20]="";
+			if (check_client(er->cacheex_src))
+				cs_strncpy(ip1, cs_inet_ntoa(er->cacheex_src->ip), sizeof(ip1));
+			if (check_client(cw_first->cacheex_src))
+				cs_strncpy(ip2, cs_inet_ntoa(cw_first->cacheex_src->ip), sizeof(ip2));
+			else if (cw_first->selected_reader && check_client(cw_first->selected_reader->client))
+				cs_strncpy(ip2, cs_inet_ntoa(cw_first->selected_reader->client->ip), sizeof(ip2));
+
+			debug_ecm(D_CACHEEX| D_CSP, "WARNING: Different CWs %s from %s(%s)<>%s(%s): %s<>%s ", buf,
+				er->from_csp ? "csp" : username(er->cacheex_src), ip1,
+				check_client(cw_first->cacheex_src)?username(cw_first->cacheex_src):(cw_first->selected_reader?cw_first->selected_reader->label:"unknown/csp"), ip2,
+				cw1, cw2);
+		}
+	}
+#endif
+}
 
 void add_cache(ECM_REQUEST *er){
 	if(!er->csp_hash) return;
 
 	ECMHASH *result = NULL;
 	CW *cw = NULL;
-#ifdef CS_CACHEEX
 	bool add_new_cw=false;
-#endif
 
 	pthread_rwlock_wrlock(&cache_lock);
 
@@ -309,9 +358,7 @@ void add_cache(ECM_REQUEST *er){
 				cw->prid = er->prid;
 				cw->srvid = er->srvid;
 				cw->selected_reader=er->selected_reader;
-	#ifdef CS_CACHEEX
 				cw->cacheex_src=er->cacheex_src;
-	#endif
 				cw->pushout_client = NULL;
 
 				while(1){
@@ -325,9 +372,7 @@ void add_cache(ECM_REQUEST *er){
 
 				add_hash_table(&result->ht_cw, &cw->ht_node, &result->ll_cw, &cw->ll_node, cw, cw->cw, sizeof(er->cw));
 
-	#ifdef CS_CACHEEX
 				add_new_cw=true;
-	#endif
 				break;
 			}
 
@@ -339,14 +384,10 @@ void add_cache(ECM_REQUEST *er){
 	//update if answered from csp/cacheex/local_proxy
 	if(er->from_cacheex) cw->cacheex = 1;
 	if(er->from_csp) cw->csp = 1;
-#ifdef CS_CACHEEX
 	if(!er->cacheex_src){
-#endif
 		if(is_localreader(er->selected_reader, er)) cw->localcards=1;
 		else cw->proxy = 1;
-#ifdef CS_CACHEEX
 	}
-#endif
 
 	//always update group and counter
 	cw->grp |= er->grp;
@@ -358,57 +399,10 @@ void add_cache(ECM_REQUEST *er){
 
 	pthread_rwlock_unlock(&cache_lock);
 
-
-#ifdef CS_CACHEEX
-
-	er->cw_cache=cw;
-	cacheex_cache_push(er);
-
-
-	//cacheex debug log lines and cw diff stuff
-	if(check_client(er->cacheex_src)){
-		if(add_new_cw){
-			debug_ecm(D_CACHEEX|D_CSP, "got pushed ECM %s from %s", buf, er->from_csp ? "csp" : username(er->cacheex_src));
-
-			CW *cw_first = get_first_cw(result, er);
-
-			if(er && cw_first){
-			
-			//compare er cw with mostly counted cached cw
-			if(memcmp(er->cw, cw_first->cw, sizeof(er->cw)) != 0) {
-				er->cacheex_src->cwcacheexerrcw++;
-				if (er->cacheex_src->account)
-					er->cacheex_src->account->cwcacheexerrcw++;
-
-				if (((0x0200| 0x0800) & cs_dblevel)) { //avoid useless operations if debug is not enabled
-					char cw1[16*3+2], cw2[16*3+2];
-					cs_hexdump(0, er->cw, 16, cw1, sizeof(cw1));
-					cs_hexdump(0, cw_first->cw, 16, cw2, sizeof(cw2));
-
-					char ip1[20]="", ip2[20]="";
-					if (check_client(er->cacheex_src))
-						cs_strncpy(ip1, cs_inet_ntoa(er->cacheex_src->ip), sizeof(ip1));
-					if (check_client(cw_first->cacheex_src))
-						cs_strncpy(ip2, cs_inet_ntoa(cw_first->cacheex_src->ip), sizeof(ip2));
-					else if (cw_first->selected_reader && check_client(cw_first->selected_reader->client))
-						cs_strncpy(ip2, cs_inet_ntoa(cw_first->selected_reader->client->ip), sizeof(ip2));
-
-					debug_ecm(D_CACHEEX| D_CSP, "WARNING: Different CWs %s from %s(%s)<>%s(%s): %s<>%s ", buf,
-						er->from_csp ? "csp" : username(er->cacheex_src), ip1,
-						check_client(cw_first->cacheex_src)?username(cw_first->cacheex_src):(cw_first->selected_reader?cw_first->selected_reader->label:"unknown/csp"), ip2,
-						cw1, cw2);
-				}
-			}
-
-		}
-		}else
-			debug_ecm(D_CACHEEX| D_CSP, "got duplicate pushed ECM %s from %s", buf, er->from_csp ? "csp" : username(er->cacheex_src));
-	}
-
-#endif
+	cacheex_cache_add(er, result, cw, add_new_cw);
 }
 
-void cleanup_cache(void){
+void cleanup_cache(bool force){
 	ECMHASH *ecmhash;
 	CW *cw;
 	struct s_pushclient *pc, *nxt;
@@ -425,15 +419,20 @@ void cleanup_cache(void){
 	    i_next = i->next;
 	    ecmhash = get_data_from_node(i);
 
+		if(!ecmhash){
+			i = i_next;
+			continue;	
+		}
+		
 	    cs_ftime(&now);
 	    gone_first = comp_timeb(&now, &ecmhash->first_recv_time);
 	    gone_upd = comp_timeb(&now, &ecmhash->upd_time);
 
-    	if(ecmhash && gone_first<=(cfg.max_cache_time*1000)){ //not continue, useless check for nexts one!
+    	if(!force && gone_first<=(cfg.max_cache_time*1000)){ //not continue, useless check for nexts one!
     		break;
     	}
 
-    	if(ecmhash && gone_upd>(cfg.max_cache_time*1000)){
+    	if(force || gone_upd>(cfg.max_cache_time*1000)){
 
     		j = get_first_node_list(&ecmhash->ll_cw);
     		while (j) {
@@ -461,188 +460,11 @@ void cleanup_cache(void){
     		deinitialize_hash_table(&ecmhash->ht_cw);
     		remove_elem_list(&ll_cache, &ecmhash->ll_node);
     		remove_elem_hash_table(&ht_cache, &ecmhash->ht_node);
-	    NULLFREE(ecmhash);
+	    	NULLFREE(ecmhash);
     	}
 
 	    i = i_next;
 	}
 
 	pthread_rwlock_unlock(&cache_lock);
-}
-
-#ifdef CS_CACHEEX
-// HIT CACHE functions **************************************************************
-
-typedef struct hit_key_t {
-	uint16_t		caid;
-	uint32_t		prid;
-	uint16_t		srvid;
-} HIT_KEY;
-
-typedef struct cache_hit_t {
-	HIT_KEY			key;
-	struct timeb	time;
-	uint64_t		grp;
-
-	node		    ht_node;
-	node		    ll_node;
-} CACHE_HIT;
-
-
-pthread_rwlock_t hitcache_lock;
-hash_table ht_hitcache;
-list ll_hitcache;
-
-void init_hitcache(void){
-	init_hash_table(&ht_hitcache, &ll_hitcache);
-	if (pthread_rwlock_init(&hitcache_lock,NULL) != 0)
-		cs_log("Error creating lock hitcache_lock!");
-}
-
-uint32_t hitcache_size(void){
-	return count_hash_table(&ht_hitcache);
-}
-
-int compare_hitkey(const void *arg, const void *obj){
-	if(   ((const HIT_KEY*)arg)->caid==((const CACHE_HIT*)obj)->key.caid
-		   && ((const HIT_KEY*)arg)->prid==((const CACHE_HIT*)obj)->key.prid
-		   && ((const HIT_KEY*)arg)->srvid==((const CACHE_HIT*)obj)->key.srvid	)
-		return 0;
-	return 1;
-}
-
-int32_t check_hitcache(ECM_REQUEST *er, struct s_client *cl) {
-	CACHE_HIT *result;
-	HIT_KEY search;
-
-	memset(&search, 0, sizeof(HIT_KEY));
-	search.caid = er->caid;
-	search.prid = er->prid;
-	search.srvid = er->srvid;
-
-	pthread_rwlock_rdlock(&hitcache_lock);
-	result = find_hash_table(&ht_hitcache, &search, sizeof(HIT_KEY), &compare_hitkey);
-    if(result){
-
-    	struct timeb now;
-	    cs_ftime(&now);
-	    int64_t gone = comp_timeb(&now, &result->time);
-    	uint64_t grp = cl?cl->grp:0;
-
-    	if(
-    		gone <= (cfg.max_hitcache_time*1000)
-    		&&
-    		(!grp || !result->grp || (grp & result->grp))
-    	){
-    	    pthread_rwlock_unlock(&hitcache_lock);
-    		return 1;
-    	}
-    }
-
-    pthread_rwlock_unlock(&hitcache_lock);
-    return 0;
-}
-
-
-void add_hitcache(struct s_client *cl, ECM_REQUEST *er) {
-	if (!cfg.max_hitcache_time)  //we don't want check/save hitcache
-		return;
-	if (!cfg.cacheex_wait_timetab.n)
-		return;
-	uint32_t cacheex_wait_time = get_cacheex_wait_time(er,NULL);
-	if (!cacheex_wait_time)
-		return;
-
-	CACHE_HIT *result;
-	HIT_KEY search;
-
-	memset(&search, 0, sizeof(HIT_KEY));
-	search.caid = er->caid;
-	search.prid = er->prid;
-	search.srvid = er->srvid;
-
-	pthread_rwlock_wrlock(&hitcache_lock);
-
-    result = find_hash_table(&ht_hitcache, &search, sizeof(HIT_KEY), &compare_hitkey);
-    if(!result){  //not found, add it!
-
-    	if(cs_malloc(&result, sizeof(CACHE_HIT))){
-    	    memset(result, 0, sizeof(CACHE_HIT));
-    	    result->key.caid = er->caid;
-    	    result->key.prid = er->prid;
-    	    result->key.srvid = er->srvid;
-
-    		add_hash_table(&ht_hitcache, &result->ht_node, &ll_hitcache, &result->ll_node, result, &result->key, sizeof(HIT_KEY));
-    	}
-    }
-
-    if(result){
-		if(cl) result->grp |= cl->grp;
-		cs_ftime(&result->time); //always update time;
-    }
-
-    pthread_rwlock_unlock(&hitcache_lock);
-}
-
-
-void del_hitcache(ECM_REQUEST *er) {
-	HIT_KEY search;
-
-	memset(&search, 0, sizeof(HIT_KEY));
-	search.caid = er->caid;
-	search.prid = er->prid;
-	search.srvid = er->srvid;
-
-	pthread_rwlock_wrlock(&hitcache_lock);
-	search_remove_elem_hash_table(&ht_hitcache, &search, sizeof(HIT_KEY), &compare_hitkey);
-    pthread_rwlock_unlock(&hitcache_lock);
-}
-
-
-void cleanup_hitcache(void) {
-	CACHE_HIT *cachehit;
-	node *i,*i_next;
-	struct timeb now;
-	int64_t gone;
-
-	int32_t timeout = (cfg.max_hitcache_time + (cfg.max_hitcache_time / 2))*1000;  //1,5
-
-	pthread_rwlock_wrlock(&hitcache_lock);
-
-	i = get_first_node_list(&ll_hitcache);
-	while (i) {
-	    i_next = i->next;
-	    cachehit = get_data_from_node(i);
-
-	    cs_ftime(&now);
-	    gone = comp_timeb(&now, &cachehit->time);
-
-	    if(cachehit && gone>timeout){
-    		remove_elem_list(&ll_hitcache, &cachehit->ll_node);
-    		remove_elem_hash_table(&ht_hitcache, &cachehit->ht_node);
-	    NULLFREE(cachehit);
-    	}
-
-	    i = i_next;
-	}
-
-	pthread_rwlock_unlock(&hitcache_lock);
-}
-#endif
-
-
-// CSP HASH functions **************************************************************
-static int32_t cacheex_ecm_hash_calc(uchar *buf, int32_t n)
-{
-	int32_t i, h = 0;
-	for(i = 0; i < n; i++)
-	{
-		h = 31 * h + buf[i];
-	}
-	return h;
-}
-
-void cacheex_update_hash(ECM_REQUEST *er)
-{
-	er->csp_hash = cacheex_ecm_hash_calc(er->ecm + 3, er->ecmlen - 3);
 }

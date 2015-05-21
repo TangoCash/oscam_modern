@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "cccam"
+
 #include "globals.h"
 
 #ifdef MODULE_CCCAM
@@ -7,6 +9,7 @@
 #include "module-cacheex.h"
 #include "module-cccam.h"
 #include "module-cccam-data.h"
+#include "module-cccam-cacheex.h"
 #include "module-cccshare.h"
 #include "oscam-chk.h"
 #include "oscam-cache.h"
@@ -336,7 +339,7 @@ uint32_t has_perm_blocked_sid(struct cc_card *card)
 	return srvid != NULL;
 }
 
-struct cc_srvid   *is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good)
+struct cc_srvid *is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good)
 {
 	LL_ITER it = ll_iter_create(card->goodsids);
 	struct cc_srvid *srvid;
@@ -352,8 +355,7 @@ struct cc_srvid   *is_good_sid(struct cc_card *card, struct cc_srvid *srvid_good
 
 #define BLOCKING_SECONDS 60
 
-void add_sid_block(struct s_client *cl __attribute__((unused)), struct cc_card *card,
-				   struct cc_srvid *srvid_blocked)
+void add_sid_block(struct cc_card *card, struct cc_srvid *srvid_blocked, bool temporary)
 {
 	if(is_sid_blocked(card, srvid_blocked))
 		{ return; }
@@ -362,11 +364,13 @@ void add_sid_block(struct s_client *cl __attribute__((unused)), struct cc_card *
 	if(!cs_malloc(&srvid, sizeof(struct cc_srvid_block)))
 		{ return; }
 	memcpy(srvid, srvid_blocked, sizeof(struct cc_srvid));
-	srvid->blocked_till = time(NULL) + BLOCKING_SECONDS;
+	
+	if(temporary)	
+		{ srvid->blocked_till = time(NULL) + BLOCKING_SECONDS; }
+	
 	ll_append(card->badsids, srvid);
-	cs_debug_mask(D_READER, "%s added sid block %04X(CHID %04X, length %d) for card %08x",
-				  getprefix(), srvid_blocked->sid, srvid_blocked->chid, srvid_blocked->ecmlen,
-				  card->id);
+	cs_log_dbg(D_READER, "added sid block %04X(CHID %04X, length %d) for card %08x",
+				  srvid_blocked->sid, srvid_blocked->chid, srvid_blocked->ecmlen, card->id);
 }
 
 void remove_sid_block(struct cc_card *card, struct cc_srvid *srvid_blocked)
@@ -376,19 +380,12 @@ void remove_sid_block(struct cc_card *card, struct cc_srvid *srvid_blocked)
 	while((srvid = ll_iter_next(&it)))
 		if(sid_eq_nb(srvid_blocked, srvid))
 			{ ll_iter_remove_data(&it); }
+			
+	cs_log_dbg(D_READER, "removed sid block %04X(CHID %04X, length %d) for card %08x",
+				 srvid_blocked->sid, srvid_blocked->chid, srvid_blocked->ecmlen, card->id);			
 }
 
-void remove_good_sid(struct cc_card *card, struct cc_srvid *srvid_good)
-{
-	LL_ITER it = ll_iter_create(card->goodsids);
-	struct cc_srvid *srvid;
-	while((srvid = ll_iter_next(&it)))
-		if(sid_eq(srvid, srvid_good))
-			{ ll_iter_remove_data(&it); }
-}
-
-void add_good_sid(struct s_client *cl __attribute__((unused)), struct cc_card *card,
-				  struct cc_srvid *srvid_good)
+void add_good_sid(struct cc_card *card, struct cc_srvid *srvid_good)
 {
 	if(is_good_sid(card, srvid_good))
 		{ return; }
@@ -399,8 +396,18 @@ void add_good_sid(struct s_client *cl __attribute__((unused)), struct cc_card *c
 		{ return; }
 	memcpy(srvid, srvid_good, sizeof(struct cc_srvid));
 	ll_append(card->goodsids, srvid);
-	cs_debug_mask(D_READER, "%s added good sid %04X(%d) for card %08x",
-				  getprefix(), srvid_good->sid, srvid_good->ecmlen, card->id);
+	cs_log_dbg(D_READER, "added good sid %04X(%d) for card %08x", srvid_good->sid, srvid_good->ecmlen, card->id);
+}
+
+void remove_good_sid(struct cc_card *card, struct cc_srvid *srvid_good)
+{
+	LL_ITER it = ll_iter_create(card->goodsids);
+	struct cc_srvid *srvid;
+	while((srvid = ll_iter_next(&it)))
+		if(sid_eq(srvid, srvid_good))
+			{ ll_iter_remove_data(&it); }
+			
+	cs_log_dbg(D_READER, "removed good sid %04X(%d) for card %08x", srvid_good->sid, srvid_good->ecmlen, card->id);			
 }
 
 /**
@@ -451,7 +458,7 @@ struct cc_extended_ecm_idx *add_extended_ecm_idx(struct s_client *cl,
 	eei->free_card = free_card;
 	cs_ftime(&eei->tps);
 	ll_append(cc->extended_ecm_idx, eei);
-	//cs_debug_mask(D_TRACE, "%s add extended ecm-idx: %d:%d", getprefix(), send_idx, ecm_idx);
+	//cs_log_dbg(D_TRACE, "%s add extended ecm-idx: %d:%d", getprefix(), send_idx, ecm_idx);
 	return eei;
 }
 
@@ -467,14 +474,14 @@ struct cc_extended_ecm_idx *get_extended_ecm_idx(struct s_client *cl,
 		{
 			if(remove_item)
 				{ ll_iter_remove(&it); }
-			//cs_debug_mask(D_TRACE, "%s get by send-idx: %d FOUND: %d",
+			//cs_log_dbg(D_TRACE, "%s get by send-idx: %d FOUND: %d",
 			//      getprefix(), send_idx, eei->ecm_idx);
 			return eei;
 		}
 	}
 #ifdef WITH_DEBUG
 	if(remove_item)
-		cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s get by send-idx: %d NOT FOUND", getprefix(),
+		cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s get by send-idx: %d NOT FOUND", getprefix(),
 					  send_idx);
 #endif
 	return NULL;
@@ -492,14 +499,14 @@ struct cc_extended_ecm_idx *get_extended_ecm_idx_by_idx(struct s_client *cl,
 		{
 			if(remove_item)
 				{ ll_iter_remove(&it); }
-			//cs_debug_mask(D_TRACE, "%s get by ecm-idx: %d FOUND: %d",
+			//cs_log_dbg(D_TRACE, "%s get by ecm-idx: %d FOUND: %d",
 			//      getprefix(), ecm_idx, eei->send_idx);
 			return eei;
 		}
 	}
 #ifdef WITH_DEBUG
 	if(remove_item)
-		cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s get by ecm-idx: %d NOT FOUND", getprefix(),
+		cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s get by ecm-idx: %d NOT FOUND", getprefix(),
 					  ecm_idx);
 #endif
 	return NULL;
@@ -593,7 +600,7 @@ static int8_t cc_cycle_connection(struct s_client *cl)
 	if(!cl || cl->kill)
 		{ return 0; }
 
-	cs_debug_mask(D_TRACE, "%s unlocked-cycleconnection! timeout %d ms",
+	cs_log_dbg(D_TRACE, "%s unlocked-cycleconnection! timeout %d ms",
 				  getprefix(), cl->reader->cc_reconnect);
 
 	cc_cli_close(cl, 0);
@@ -632,15 +639,15 @@ int32_t cc_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 	if(len != 4)    // invalid header length read
 	{
 		if(len <= 0)
-			{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s disconnected by remote server", getprefix()); }
+			{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s disconnected by remote server", getprefix()); }
 		else
-			{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s invalid header length (expected 4, read %d)", getprefix(), len); }
+			{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s invalid header length (expected 4, read %d)", getprefix(), len); }
 		cs_writeunlock(&cc->lockcmd);
 		return -1;
 	}
 
 	cc_crypt(&cc->block[DECRYPT], buf, 4, DECRYPT);
-	//cs_ddump_mask(D_CLIENT, buf, 4, "cccam: decrypted header:");
+	//cs_log_dump_dbg(D_CLIENT, buf, 4, "cccam: decrypted header:");
 
 	cc->g_flag = buf[0];
 
@@ -650,7 +657,7 @@ int32_t cc_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 		if(size > maxlen)
 		{
 			cs_writeunlock(&cc->lockcmd);
-			cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s message too big (size=%d max=%d)", getprefix(), size, maxlen);
+			cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s message too big (size=%d max=%d)", getprefix(), size, maxlen);
 			return 0;
 		}
 
@@ -662,9 +669,9 @@ int32_t cc_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 		{
 			cs_writeunlock(&cc->lockcmd);
 			if(len <= 0)
-				{ cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s disconnected by remote", getprefix()); }
+				{ cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s disconnected by remote", getprefix()); }
 			else
-				cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s invalid message length read (expected %d, read %d)",
+				cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s invalid message length read (expected %d, read %d)",
 							  getprefix(), size, len);
 			return -1;
 		}
@@ -675,7 +682,7 @@ int32_t cc_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 
 	cs_writeunlock(&cc->lockcmd);
 
-	//cs_ddump_mask(cl->typ=='c'?D_CLIENT:D_READER, buf, len, "cccam: full decrypted msg, len=%d:", len);
+	//cs_log_dump_dbg(cl->typ=='c'?D_CLIENT:D_READER, buf, len, "cccam: full decrypted msg, len=%d:", len);
 
 	return len;
 }
@@ -722,7 +729,7 @@ int32_t cc_cmd_send(struct s_client *cl, uint8_t *buf, int32_t len, cc_msg_type_
 		len += 4;
 	}
 
-	//cs_ddump_mask(D_CLIENT, netbuf, len, "cccam: send:");
+	//cs_log_dump_dbg(D_CLIENT, netbuf, len, "cccam: send:");
 	cc_crypt(&cc->block[ENCRYPT], netbuf, len, ENCRYPT);
 
 	n = send(cl->udp_fd, netbuf, len, 0);
@@ -766,7 +773,7 @@ void cc_check_version(char *cc_version, char *cc_build)
 		if(!memcmp(cc_version, version[i], strlen(version[i])))
 		{
 			memcpy(cc_build, build[i], strlen(build[i]) + 1);
-			cs_debug_mask(D_CLIENT, "cccam: auto build set for version: %s build: %s",
+			cs_log_dbg(D_CLIENT, "cccam: auto build set for version: %s build: %s",
 						  cc_version, cc_build);
 			return;
 		}
@@ -776,7 +783,7 @@ void cc_check_version(char *cc_version, char *cc_build)
 	memcpy(cc_build, build[CC_DEFAULT_VERSION], strlen(
 			   build[CC_DEFAULT_VERSION]));
 
-	cs_debug_mask(D_CLIENT, "cccam: auto version set: %s build: %s", cc_version, cc_build);
+	cs_log_dbg(D_CLIENT, "cccam: auto version set: %s build: %s", cc_version, cc_build);
 
 	return;
 }
@@ -819,7 +826,7 @@ int32_t cc_send_cli_data(struct s_client *cl)
 	const int32_t size = 20 + 8 + 6 + 26 + 4 + 28 + 1;
 	uint8_t buf[size];
 
-	cs_debug_mask(D_READER, "cccam: send client data");
+	cs_log_dbg(D_READER, "cccam: send client data");
 
 	memcpy(cc->node_id, cc_node_id, sizeof(cc_node_id));
 
@@ -829,7 +836,7 @@ int32_t cc_send_cli_data(struct s_client *cl)
 	memcpy(buf + 29, rdr->cc_version, sizeof(rdr->cc_version)); // cccam version (ascii)
 	memcpy(buf + 61, rdr->cc_build, sizeof(rdr->cc_build)); // build number (ascii)
 
-	cs_debug_mask(D_READER, "%s sending own version: %s, build: %s", getprefix(),
+	cs_log_dbg(D_READER, "%s sending own version: %s, build: %s", getprefix(),
 				  rdr->cc_version, rdr->cc_build);
 
 	return cc_cmd_send(cl, buf, size, MSG_CLI_DATA);
@@ -843,7 +850,7 @@ int32_t cc_send_srv_data(struct s_client *cl)
 {
 	struct cc_data *cc = cl->cc;
 
-	cs_debug_mask(D_CLIENT, "cccam: send server data");
+	cs_log_dbg(D_CLIENT, "cccam: send server data");
 
 	memcpy(cc->node_id, cc_node_id, sizeof(cc_node_id));
 
@@ -863,7 +870,7 @@ int32_t cc_send_srv_data(struct s_client *cl)
 	memcpy(buf + 8, cfg.cc_version, sizeof(cfg.cc_version)); // cccam version (ascii)
 	memcpy(buf + 40, cc_build, sizeof(cc_build)); // build number (ascii)
 
-	cs_debug_mask(D_CLIENT, "%s version: %s, build: %s nodeid: %s", getprefix(),
+	cs_log_dbg(D_CLIENT, "%s version: %s, build: %s nodeid: %s", getprefix(),
 				  cfg.cc_version, cc_build, cs_hexdump(0, cc->peer_node_id, 8, tmp_dbg, sizeof(tmp_dbg)));
 
 	return cc_cmd_send(cl, buf, 0x48, MSG_SRV_DATA);
@@ -909,7 +916,7 @@ int32_t cc_get_nxt_ecm(struct s_client *cl)
 			pending++;
 			if(loop_check(cc->peer_node_id, er->client))
 			{
-				cs_debug_mask(D_READER, "%s ecm loop detected! client %s (%8lX)",
+				cs_log_dbg(D_READER, "%s ecm loop detected! client %s (%8lX)",
 							  getprefix(), er->client->account->usr, (unsigned long)er->client->thread);
 				write_ecm_answer(cl->reader, er, E_NOTFOUND, E2_CCCAM_LOOP, NULL, NULL);
 			}
@@ -1036,7 +1043,7 @@ int32_t send_cmd05_answer(struct s_client *cl)
 			cc->ecm_counter = 0;
 		}
 	}
-	cs_debug_mask(D_READER, "%s sending CMD_05 back! MODE: %s len=%d",
+	cs_log_dbg(D_READER, "%s sending CMD_05 back! MODE: %s len=%d",
 				  getprefix(), cmd05_mode_name[cmd05_mode], cc->cmd05_data_len);
 
 	cc->cmd05NOK = 1;
@@ -1114,7 +1121,7 @@ void cc_UA_oscam2cccam(uint8_t *in, uint8_t *out, uint16_t caid)
 	//  //Place here your own adjustments!
 	//}
 
-	if (caid == 0x5581 || caid == 0x4aee) { // Bulcrypt fix
+	if (caid_is_bulcrypt(caid)) {
            out[4] = in[0];
            out[5] = in[1];
            out[6] = in[2];
@@ -1147,7 +1154,7 @@ void cc_UA_cccam2oscam(uint8_t *in, uint8_t *out, uint16_t caid)
 	//  //Place here your own adjustments!
 	//}
 
-	if (caid == 0x5581 || caid == 0x4aee) { // Bulcrypt fix
+	if (caid_is_bulcrypt(caid)) {
 		out[0] = in[4];
 		out[1] = in[5];
 		out[2] = in[6];
@@ -1193,7 +1200,7 @@ void set_au_data(struct s_client *cl, struct s_reader *rdr, struct cc_card *card
 
 	cc_UA_cccam2oscam(card->hexserial, rdr->hexserial, rdr->caid);
 
-	cs_debug_mask(D_EMM,
+	cs_log_dbg(D_EMM,
 				  "%s au info: caid %04X UA: %s",
 				  getprefix(), card->caid, cs_hexdump(0, rdr->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)));
 
@@ -1211,7 +1218,7 @@ void set_au_data(struct s_client *cl, struct s_reader *rdr, struct cc_card *card
 			rdr->prid[p][3] = provider->prov & 0xFF;
 			cc_SA_cccam2oscam(provider->sa, rdr->sa[p]);
 
-			cs_debug_mask(D_EMM, "%s au info: provider: %06X:%02X%02X%02X%02X", getprefix(),
+			cs_log_dbg(D_EMM, "%s au info: provider: %06X:%02X%02X%02X%02X", getprefix(),
 						  provider->prov,
 						  provider->sa[0], provider->sa[1], provider->sa[2], provider->sa[3]);
 
@@ -1264,7 +1271,7 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 {
 	struct cc_data *cc = cl->cc;
 	struct s_reader *rdr = cl->reader;
-	if(cl->kill || !rdr)
+	if(cl->kill || !rdr || !cc)
 		{ return NULL; }
 
 	struct cc_srvid cur_srvid;
@@ -1283,8 +1290,8 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 			//accept beta card when beta-tunnel is on
 			lb_match = chk_only && cfg.lb_mode && cfg.lb_auto_betatunnel &&
 				(
-					(cur_er->caid >> 8 == 0x18 && ncard->caid >> 8 == 0x17 && cfg.lb_auto_betatunnel_mode <= 3) ||
-					(cur_er->caid >> 8 == 0x17 && ncard->caid >> 8 == 0x18 && cfg.lb_auto_betatunnel_mode >= 1)
+					(caid_is_nagra(cur_er->caid) && caid_is_betacrypt(ncard->caid) && cfg.lb_auto_betatunnel_mode <= 3) ||
+					(caid_is_betacrypt(cur_er->caid) && caid_is_nagra(ncard->caid) && cfg.lb_auto_betatunnel_mode >= 1)
 				);
 		}
 
@@ -1327,7 +1334,7 @@ struct cc_card *get_matching_card(struct s_client *cl, ECM_REQUEST *cur_er, int8
 			}
 
 
-			if(!(rdr->cc_want_emu) && (ncard->caid >> 8 == 0x18) && (!xcard || ncard->hop < xcard->hop))
+			if(!(rdr->cc_want_emu) && caid_is_nagra(ncard->caid) && (!xcard || ncard->hop < xcard->hop))
 				{ xcard = ncard; } //remember card (D+ / 1810 fix) if request has no provider, but card has
 
 			rating = ncard->rating - ncard->hop * HOP_RATING;
@@ -1423,7 +1430,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 {
 	struct s_reader *rdr = cl->reader;
 
-	//cs_debug_mask(D_TRACE, "%s cc_send_ecm", getprefix());
+	//cs_log_dbg(D_TRACE, "%s cc_send_ecm", getprefix());
 	if(!rdr->tcp_connected)
 		{ cc_cli_connect(cl); }
 
@@ -1439,7 +1446,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 	{
 		if(er)
 		{
-			cs_debug_mask(D_READER, "%s server not init! ccinit=%d pfd=%d",
+			cs_log_dbg(D_READER, "%s server not init! ccinit=%d pfd=%d",
 						  rdr->label, cc ? 1 : 0, cl->pfd);
 			write_ecm_answer(rdr, er, E_NOTFOUND, E2_CCCAM_NOCARD, NULL, NULL);
 		}
@@ -1449,14 +1456,14 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 
 	if(rdr->tcp_connected != 2)
 	{
-		cs_debug_mask(D_READER, "%s Waiting for CARDS", getprefix());
+		cs_log_dbg(D_READER, "%s Waiting for CARDS", getprefix());
 		return 0;
 	}
 
 	//No Card? Waiting for shares
 	if(!ll_has_elements(cc->cards))
 	{
-		cs_debug_mask(D_READER, "%s NO CARDS!", getprefix());
+		cs_log_dbg(D_READER, "%s NO CARDS!", getprefix());
 		return 0;
 	}
 
@@ -1468,7 +1475,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 		//this is a limitation of "O" CCCam
 		if(cc->ecm_busy > 0)  //Unlock by NOK or ECM ACK
 		{
-			cs_debug_mask(D_READER,
+			cs_log_dbg(D_READER,
 						  "%s ecm trylock: ecm busy, retrying later after msg-receive",
 						  getprefix());
 
@@ -1478,7 +1485,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 				{ return 0; }
 		}
 		cc->ecm_busy = 1;
-		cs_debug_mask(D_READER, "cccam: ecm trylock: got lock");
+		cs_log_dbg(D_READER, "cccam: ecm trylock: got lock");
 	}
 	int32_t processed_ecms = 0;
 	do
@@ -1492,14 +1499,14 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 			{
 				cc->ecm_busy = 0;
 			}
-			cs_debug_mask(D_READER, "%s no ecm pending!", getprefix());
+			cs_log_dbg(D_READER, "%s no ecm pending!", getprefix());
 			if(!cc_send_pending_emms(cl))
 				{ send_cmd05_answer(cl); }
 			return 0; // no queued ecms
 		}
 		cur_er = &cl->ecmtask[n];
 		cur_er->rc = E_ALREADY_SENT; //mark ECM as already send
-		cs_debug_mask(D_READER, "cccam: ecm-task %d", cur_er->idx);
+		cs_log_dbg(D_READER, "cccam: ecm-task %d", cur_er->idx);
 
 		//sleepsend support:
 		static const char *typtext[] = { "ok", "invalid", "sleeping" };
@@ -1622,7 +1629,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 			rdr->currenthops = card->hop;
 			rdr->card_status = CARD_INSERTED;
 
-			cs_debug_mask(
+			cs_log_dbg(
 				D_READER,
 				"%s sending ecm for sid %04X(%d) to card %08x, hop %d, ecmtask %d", getprefix(), cur_er->srvid, cur_er->ecmlen, card->id, card->hop, cur_er->idx);
 			cc_cmd_send(cl, ecmbuf, cur_er->ecmlen + 13, MSG_CW_ECM); // send ecm
@@ -1649,7 +1656,7 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 					&& cc->last_msg != MSG_CARD_REMOVED
 					&& !cc->just_logged_in)
 			{
-				cs_debug_mask(D_READER,
+				cs_log_dbg(D_READER,
 							  "%s no suitable card on server", getprefix());
 
 				write_ecm_answer(rdr, cur_er, E_NOTFOUND, E2_CCCAM_NOCARD, NULL, NULL);
@@ -1720,6 +1727,8 @@ int32_t cc_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *buf)
 int32_t cc_send_pending_emms(struct s_client *cl)
 {
 	struct cc_data *cc = cl->cc;
+	if (!cc)
+		return 0;
 
 	LL_ITER it = ll_iter_create(cc->pending_emms);
 	uint8_t *emmbuf;
@@ -1741,7 +1750,7 @@ int32_t cc_send_pending_emms(struct s_client *cl)
 		cc->just_logged_in = 0;
 		cs_ftime(&cc->ecm_time);
 
-		cs_debug_mask(D_EMM, "%s emm send for card %08X", getprefix(), b2i(4,
+		cs_log_dbg(D_EMM, "%s emm send for card %08X", getprefix(), b2i(4,
 					  emmbuf + 7));
 
 		cc_cmd_send(cl, emmbuf, size, MSG_EMM_ACK); // send emm
@@ -1787,13 +1796,13 @@ int32_t cc_send_emm(EMM_PACKET *ep)
 
 	if(!cc || (cl->pfd < 1) || !rdr->tcp_connected)
 	{
-		cs_debug_mask(D_READER, "%s server not init! ccinit=%d pfd=%d", getprefix(), cc ? 1 : 0,
+		cs_log_dbg(D_READER, "%s server not init! ccinit=%d pfd=%d", getprefix(), cc ? 1 : 0,
 					  cl->pfd);
 		return 0;
 	}
 	if(rdr->audisabled)
 	{
-		cs_debug_mask(D_READER, "%s au is disabled", getprefix());
+		cs_log_dbg(D_READER, "%s au is disabled", getprefix());
 		return 0;
 	}
 
@@ -1809,10 +1818,10 @@ int32_t cc_send_emm(EMM_PACKET *ep)
 		uint8_t hs[8];
 		char tmp_dbg[17];
 		cc_UA_oscam2cccam(ep->hexserial, hs, caid);
-		cs_debug_mask(D_EMM,
+		cs_log_dbg(D_EMM,
 					  "%s au info: searching card for caid %04X oscam-UA: %s",
 					  getprefix(), b2i(2, ep->caid), cs_hexdump(0, ep->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)));
-		cs_debug_mask(D_EMM,
+		cs_log_dbg(D_EMM,
 					  "%s au info: searching card for caid %04X cccam-UA: %s",
 					  getprefix(), b2i(2, ep->caid), cs_hexdump(0, hs, 8, tmp_dbg, sizeof(tmp_dbg)));
 
@@ -1821,13 +1830,13 @@ int32_t cc_send_emm(EMM_PACKET *ep)
 
 	if(!emm_card)    //Card for emm not found!
 	{
-		cs_debug_mask(D_EMM, "%s emm for client %8lX not possible, no card found!",
+		cs_log_dbg(D_EMM, "%s emm for client %8lX not possible, no card found!",
 					  getprefix(), (unsigned long)ep->client->thread);
 		cs_readunlock(&cc->cards_busy);
 		return 0;
 	}
 
-	cs_debug_mask(D_EMM,
+	cs_log_dbg(D_EMM,
 				  "%s emm received for client %8lX caid %04X for card %08X",
 				  getprefix(), (unsigned long)ep->client->thread, caid, emm_card->id);
 
@@ -1864,10 +1873,10 @@ void cc_free_card(struct cc_card *card)
 	if(!card)
 		{ return; }
 
-	ll_destroy_data_NULL(card->providers);
-	ll_destroy_data_NULL(card->badsids);
-	ll_destroy_data_NULL(card->goodsids);
-	ll_destroy_data_NULL(card->remote_nodes);
+	ll_destroy_data(&card->providers);
+	ll_destroy_data(&card->badsids);
+	ll_destroy_data(&card->goodsids);
+	ll_destroy_data(&card->remote_nodes);
 
 	add_garbage(card);
 }
@@ -1899,7 +1908,7 @@ void cc_free_cardlist(LLIST *card_list, int32_t destroy_list)
 			cc_free_card(card);
 		}
 		if(destroy_list)
-			{ ll_destroy_NULL(card_list); }
+			ll_destroy(&card_list);
 	}
 }
 
@@ -1915,20 +1924,20 @@ void cc_free(struct s_client *cl)
 
 	cs_writelock(&cc->lockcmd);
 
-	cs_debug_mask(D_TRACE, "exit cccam1/3");
+	cs_log_dbg(D_TRACE, "exit cccam1/3");
 	cc_free_cardlist(cc->cards, 1);
-	ll_destroy_data_NULL(cc->pending_emms);
+	ll_destroy_data(&cc->pending_emms);
 	free_extended_ecm_idx(cc);
-	ll_destroy_data_NULL(cc->extended_ecm_idx);
+	ll_destroy_data(&cc->extended_ecm_idx);
 
 	cs_writeunlock(&cc->lockcmd);
 
-	cs_debug_mask(D_TRACE, "exit cccam2/3");
+	cs_log_dbg(D_TRACE, "exit cccam2/3");
 
 	add_garbage(cc->prefix);
 	add_garbage(cc);
 
-	cs_debug_mask(D_TRACE, "exit cccam3/3");
+	cs_log_dbg(D_TRACE, "exit cccam3/3");
 }
 
 int32_t is_null_dcw(uint8_t *dcw)
@@ -1980,19 +1989,19 @@ int32_t check_extended_mode(struct s_client *cl, char *msg)
 		if(p && strncmp(p, "EXT", 3) == 0)
 		{
 			cc->extended_mode = 1;
-			cs_debug_mask(D_CLIENT, "%s extended ECM mode", getprefix());
+			cs_log_dbg(D_CLIENT, "%s extended ECM mode", getprefix());
 			has_param = 1;
 		}
 		else if(p && strncmp(p, "SID", 3) == 0)
 		{
 			cc->cccam220 = 1;
-			cs_debug_mask(D_CLIENT, "%s extra SID mode", getprefix());
+			cs_log_dbg(D_CLIENT, "%s extra SID mode", getprefix());
 			has_param = 1;
 		}
 		else if(p && strncmp(p, "SLP", 3) == 0)
 		{
 			cc->sleepsend = 1;
-			cs_debug_mask(D_CLIENT, "%s sleepsend", getprefix());
+			cs_log_dbg(D_CLIENT, "%s sleepsend", getprefix());
 			has_param = 1;
 		}
 	}
@@ -2023,7 +2032,7 @@ void cc_idle(void)
 		{
 			if(cc_cmd_send(cl, NULL, 0, MSG_KEEPALIVE) > 0)
 			{
-				cs_debug_mask(D_READER, "cccam: keepalive");
+				cs_log_dbg(D_READER, "cccam: keepalive");
 				cc->answer_on_keepalive = now;
 			}
 			return;
@@ -2033,19 +2042,19 @@ void cc_idle(void)
 	{
 		//cs_log("last_s - now = %d, last_g - now = %d, tcp_ito=%d", abs(rdr->last_s - now), abs(rdr->last_g - now), rdr->tcp_ito);
 		//check inactivity timeout:
-		if((abs(rdr->last_s - now) > rdr->tcp_ito) && (abs(rdr->last_g - now) > rdr->tcp_ito))   // inactivity timeout is entered in seconds in webif!
+		if((llabs(rdr->last_s - now) > rdr->tcp_ito) && (llabs(rdr->last_g - now) > rdr->tcp_ito))   // inactivity timeout is entered in seconds in webif!
 		{
-			cs_debug_mask(D_READER, "%s inactive_timeout, close connection (fd=%d)", rdr->ph.desc, rdr->client->pfd);
+			rdr_log_dbg(rdr, D_READER, "inactive_timeout, close connection (fd=%d)", rdr->client->pfd);
 			network_tcp_connection_close(rdr, "inactivity");
 			return;
 		}
 
 		//check read timeout:
-		int32_t rto = abs(rdr->last_g - now);
+		int32_t rto = llabs(rdr->last_g - now);
 		//cs_log("last_g - now = %d, rto=%d", rto, rdr->tcp_rto);
 		if(rto > (rdr->tcp_rto))    // this is also entered in seconds, actually its an receive timeout!
 		{
-			cs_debug_mask(D_READER, "%s read timeout, close connection (fd=%d)", rdr->ph.desc, rdr->client->pfd);
+			rdr_log_dbg(rdr, D_READER, "read timeout, close connection (fd=%d)", rdr->client->pfd);
 			network_tcp_connection_close(rdr, "rto");
 			return;
 		}
@@ -2073,7 +2082,7 @@ struct cc_card *read_card(uint8_t *buf, int32_t ext)
 	card->card_type = CT_REMOTECARD;
 	memcpy(card->hexserial, buf + 12, 8); //HEXSERIAL!!
 
-	//cs_debug_mask(D_CLIENT, "cccam: card %08x added, caid %04X, hop %d, key %s, count %d",
+	//cs_log_dbg(D_CLIENT, "cccam: card %08x added, caid %04X, hop %d, key %s, count %d",
 	//      card->id, card->caid, card->hop, cs_hexdump(0, card->hexserial, 8, tmp_dbg, sizeof(tmp_dbg)),
 	//      ll_count(cc->cards));
 
@@ -2094,10 +2103,10 @@ struct cc_card *read_card(uint8_t *buf, int32_t ext)
 		if(!cs_malloc(&prov, sizeof(struct cc_provider)))
 			{ break; }
 		prov->prov = b2i(3, buf + offset);
-		if(prov->prov == 0xFFFFFF && (card->caid >> 8) == 0x17)
+		if(prov->prov == 0xFFFFFF && caid_is_betacrypt(card->caid))
 			{ prov->prov = i; }
 		memcpy(prov->sa, buf + offset + 3, 4);
-		//cs_debug_mask(D_CLIENT, "      prov %d, %06x, sa %08x", i + 1, prov->prov, b2i(4,
+		//cs_log_dbg(D_CLIENT, "      prov %d, %06x, sa %08x", i + 1, prov->prov, b2i(4,
 		//      prov->sa));
 
 		ll_append(card->providers, prov);
@@ -2111,7 +2120,7 @@ struct cc_card *read_card(uint8_t *buf, int32_t ext)
 		for(i = 0; i < nassign; i++)
 		{
 			uint16_t sid = b2i(2, ptr);
-			//cs_debug_mask(D_CLIENT, "      assigned sid = %04X, added to good sid list", sid);
+			//cs_log_dbg(D_CLIENT, "      assigned sid = %04X, added to good sid list", sid);
 
 			struct cc_srvid *srvid;
 			if(!cs_malloc(&srvid, sizeof(struct cc_srvid)))
@@ -2126,7 +2135,7 @@ struct cc_card *read_card(uint8_t *buf, int32_t ext)
 		for(i = 0; i < nreject; i++)
 		{
 			uint16_t sid = b2i(2, ptr);
-			//cs_debug_mask(D_CLIENT, "      rejected sid = %04X, added to sid block list", sid);
+			//cs_log_dbg(D_CLIENT, "      rejected sid = %04X, added to sid block list", sid);
 
 			struct cc_srvid_block *srvid;
 			if(!cs_malloc(&srvid, sizeof(struct cc_srvid_block)))
@@ -2164,13 +2173,13 @@ void cc_card_removed(struct s_client *cl, uint32_t shareid)
 	{
 		if(card->id == shareid)   // && card->sub_id == b2i (3, buf + 9)) {
 		{
-			//cs_debug_mask(D_CLIENT, "cccam: card %08x removed, caid %04X, count %d",
+			//cs_log_dbg(D_CLIENT, "cccam: card %08x removed, caid %04X, count %d",
 			//      card->id, card->caid, ll_count(cc->cards));
 			ll_iter_remove(&it);
 			if(cc->last_emm_card == card)
 			{
 				cc->last_emm_card = NULL;
-				cs_debug_mask(D_READER, "%s current card %08x removed!",
+				cs_log_dbg(D_READER, "%s current card %08x removed!",
 							  getprefix(), card->id);
 			}
 			free_extended_ecm_idx_by_card(cl, card, 1);
@@ -2183,7 +2192,7 @@ void cc_card_removed(struct s_client *cl, uint32_t shareid)
 			else if(card->reshare == 2) { cc->num_reshare2--; }
 			else { cc->num_resharex--; }
 
-			cs_debug_mask(D_TRACE, "%s card removed: id %8X remoteid %8X caid %4X hop %d reshare %d originid %8X cardtype %d",
+			cs_log_dbg(D_TRACE, "%s card removed: id %8X remoteid %8X caid %4X hop %d reshare %d originid %8X cardtype %d",
 						  getprefix(), card->id, card->remote_id, card->caid, card->hop, card->reshare, card->origin_id, card->card_type);
 
 			cc_free_card(card);
@@ -2210,7 +2219,7 @@ void move_card_to_end(struct s_client *cl, struct cc_card *card_to_move)
 	}
 	if(card)
 	{
-		cs_debug_mask(D_READER, "%s Moving card %08X to the end...", getprefix(), card_to_move->id);
+		cs_log_dbg(D_READER, "%s Moving card %08X to the end...", getprefix(), card_to_move->id);
 		free_extended_ecm_idx_by_card(cl, card, 0);
 		ll_append(cc->cards, card_to_move);
 	}
@@ -2255,413 +2264,6 @@ static void chk_peer_node_for_oscam(struct cc_data *cc)
 	}
 }
 
-#ifdef CS_CACHEEX
-
-int32_t cc_cache_push_chk(struct s_client *cl, struct ecm_request_t *er)
-{
-	struct cc_data *cc = cl->cc;
-	if(chk_is_null_nodeid(cc->peer_node_id,8))
-	{
-		cs_debug_mask(D_CACHEEX, "cacheex: NO peer_node_id got yet, skip!");
-		return 0;
-	}
-
-
-	//check max 10 nodes to push:
-	if(ll_count(er->csp_lastnodes) >= cacheex_maxhop(cl))
-	{
-		cs_debug_mask(D_CACHEEX, "cacheex: nodelist reached %d nodes, no push", cacheex_maxhop(cl));
-		return 0;
-	}
-
-	//search existing peer nodes:
-	LL_LOCKITER *li = ll_li_create(er->csp_lastnodes, 0);
-	uint8_t *node;
-	while((node = ll_li_next(li)))
-	{
-		cs_debug_mask(D_CACHEEX, "cacheex: check node %" PRIu64 "X == %" PRIu64 "X ?", cacheex_node_id(node), cacheex_node_id(cc->peer_node_id));
-		if(memcmp(node, cc->peer_node_id, 8) == 0)
-		{
-			break;
-		}
-	}
-	ll_li_destroy(li);
-
-	//node found, so we got it from there, do not push:
-	if(node)
-	{
-		cs_debug_mask(D_CACHEEX,
-					  "cacheex: node %" PRIu64 "X found in list => skip push!", cacheex_node_id(node));
-		return 0;
-	}
-
-	if(!cl->cc)
-	{
-		if(cl->reader && !cl->reader->tcp_connected)
-		{
-			cc_cli_connect(cl);
-		}
-	}
-
-	if(!cc || !cl->udp_fd)
-	{
-		cs_debug_mask(D_CACHEEX, "cacheex: not connected %s -> no push", username(cl));
-		return 0;
-	}
-
-	//check if cw is already pushed
-	if(check_is_pushed(er->cw_cache, cl))
-		{ return 0; }
-
-	return 1;
-}
-
-void cc_cache_filter_out(struct s_client *cl)
-{
-	struct s_reader *rdr = (cl->typ == 'c') ? NULL : cl->reader;
-	int i = 0, j;
-	CECSPVALUETAB *filter;
-	//minimal size, keep it <= 512 for max UDP packet size without fragmentation
-	int32_t size = 482;
-	uint8_t buf[482];
-	memset(buf, 0, sizeof(buf));		
-
-	//mode==2 send filters from rdr
-	if(rdr && rdr->cacheex.mode == 2) 
-	{
-		filter = &rdr->cacheex.filter_caidtab;
-	}
-	//mode==3 send filters from acc
-	else if(cl->typ == 'c' && cl->account && cl->account->cacheex.mode == 3) 
-	{
-		filter = &cl->account->cacheex.filter_caidtab;
-	}
-	else {
-		return;	
-	}
-	
-	i2b_buf(2, filter->n, buf + i);
-	i += 2;
-	
-	for(j=0; j<30; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			i2b_buf(4, filter->caid[j], buf + i);
-		}
-		i += 4;
-	}
-
-	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			i2b_buf(4, filter->cmask[j], buf + i);
-		}
-		i += 4;
-	}
-	
-	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{			
-			i2b_buf(4, filter->prid[j], buf + i);
-		}
-		i += 4;
-	}
-	
-	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{			
-			i2b_buf(4, filter->srvid[j], buf + i);
-		}
-		i += 4;
-	}
-
-	cs_debug_mask(D_CACHEEX, "cacheex: sending push filter request to %s", username(cl));
-	cc_cmd_send(cl, buf, size, MSG_CACHE_FILTER);
-}
-
-void cc_cache_filter_in(struct s_client *cl, uchar *buf)
-{
-	struct s_reader *rdr = (cl->typ == 'c') ? NULL : cl->reader;
-	int i = 0, j;
-	CECSPVALUETAB *filter;	
-	
-	//mode==2 write filters to acc
-	if(cl->typ == 'c' && cl->account && cl->account->cacheex.mode == 2
-		&& cl->account->cacheex.allow_filter == 1) 
-	{
-		filter = &cl->account->cacheex.filter_caidtab;
-	}
-	//mode==3 write filters to rdr
-	else if(rdr && rdr->cacheex.mode == 3 && rdr->cacheex.allow_filter == 1) 
-	{
-		filter = &rdr->cacheex.filter_caidtab;
-	}
-	else {
-		return;	
-	}
-	  
-	filter->n = b2i(2, buf + i);
-	i += 2;
-	
-	for(j=0; j<30; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->caid[j] = b2i(4, buf + i);
-		}
-		i += 4;
-	}
-
-	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->cmask[j] = b2i(4, buf + i);
-		}
-		i += 4;
-	}
-	
-	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->prid[j] = b2i(4, buf + i);
-		}
-		i += 4;
-	}
-	
-	for(j=0; j<30 && j<CS_MAXCAIDTAB; j++) 
-	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->srvid[j] = b2i(4, buf + i);
-		}
-		i += 4;
-	}
-	
-	cs_debug_mask(D_CACHEEX, "cacheex: received push filter request from %s", username(cl));	
-}
-
-int32_t cc_cache_push_out(struct s_client *cl, struct ecm_request_t *er)
-{
-	int8_t rc = (er->rc < E_NOTFOUND) ? E_FOUND : er->rc;
-	if(rc != E_FOUND && rc != E_UNHANDLED) { return -1; }  //Maybe later we could support other rcs
-
-	if(cl->reader)
-	{
-		if(!cl->reader->tcp_connected)
-			{ cc_cli_connect(cl); }
-	}
-
-	struct cc_data *cc = cl->cc;
-	if(!cc || !cl->udp_fd)
-	{
-		cs_debug_mask(D_CACHEEX, "cacheex: not connected %s -> no push", username(cl));
-		return (-1);
-	}
-
-	int32_t size = 20 + sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw) + sizeof(uint8_t) +
-				   (ll_count(er->csp_lastnodes) + 1) * 8; //lastnodes+ownnode
-
-	unsigned char *ecmbuf;
-	if(!cs_malloc(&ecmbuf, size))
-		{ return -1; }
-
-	// build ecm message
-	//ecmbuf[0] = er->caid >> 8;
-	//ecmbuf[1] = er->caid & 0xff;
-	//ecmbuf[2] = er->prid >> 24;
-	//ecmbuf[3] = er->prid >> 16;
-	//ecmbuf[4] = er->prid >> 8;
-	//ecmbuf[5] = er->prid & 0xff;
-	//ecmbuf[10] = er->srvid >> 8;
-	//ecmbuf[11] = er->srvid & 0xff;
-	ecmbuf[12] = (sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw)) & 0xff;
-	ecmbuf[13] = (sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw)) >> 8;
-	//ecmbuf[12] = 0;
-	//ecmbuf[13] = 0;
-	ecmbuf[14] = rc;
-
-	i2b_buf(2, er->caid, ecmbuf + 0);
-	i2b_buf(4, er->prid, ecmbuf + 2);
-	i2b_buf(2, er->srvid, ecmbuf + 10);
-
-	if(er->cwc_cycletime && er->cwc_next_cw_cycle < 2)
-	{
-		ecmbuf[18] = er->cwc_cycletime; // contains cwc stage3 cycletime
-		if(er->cwc_next_cw_cycle == 1)
-		{ ecmbuf[18] = (ecmbuf[18] | 0x80); } // set bit 8 to high
-
-		if(cl->typ == 'c' && cl->account && cl->account->cacheex.mode)
-			{ cl->account->cwc_info++; }
-		else if((cl->typ == 'p' || cl->typ == 'r') && (cl->reader && cl->reader->cacheex.mode))
-			{ cl->cwc_info++; }
-		cs_debug_mask(D_CWC, "CWC (CE) push to %s (cccam) cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
-	}
-
-	ecmbuf[19] = er->ecm[0] != 0x80 && er->ecm[0] != 0x81 ? 0 : er->ecm[0];
-
-	uint8_t *ofs = ecmbuf + 20;
-
-	//Write oscam ecmd5 hash:
-	memcpy(ofs, er->ecmd5, sizeof(er->ecmd5)); //16
-	ofs += sizeof(er->ecmd5);
-
-	//Write CSP hashcode:
-	i2b_buf(4, htonl(er->csp_hash), ofs);
-	ofs += 4;
-
-	//Write cw:
-	memcpy(ofs, er->cw, sizeof(er->cw)); //16
-	ofs += sizeof(er->cw);
-
-	//Write count of lastnodes:
-	*ofs = ll_count(er->csp_lastnodes) + 1;
-	ofs++;
-
-	//Write own node:
-	memcpy(ofs, cc->node_id, 8);
-	ofs += 8;
-
-	//Write lastnodes:
-	LL_LOCKITER *li = ll_li_create(er->csp_lastnodes, 0);
-	uint8_t *node;
-	while((node = ll_li_next(li)))
-	{
-		memcpy(ofs, node, 8);
-		ofs += 8;
-	}
-	ll_li_destroy(li);
-
-	int32_t res = cc_cmd_send(cl, ecmbuf, size, MSG_CACHE_PUSH);
-	if(res > 0)   // cache-ex is pushing out, so no receive but last_g should be updated otherwise disconnect!
-	{
-		if(cl->reader)
-			{ cl->reader->last_s = cl->reader->last_g = time((time_t *)0); } // correct
-		if(cl) { cl->last = time(NULL); }
-	}
-	NULLFREE(ecmbuf);
-	return res;
-}
-
-void cc_cache_push_in(struct s_client *cl, uchar *buf)
-{
-	struct cc_data *cc = cl->cc;
-	ECM_REQUEST *er;
-	if(!cc) { return; }
-
-	if(cl->reader)
-		{ cl->reader->last_s = cl->reader->last_g = time((time_t *)0); }
-	if(cl) { cl->last = time(NULL); }
-
-	int8_t rc = buf[14];
-	if(rc != E_FOUND && rc != E_UNHANDLED)  //Maybe later we could support other rcs
-		{ return; }
-	uint16_t size = buf[12] | (buf[13] << 8);
-	if(size != sizeof(er->ecmd5) + sizeof(er->csp_hash) + sizeof(er->cw))
-	{
-		cs_debug_mask(D_CACHEEX, "%s received wrong cache-push format! data ignored!", username(cl));
-		return;
-	}
-	if(!(er = get_ecmtask()))
-		{ return; }
-
-	er->caid = b2i(2, buf + 0);
-	er->prid = b2i(4, buf + 2);
-	er->srvid = b2i(2, buf + 10);
-	er->ecm[0] = buf[19]!=0x80 && buf[19]!=0x81 ? 0 : buf[19]; //odd/even byte, usefull to send it over CSP and to check cw for swapping
-	er->rc = rc;
-
-	if(buf[18])
-	{
-		if(buf[18] & (0x01 << 7))
-		{
-			er->cwc_cycletime = (buf[18] & 0x7F); // remove bit 8 to get cycletime
-			er->cwc_next_cw_cycle = 1;
-		}
-		else
-		{
-			er->cwc_cycletime = buf[18];
-			er->cwc_next_cw_cycle = 0;
-		}
-	}
-
-	if (er->cwc_cycletime && er->cwc_next_cw_cycle < 2)
-	{
-		if(cl->typ == 'c' && cl->account && cl->account->cacheex.mode)
-			{ cl->account->cwc_info++; }
-		else if((cl->typ == 'p' || cl->typ == 'r') && (cl->reader && cl->reader->cacheex.mode))
-			{ cl->cwc_info++; }
-		cs_debug_mask(D_CWC, "CWC (CE) received from %s (cccam) cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
-	}
-
-	er->ecmlen = 0;
-
-	uint8_t *ofs = buf + 20;
-
-	//Read oscam ecmd:
-	memcpy(er->ecmd5, ofs, sizeof(er->ecmd5));
-	ofs += sizeof(er->ecmd5);
-
-	if(!check_cacheex_filter(cl, er))
-		{ return; }
-
-	//Read CSP hashcode:
-	er->csp_hash = ntohl(b2i(4, ofs));
-	ofs += 4;
-
-	//Read cw:
-	memcpy(er->cw, ofs, sizeof(er->cw));
-	ofs += sizeof(er->cw);
-
-	//Read lastnode count:
-	uint8_t count = *ofs;
-	ofs++;
-
-	//check max nodes:
-	if(count > cacheex_maxhop(cl))
-	{
-		cs_debug_mask(D_CACHEEX, "cacheex: received %d nodes (max=%d), ignored!", (int32_t)count, cacheex_maxhop(cl));
-		NULLFREE(er);
-		return;
-	}
-	cs_debug_mask(D_CACHEEX, "cacheex: received %d nodes %s", (int32_t)count, username(cl));
-	//Read lastnodes:
-	uint8_t *data;
-	if (er){
-		er->csp_lastnodes = ll_create("csp_lastnodes");
-	}
-	while(count)
-	{
-		if(!cs_malloc(&data, 8))
-			{ break; }
-		memcpy(data, ofs, 8);
-		ofs += 8;
-		ll_append(er->csp_lastnodes, data);
-		count--;
-		cs_debug_mask(D_CACHEEX, "cacheex: received node %" PRIu64 "X %s", cacheex_node_id(data), username(cl));
-	}
-
-	//for compatibility: add peer node if no node received:
-	if(!ll_count(er->csp_lastnodes))
-	{
-		if(!cs_malloc(&data, 8))
-			{ return; }
-		memcpy(data, cc->peer_node_id, 8);
-		ll_append(er->csp_lastnodes, data);
-		cs_debug_mask(D_CACHEEX, "cacheex: added missing remote node id %" PRIu64 "X", cacheex_node_id(data));
-	}
-
-	cacheex_add_to_cache(cl, er);
-}
-#else
-static inline void cc_cache_filter_out(struct s_client *UNUSED(cl)) { }
-#endif
-
 int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 {
 	struct s_reader *rdr = (cl->typ == 'c') ? NULL : cl->reader;
@@ -2671,7 +2273,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 	if(!cc || cl->kill)
 		{ return -1; }
 
-	cs_debug_mask(cl->typ == 'c' ? D_CLIENT : D_READER, "%s parse_msg=%d", getprefix(), buf[1]);
+	cs_log_dbg(cl->typ == 'c' ? D_CLIENT : D_READER, "%s parse_msg=%d", getprefix(), buf[1]);
 
 	uint8_t *data = buf + 4;
 	memcpy(&cc->receive_buffer, data, l - 4);
@@ -2679,11 +2281,11 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 	switch(buf[1])
 	{
 	case MSG_CLI_DATA:
-		cs_debug_mask(D_CLIENT, "cccam: client data ack");
+		cs_log_dbg(D_CLIENT, "cccam: client data ack");
 		break;
 	case MSG_SRV_DATA:
 		l -= 4;
-		cs_debug_mask(D_READER, "%s MSG_SRV_DATA (payload=%d, hex=%02X)", getprefix(), l, l);
+		cs_log_dbg(D_READER, "%s MSG_SRV_DATA (payload=%d, hex=%02X)", getprefix(), l, l);
 		data = cc->receive_buffer;
 
 		if(l == 0x48)    //72 bytes: normal server data
@@ -2711,7 +2313,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			strncpy(cc->remote_build, (char *)data + 40, sizeof(cc->remote_build) - 1);
 			cc->remote_build_nr = atoi(cc->remote_build);
 
-			cs_debug_mask(D_READER, "%s remove server %s running v%s (%s)", getprefix(), cs_hexdump(0,
+			cs_log_dbg(D_READER, "%s remove server %s running v%s (%s)", getprefix(), cs_hexdump(0,
 						  cc->peer_node_id, 8, tmp_dbg, sizeof(tmp_dbg)), cc->remote_version, cc->remote_build);
 
 			chk_peer_node_for_oscam(cc);
@@ -2794,12 +2396,12 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		}
 		else
 		{
-			cs_debug_mask(D_READER,
+			cs_log_dbg(D_READER,
 						  "%s received improper MSG_SRV_DATA! No change to current mode, mode=%d",
 						  getprefix(), cc->cmd05_mode);
 			break;
 		}
-		cs_debug_mask(D_READER, "%s MSG_SRV_DATA MODE=%s, len=%d", getprefix(),
+		cs_log_dbg(D_READER, "%s MSG_SRV_DATA MODE=%s, len=%d", getprefix(),
 					  cmd05_mode_name[cc->cmd05_mode], l);
 		break;
 
@@ -2841,7 +2443,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		{
 			if(memcmp(node_id, cc_node_id, sizeof(cc_node_id)) == 0)    //this card is from us!
 			{
-				cs_debug_mask(D_READER, "filtered card because of recursive nodeid: id=%08X, caid=%04X", card->id, card->caid);
+				cs_log_dbg(D_READER, "filtered card because of recursive nodeid: id=%08X, caid=%04X", card->id, card->caid);
 				cc_free_card(card);
 				card = NULL;
 				break;
@@ -2889,7 +2491,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 				else if(card->reshare == 2) { cc->num_reshare2++; }
 				else { cc->num_resharex++; }
 
-				cs_debug_mask(D_TRACE, "%s card added: id %8X remoteid %8X caid %4X hop %d reshare %d originid %8X cardtype %d",
+				cs_log_dbg(D_TRACE, "%s card added: id %8X remoteid %8X caid %4X hop %d reshare %d originid %8X cardtype %d",
 							  getprefix(), card->id, card->remote_id, card->caid, card->hop, card->reshare, card->origin_id, card->card_type);
 			}
 		}
@@ -2927,12 +2529,11 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		}
 		//NO BREAK!! NOK Handling needed!
 
-#ifdef CS_CACHEEX
 	case MSG_CACHE_PUSH:
 	{
 		if((l - 4) >= 18)
 		{
-			cc_cache_push_in(cl, data);
+			cc_cacheex_push_in(cl, data);
 		}
 		break;
 	}
@@ -2941,11 +2542,10 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 	{
 		if((l - 4) >= 482)
 		{
-			cc_cache_filter_in(cl, data);
+			cc_cacheex_filter_in(cl, data);
 		}
 		break;
 	}	
-#endif
 
 	case MSG_CW_NOK1:
 	case MSG_CW_NOK2:
@@ -3020,7 +2620,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 										  cc->extended_mode ? cc->g_flag : 1, 1);
 		if(!eei)
 		{
-			cs_debug_mask(D_READER, "%s received extended ecm NOK id %d but not found!",
+			cs_log_dbg(D_READER, "%s received extended ecm NOK id %d but not found!",
 						  getprefix(), cc->g_flag);
 		}
 		else
@@ -3041,7 +2641,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			{
 				if(buf[1] == MSG_CW_NOK1)   //MSG_CW_NOK1: share no more available
 				{
-					cs_debug_mask(D_TRACE, "NOK1: share temporarily not available %d %04X ecm %d %d!", card->id, card->caid, eei->send_idx, eei->ecm_idx);
+					cs_log_dbg(D_TRACE, "NOK1: share temporarily not available %d %04X ecm %d %d!", card->id, card->caid, eei->send_idx, eei->ecm_idx);
 					int j;
 					for(j = 0; j < cfg.max_pending; j++)
 					{
@@ -3059,29 +2659,24 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 				{
 					move_card_to_end(cl, card);
 					if(cwlastresptime < 5000)
-						{ add_sid_block(cl, card, &srvid); }
+						{ add_sid_block(card, &srvid, true); }
 					else
 						{ card->rating--; }
 				}
-#ifdef CS_CACHEEX
-				else if(rdr->cacheex.mode != 1)
+				else if(cacheex_get_rdr_mode(rdr) != 1)
 				{
-#else
-				else
-				{
-#endif
 					if(!is_good_sid(card, &srvid))
 					{
 						move_card_to_end(cl, card);
 						if(cwlastresptime < 5000)
-							{ add_sid_block(cl, card, &srvid); }
+							{ add_sid_block(card, &srvid, true); }
 						else
 							{ card->rating--; }
 					}
 					else
 					{
 						move_card_to_end(cl, card);
-						add_sid_block(cl, card, &srvid);
+						add_sid_block(card, &srvid, true);
 					}
 
 					if(card->rating < MIN_RATING)
@@ -3092,14 +2687,14 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 						//this card is from us but it can't decode this ecm
 						//also origin card is only set on cccam clients
 						//so wie send back the nok to the client
-						cs_debug_mask(D_TRACE, "%s forward card: %s", getprefix(), (buf[1] == MSG_CW_NOK1) ? "NOK1" : "NOK2");
+						cs_log_dbg(D_TRACE, "%s forward card: %s", getprefix(), (buf[1] == MSG_CW_NOK1) ? "NOK1" : "NOK2");
 						retry = 0;
 					}
 				}
 			}
 			else
 			{
-				cs_debug_mask(D_READER, "%s NOK: NO CARD!", getprefix());
+				cs_log_dbg(D_READER, "%s NOK: NO CARD!", getprefix());
 				//try next card...
 			}
 
@@ -3121,7 +2716,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 				{
 					if(cl->ecmtask[i].idx == ecm_idx && cl->ecmtask[i].rc == E_ALREADY_SENT)
 					{
-						cs_debug_mask(D_TRACE,
+						cs_log_dbg(D_TRACE,
 									  "%s ext NOK %s", getprefix(), (buf[1] == MSG_CW_NOK1) ? "NOK1" : "NOK2");
 						ECM_REQUEST *er = &cl->ecmtask[i];
 						cl->pending--;
@@ -3170,7 +2765,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 
 				if(cfg.cc_forward_origin_card)    //search my shares for this card:
 				{
-					cs_debug_mask(D_TRACE, "%s forward card: %04X:%04x search share %d", getprefix(), er->caid, er->srvid, server_card->id);
+					cs_log_dbg(D_TRACE, "%s forward card: %04X:%04x search share %d", getprefix(), er->caid, er->srvid, server_card->id);
 					LLIST **sharelist = get_and_lock_sharelist();
 					LL_ITER itr = ll_iter_create(get_cardlist(er->caid, sharelist));
 					struct cc_card *card;
@@ -3182,7 +2777,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 							break;
 						}
 					}
-					cs_debug_mask(D_TRACE, "%s forward card: share %d found: %d", getprefix(), server_card->id, card ? 1 : 0);
+					cs_log_dbg(D_TRACE, "%s forward card: share %d found: %d", getprefix(), server_card->id, card ? 1 : 0);
 
 					struct s_reader *ordr = NULL;
 					if(card && card->origin_reader)    // found own card, now search reader card:
@@ -3194,10 +2789,10 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 						}
 
 						if(!ordr)
-							{ cs_debug_mask(D_TRACE, "%s origin reader not found!", getprefix()); }
+							{ cs_log_dbg(D_TRACE, "%s origin reader not found!", getprefix()); }
 						else
 						{
-							cs_debug_mask(D_TRACE, "%s forward card: share %d origin reader %s origin id %d", getprefix(), card->id, ordr->label, card->origin_id);
+							cs_log_dbg(D_TRACE, "%s forward card: share %d origin reader %s origin id %d", getprefix(), card->id, ordr->label, card->origin_id);
 							struct s_client *cl2 = ordr->client;
 							if(card->origin_id && cl2 && cl2->cc)    //only if we have a origin from a cccam reader
 							{
@@ -3222,18 +2817,18 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 					er->origin_card = rcard;
 					if(!rcard || !ordr)
 					{
-						cs_debug_mask(D_TRACE, "%s forward card: share %d not found!", getprefix(), server_card->id);
+						cs_log_dbg(D_TRACE, "%s forward card: share %d not found!", getprefix(), server_card->id);
 						er->rc = E_NOTFOUND;
 						er->rcEx = E2_CCCAM_NOK1; //share not found!
 					}
 					else
-						cs_debug_mask(D_TRACE, "%s forward card: share %d forwarded to %s origin as id %d", getprefix(),
+						cs_log_dbg(D_TRACE, "%s forward card: share %d forwarded to %s origin as id %d", getprefix(),
 									  card->id, ordr->label, rcard->id);
 					unlock_sharelist();
 				}
 #endif
 
-				cs_debug_mask(
+				cs_log_dbg(
 					D_CLIENT,
 					"%s ECM request from client: caid %04x srvid %04x(%d) prid %06x",
 					getprefix(), er->caid, er->srvid, er->ecmlen, er->prid);
@@ -3250,7 +2845,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			}
 			else
 			{
-				cs_debug_mask(D_CLIENT, "%s NO ECMTASK!!!! l=%d", getprefix(), l);
+				cs_log_dbg(D_CLIENT, "%s NO ECMTASK!!!! l=%d", getprefix(), l);
 				NULLFREE(server_card);
 			}
 
@@ -3263,7 +2858,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 									   cc->extended_mode ? cc->g_flag : 1, 1);
 			if(!eei)
 			{
-				cs_debug_mask(D_READER, "%s received extended ecm id %d but not found!",
+				cs_log_dbg(D_READER, "%s received extended ecm id %d but not found!",
 							  getprefix(), cc->g_flag);
 				if(!cc->extended_mode)
 					{ cc_cli_close(cl, 0); }
@@ -3293,17 +2888,17 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 
 					if(is_null_dcw(cc->dcw))
 					{
-						cs_debug_mask(D_READER, "%s null dcw received! sid=%04X(%d)", getprefix(),
+						cs_log_dbg(D_READER, "%s null dcw received! sid=%04X(%d)", getprefix(),
 									  srvid.sid, srvid.ecmlen);
 						move_card_to_end(cl, card);
-						add_sid_block(cl, card, &srvid);
+						add_sid_block(card, &srvid, true);
 						//ecm retry:
 						cc_reset_pending(cl, ecm_idx);
 						buf[1] = MSG_CW_NOK2; //So it's really handled like a nok!
 					}
 					else
 					{
-						cs_debug_mask(D_READER, "%s cws: %d %s", getprefix(),
+						cs_log_dbg(D_READER, "%s cws: %d %s", getprefix(),
 									  ecm_idx, cs_hexdump(0, cc->dcw, 16, tmp_dbg, sizeof(tmp_dbg)));
 
 						//check response time, if > fallbacktime, switch cards!
@@ -3312,7 +2907,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 						int64_t cwlastresptime = comp_timeb(&tpe, &cc->ecm_time);
 						if(cwlastresptime > get_fallbacktimeout(card->caid) && !cc->extended_mode)
 						{
-							cs_debug_mask(D_READER, "%s card %04X is too slow, moving to the end...", getprefix(), card->id);
+							cs_log_dbg(D_READER, "%s card %04X is too slow, moving to the end...", getprefix(), card->id);
 							move_card_to_end(cl, card);
 							card->rating--;
 							if(card->rating < MIN_RATING)
@@ -3329,7 +2924,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 				else
 				{
 					// Card removed...
-					cs_debug_mask(D_READER,
+					cs_log_dbg(D_READER,
 								  "%s warning: ECM-CWS respond by CCCam server without current card!",
 								  getprefix());
 
@@ -3343,7 +2938,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 					if(!cc->extended_mode)
 						{ cc_crypt(&cc->block[DECRYPT], buf + 4, l - 4, ENCRYPT); } // additional crypto step
 
-					cs_debug_mask(D_READER, "%s cws: %d %s", getprefix(),
+					cs_log_dbg(D_READER, "%s cws: %d %s", getprefix(),
 								  ecm_idx, cs_hexdump(0, cc->dcw, 16, tmp_dbg, sizeof(tmp_dbg)));
 				}
 			}
@@ -3372,7 +2967,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		}
 		if(cl->typ != 'c')
 		{
-			cs_debug_mask(D_READER, "cccam: keepalive ack");
+			cs_log_dbg(D_READER, "cccam: keepalive ack");
 		}
 		else
 		{
@@ -3380,7 +2975,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			if(cc->just_logged_in || cc->answer_on_keepalive + 55 <= time(NULL))
 			{
 				cc_cmd_send(cl, NULL, 0, MSG_KEEPALIVE);
-				cs_debug_mask(D_CLIENT, "cccam: keepalive");
+				cs_log_dbg(D_CLIENT, "cccam: keepalive");
 				cc->answer_on_keepalive = time(NULL);
 			}
 		}
@@ -3393,7 +2988,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			cc->just_logged_in = 0;
 			l = l - 4;//Header Length=4 Byte
 
-			cs_debug_mask(D_READER, "%s MSG_CMD_05 recvd, payload length=%d mode=%d",
+			cs_log_dbg(D_READER, "%s MSG_CMD_05 recvd, payload length=%d mode=%d",
 						  getprefix(), l, cc->cmd05_mode);
 			cc->cmd05_active = 1;
 			cc->cmd05_data_len = l;
@@ -3405,7 +3000,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 	case MSG_CMD_0B:
 	{
 		// by Project:Keynation
-		cs_debug_mask(D_READER, "%s MSG_CMD_0B received (payload=%d)!",
+		cs_log_dbg(D_READER, "%s MSG_CMD_0B received (payload=%d)!",
 					  getprefix(), l - 4);
 
 		AES_KEY key;
@@ -3415,14 +3010,14 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		memcpy(aeskey, cc->cmd0b_aeskey, 16);
 		memset(&key, 0, sizeof(key));
 
-		//cs_ddump_mask(D_READER, aeskey, 16, "%s CMD_0B AES key:", getprefix());
-		//cs_ddump_mask(D_READER, data, 16, "%s CMD_0B received data:", getprefix());
+		//cs_log_dump_dbg(D_READER, aeskey, 16, "%s CMD_0B AES key:", getprefix());
+		//cs_log_dump_dbg(D_READER, data, 16, "%s CMD_0B received data:", getprefix());
 
 		AES_set_encrypt_key((unsigned char *) &aeskey, 128, &key);
 		AES_encrypt((unsigned char *) data, (unsigned char *) &out, &key);
 
-		cs_debug_mask(D_TRACE, "%s sending CMD_0B! ", getprefix());
-		//cs_ddump_mask(D_READER, out, 16, "%s CMD_0B out:", getprefix());
+		cs_log_dbg(D_TRACE, "%s sending CMD_0B! ", getprefix());
+		//cs_log_dump_dbg(D_READER, out, 16, "%s CMD_0B out:", getprefix());
 		cc_cmd_send(cl, out, 16, MSG_CMD_0B);
 
 		break;
@@ -3434,7 +3029,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 
 		if(cl->typ == 'c')    //Only im comming from "client"
 		{
-			cs_debug_mask(D_CLIENT, "%s MSG_CMD_0C received (payload=%d)!", getprefix(), len);
+			cs_log_dbg(D_CLIENT, "%s MSG_CMD_0C received (payload=%d)!", getprefix(), len);
 
 			uint8_t bytes[0x20];
 			if(len < 0x20)  //if less then 0x20 bytes, clear others:
@@ -3454,8 +3049,8 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			MD5(data, 0x20, md5hash);
 			memcpy(bytes, md5hash, 0x10);
 
-			cs_debug_mask(D_CLIENT, "%s sending CMD_0C! ", getprefix());
-			//cs_ddump_mask(D_CLIENT, bytes, 0x20, "%s CMD_0C out:", getprefix());
+			cs_log_dbg(D_CLIENT, "%s sending CMD_0C! ", getprefix());
+			//cs_log_dump_dbg(D_CLIENT, bytes, 0x20, "%s CMD_0C out:", getprefix());
 			cc_cmd_send(cl, bytes, 0x20, MSG_CMD_0C);
 		}
 		else //reader
@@ -3506,7 +3101,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 
 			set_cmd0c_cryptkey(cl, data, len);
 
-			cs_debug_mask(D_READER, "%s received MSG_CMD_0C from server! CMD_0x0C_CMD=%d, MODE=%s",
+			cs_log_dbg(D_READER, "%s received MSG_CMD_0C from server! CMD_0x0C_CMD=%d, MODE=%s",
 						  getprefix(), CMD_0x0C_Command, cmd0c_mode_name[cc->cmd0c_mode]);
 		}
 		break;
@@ -3521,14 +3116,14 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		cc_crypt_cmd0c(cl, data, len);
 		set_cmd0c_cryptkey(cl, data, len);
 
-		cs_debug_mask(D_READER, "%s received MSG_CMD_0D from server! MODE=%s",
+		cs_log_dbg(D_READER, "%s received MSG_CMD_0D from server! MODE=%s",
 					  getprefix(), cmd0c_mode_name[cc->cmd0c_mode]);
 		break;
 	}
 
 	case MSG_CMD_0E:
 	{
-		cs_debug_mask(D_READER, "cccam 2.2.x commands not implemented: 0x%02X", buf[1]);
+		cs_log_dbg(D_READER, "cccam 2.2.x commands not implemented: 0x%02X", buf[1]);
 		//Unkwon commands...need workout algo
 		if(cl->typ == 'c')  //client connection
 		{
@@ -3553,11 +3148,11 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 			cc_cmd_send(cl, NULL, 0, MSG_EMM_ACK); //Send back ACK
 			if(l > 4)
 			{
-				cs_debug_mask(D_EMM, "%s EMM Request received!", getprefix());
+				cs_log_dbg(D_EMM, "%s EMM Request received!", getprefix());
 
 				if(!ll_count(cl->aureader_list))
 				{
-					cs_debug_mask(
+					cs_log_dbg(
 						D_EMM,
 						"%s EMM Request discarded because au is not assigned to an reader!",
 						getprefix());
@@ -3590,7 +3185,7 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		}
 		else     //Our EMM Request Ack!
 		{
-			cs_debug_mask(D_EMM, "%s EMM ACK!", getprefix());
+			cs_log_dbg(D_EMM, "%s EMM ACK!", getprefix());
 			if(!cc->extended_mode)
 			{
 				cc->ecm_busy = 0;
@@ -3600,13 +3195,13 @@ int32_t cc_parse_msg(struct s_client *cl, uint8_t *buf, int32_t l)
 		break;
 	}
 	default:
-		//cs_ddump_mask(D_CLIENT, buf, l, "%s unhandled msg: %d len=%d", getprefix(), buf[1], l);
+		//cs_log_dump_dbg(D_CLIENT, buf, l, "%s unhandled msg: %d len=%d", getprefix(), buf[1], l);
 		break;
 	}
 
 	if(cc->max_ecms && (cc->ecm_counter > cc->max_ecms))
 	{
-		cs_debug_mask(D_READER, "%s max ecms (%d) reached, cycle connection!", getprefix(),
+		cs_log_dbg(D_READER, "%s max ecms (%d) reached, cycle connection!", getprefix(),
 					  cc->max_ecms);
 		cc_cycle_connection(cl);
 	}
@@ -3623,7 +3218,7 @@ int32_t cc_recv_chk(struct s_client *cl, uchar *dcw, int32_t *rc, uchar *buf, in
 	if(buf[1] == MSG_CW_ECM)
 	{
 		memcpy(dcw, cc->dcw, 16);
-		//cs_debug_mask(D_CLIENT, "cccam: recv chk - MSG_CW %d - %s", cc->recv_ecmtask,
+		//cs_log_dbg(D_CLIENT, "cccam: recv chk - MSG_CW %d - %s", cc->recv_ecmtask,
 		//      cs_hexdump(0, dcw, 16, tmp_dbg, sizeof(tmp_dbg)));
 		*rc = 1;
 		return (cc->recv_ecmtask);
@@ -3677,7 +3272,7 @@ void cc_send_dcw(struct s_client *cl, ECM_REQUEST *er)
 	{
 		memcpy(buf, er->cw, sizeof(buf));
 		//fix_dcw(buf);
-		//cs_debug_mask(D_TRACE, "%s send cw: %s cpti: %d", getprefix(),
+		//cs_log_dbg(D_TRACE, "%s send cw: %s cpti: %d", getprefix(),
 		//      cs_hexdump(0, buf, 16, tmp_dbg, sizeof(tmp_dbg)), er->cpti);
 		if(!cc->extended_mode)
 			{ cc_cw_crypt(cl, buf, eei->cccam_id); }
@@ -3690,7 +3285,7 @@ void cc_send_dcw(struct s_client *cl, ECM_REQUEST *er)
 	}
 	else     //NOT found:
 	{
-		//cs_debug_mask(D_TRACE, "%s send cw: NOK cpti: %d", getprefix(),
+		//cs_log_dbg(D_TRACE, "%s send cw: NOK cpti: %d", getprefix(),
 		//      er->cpti);
 
 		if(eei && cc->extended_mode)
@@ -3731,17 +3326,17 @@ int32_t cc_recv(struct s_client *cl, uchar *buf, int32_t l)
 		{ return -1; }
 
 	n = cc_msg_recv(cl, buf, l); // recv and decrypt msg
-	//cs_ddump_mask(D_CLIENT, buf, n, "cccam: received %d bytes from %s", n, remote_txt());
+	//cs_log_dump_dbg(D_CLIENT, buf, n, "cccam: received %d bytes from %s", n, remote_txt());
 
 
 	if(n <= 0)
 	{
 		struct cc_data *cc = cl->cc;
 		if(cc && cc->nok_message)
-			{ cs_debug_mask(D_CLIENT, "%s connection closed by %s. n=%d, Reason: %s", getprefix(), remote_txt(), n, cc->nok_message); }
+			{ cs_log_dbg(D_CLIENT, "%s connection closed by %s. n=%d, Reason: %s", getprefix(), remote_txt(), n, cc->nok_message); }
 		else
 		{
-			cs_debug_mask(D_CLIENT, "%s connection closed by %s, n=%d.", getprefix(), remote_txt(), n);
+			cs_log_dbg(D_CLIENT, "%s connection closed by %s, n=%d.", getprefix(), remote_txt(), n);
 			if(rdr)
 			{
 				cc_cli_close(cl, 1);
@@ -3862,7 +3457,7 @@ int32_t cc_srv_connect(struct s_client *cl)
 		data[12 + i] = (data[i] + data[4 + i] + data[8 + i]) & 0xff;
 	}
 
-	cs_debug_mask(D_TRACE, "send ccc checksum");
+	cs_log_dbg(D_TRACE, "send ccc checksum");
 
 	send(cl->udp_fd, data, 16, 0);
 
@@ -3878,13 +3473,13 @@ int32_t cc_srv_connect(struct s_client *cl)
 	cc_init_crypt(&cc->block[DECRYPT], data, 16);
 	cc_crypt(&cc->block[DECRYPT], buf, 20, DECRYPT);
 
-	cs_debug_mask(D_TRACE, "receive ccc checksum");
+	cs_log_dbg(D_TRACE, "receive ccc checksum");
 
 	if((i = cc_recv_to(cl, buf, 20)) == 20)
 	{
-		//cs_ddump_mask(D_CLIENT, buf, 20, "cccam: recv:");
+		//cs_log_dump_dbg(D_CLIENT, buf, 20, "cccam: recv:");
 		cc_crypt(&cc->block[DECRYPT], buf, 20, DECRYPT);
-		//cs_ddump_mask(D_CLIENT, buf, 20, "cccam: hash:");
+		//cs_log_dump_dbg(D_CLIENT, buf, 20, "cccam: hash:");
 	}
 	else
 		{ return -1; }
@@ -3908,14 +3503,14 @@ int32_t cc_srv_connect(struct s_client *cl)
 				return -3;
 			}
 		}
-		//cs_ddump_mask(D_CLIENT, buf, 20, "cccam: username '%s':", usr);
+		//cs_log_dump_dbg(D_CLIENT, buf, 20, "cccam: username '%s':", usr);
 	}
 	else
 	{
 		cs_add_violation(cl, NULL);
 		return -2;
 	}
-	cs_debug_mask(D_TRACE, "ccc username received %s", usr);
+	cs_log_dbg(D_TRACE, "ccc username received %s", usr);
 
 	cl->crypted = 1;
 
@@ -3930,7 +3525,7 @@ int32_t cc_srv_connect(struct s_client *cl)
 		return -2;
 	}
 
-	cs_debug_mask(D_TRACE, "ccc passwdhash received %s", usr);
+	cs_log_dbg(D_TRACE, "ccc passwdhash received %s", usr);
 
 	account = cfg.account;
 	struct cc_crypt_block *save_block;
@@ -3959,7 +3554,7 @@ int32_t cc_srv_connect(struct s_client *cl)
 		memcpy(cc->block, save_block, sizeof(struct cc_crypt_block));
 		cc_crypt(&cc->block[DECRYPT], (uint8_t *) pwd, strlen(pwd), ENCRYPT);
 		cc_crypt(&cc->block[DECRYPT], buf, 6, DECRYPT);
-		//cs_ddump_mask(D_CLIENT, buf, 6, "cccam: pwd check '%s':", buf); //illegal buf-bytes could kill the logger!
+		//cs_log_dump_dbg(D_CLIENT, buf, 6, "cccam: pwd check '%s':", buf); //illegal buf-bytes could kill the logger!
 		if(memcmp(buf, "CCcam\0", 6) == 0)  //Password Hash OK!
 			{ break; } //account is set
 
@@ -3993,7 +3588,7 @@ int32_t cc_srv_connect(struct s_client *cl)
 		return -3;
 	}
 
-	cs_debug_mask(D_TRACE, "ccc user authenticated %s", usr);
+	cs_log_dbg(D_TRACE, "ccc user authenticated %s", usr);
 
 	if(account->cccmaxhops == -1)
 		{ cs_log("account '%s' has cccmaxhops = -1: user will not see any card!", usr); }
@@ -4008,7 +3603,7 @@ int32_t cc_srv_connect(struct s_client *cl)
 	// send passwd ack
 	memset(buf, 0, 20);
 	memcpy(buf, "CCcam\0", 6);
-	cs_ddump_mask(D_CLIENT, buf, 20, "cccam: send ack:");
+	cs_log_dump_dbg(D_CLIENT, buf, 20, "cccam: send ack:");
 	cc_crypt(&cc->block[ENCRYPT], buf, 20, ENCRYPT);
 	send(cl->pfd, buf, 20, 0);
 
@@ -4017,20 +3612,20 @@ int32_t cc_srv_connect(struct s_client *cl)
 	i = cc_msg_recv(cl, buf, CC_MAXMSGSIZE);
 	if(i < 0)
 		{ return -1; }
-	cs_ddump_mask(D_CLIENT, buf, i, "cccam: cli data:");
+	cs_log_dump_dbg(D_CLIENT, buf, i, "cccam: cli data:");
 	memcpy(cc->peer_node_id, buf + 24, 8);
 	//chk_peer_node_for_oscam(cc);
 
 	strncpy(cc->remote_version, (char *)buf + 33, sizeof(cc->remote_version) - 1);
 	strncpy(cc->remote_build, (char *)buf + 65, sizeof(cc->remote_build) - 1);
 
-	cs_debug_mask(D_CLIENT, "%s client '%s' (%s) running v%s (%s)", getprefix(), buf + 4,
+	cs_log_dbg(D_CLIENT, "%s client '%s' (%s) running v%s (%s)", getprefix(), buf + 4,
 				  cs_hexdump(0, cc->peer_node_id, 8, tmp_dbg, sizeof(tmp_dbg)), cc->remote_version, cc->remote_build);
 
 	// send cli data ack
 	cc_cmd_send(cl, NULL, 0, MSG_CLI_DATA);
 
-	cs_debug_mask(D_TRACE, "ccc send srv_data %s", usr);
+	cs_log_dbg(D_TRACE, "ccc send srv_data %s", usr);
 	if(cc_send_srv_data(cl) < 0)
 		{ return -1; }
 
@@ -4045,18 +3640,18 @@ int32_t cc_srv_connect(struct s_client *cl)
 		{ return 0; } //disconnected
 
 	if(cc->cccam220)
-		{ cs_debug_mask(D_CLIENT, "%s extended sid mode activated", getprefix()); }
+		{ cs_log_dbg(D_CLIENT, "%s extended sid mode activated", getprefix()); }
 	else
-		{ cs_debug_mask(D_CLIENT, "%s 2.1.x compatibility mode", getprefix()); }
+		{ cs_log_dbg(D_CLIENT, "%s 2.1.x compatibility mode", getprefix()); }
 
-	cs_debug_mask(D_TRACE, "ccc send cards %s", usr);
+	cs_log_dbg(D_TRACE, "ccc send cards %s", usr);
 	if(!cc_srv_report_cards(cl))
 		{ return -1; }
 	cs_ftime(&cc->ecm_time);
 
 	//some clients, e.g. mgcamd, does not support keepalive. So if not answered, keep connection
 	// check for client timeout, if timeout occurs try to send keepalive
-	cs_debug_mask(D_TRACE, "ccc connected and waiting for data %s", usr);
+	cs_log_dbg(D_TRACE, "ccc connected and waiting for data %s", usr);
 	return 0;
 }
 
@@ -4065,22 +3660,22 @@ void cc_srv_init2(struct s_client *cl)
 	if(!cl->init_done && !cl->kill)
 	{
 		if(IP_ISSET(cl->ip))
-			{ cs_debug_mask(D_CLIENT, "cccam: new connection from %s", cs_inet_ntoa(cl->ip)); }
+			{ cs_log_dbg(D_CLIENT, "cccam: new connection from %s", cs_inet_ntoa(cl->ip)); }
 
 		cl->pfd = cl->udp_fd;
 		int32_t ret;
 		if((ret = cc_srv_connect(cl)) < 0)
 		{
 			if(errno != 0)
-				{ cs_debug_mask(D_CLIENT, "cccam: failed errno: %d (%s)", errno, strerror(errno)); }
+				{ cs_log_dbg(D_CLIENT, "cccam: failed errno: %d (%s)", errno, strerror(errno)); }
 			else
-				{ cs_debug_mask(D_CLIENT, "cccam: failed ret: %d", ret); }
+				{ cs_log_dbg(D_CLIENT, "cccam: failed ret: %d", ret); }
 			cs_disconnect_client(cl);
 		}
 		else
 		{
 			cl->init_done = 1;
-			cc_cache_filter_out(cl);
+			cc_cacheex_filter_out(cl);
 		}
 	}
 	return;
@@ -4141,7 +3736,7 @@ int32_t cc_cli_connect(struct s_client *cl)
 	handle = network_tcp_connection_open(rdr);
 	if(handle <= 0)
 	{
-		cs_debug_mask(D_READER, "%s network connect error!", rdr->label);
+		cs_log_dbg(D_READER, "%s network connect error!", rdr->label);
 		return -1;
 	}
 	if(errno == EISCONN)
@@ -4185,7 +3780,7 @@ int32_t cc_cli_connect(struct s_client *cl)
 	NULLFREE(cc->nok_message);
 	cc->cmd0c_mode = MODE_CMD_0x0C_NONE;
 
-	cs_ddump_mask(D_CLIENT, data, 16, "cccam: server init seed:");
+	cs_log_dump_dbg(D_CLIENT, data, 16, "cccam: server init seed:");
 
 	uint16_t sum = 0x1234;
 	uint16_t recv_sum = (data[14] << 8) | data[15];
@@ -4204,7 +3799,7 @@ int32_t cc_cli_connect(struct s_client *cl)
 	SHA1_Update(&ctx, data, 16);
 	SHA1_Final(hash, &ctx);
 
-	cs_ddump_mask(D_CLIENT, hash, sizeof(hash), "cccam: sha1 hash:");
+	cs_log_dump_dbg(D_CLIENT, hash, sizeof(hash), "cccam: sha1 hash:");
 
 	//initialisate crypto states
 	cc_init_crypt(&cc->block[DECRYPT], hash, 20);
@@ -4216,13 +3811,13 @@ int32_t cc_cli_connect(struct s_client *cl)
 
 	memset(buf, 0, CC_MAXMSGSIZE);
 	memcpy(buf, rdr->r_usr, strlen(rdr->r_usr));
-	cs_ddump_mask(D_CLIENT, buf, 20, "cccam: username '%s':", buf);
+	cs_log_dump_dbg(D_CLIENT, buf, 20, "cccam: username '%s':", buf);
 	cc_cmd_send(cl, buf, 20, MSG_NO_HEADER); // send usr '0' padded -> 20 bytes
 
 	memset(buf, 0, CC_MAXMSGSIZE);
 	memset(pwd, 0, sizeof(pwd));
 
-	//cs_debug_mask(D_CLIENT, "cccam: 'CCcam' xor");
+	//cs_log_dbg(D_CLIENT, "cccam: 'CCcam' xor");
 	memcpy(buf, "CCcam", 5);
 	strncpy(pwd, rdr->r_pwd, sizeof(pwd) - 1);
 	cc_crypt(&cc->block[ENCRYPT], (uint8_t *) pwd, strlen(pwd), ENCRYPT);
@@ -4236,7 +3831,7 @@ int32_t cc_cli_connect(struct s_client *cl)
 		return -2;
 	}
 	cc_crypt(&cc->block[DECRYPT], data, 20, DECRYPT);
-	cs_ddump_mask(D_CLIENT, data, 20, "cccam: login failed, usr/pwd invalid");
+	cs_log_dump_dbg(D_CLIENT, data, 20, "cccam: login failed, usr/pwd invalid");
 
 	if(memcmp(data, buf, 5))    // check server response
 	{
@@ -4247,13 +3842,13 @@ int32_t cc_cli_connect(struct s_client *cl)
 	}
 	else
 	{
-		cs_debug_mask(D_READER, "%s login succeeded", getprefix());
+		cs_log_dbg(D_READER, "%s login succeeded", getprefix());
 	}
 
-	cs_debug_mask(D_READER, "cccam: last_s=%ld, last_g=%ld", rdr->last_s, rdr->last_g);
+	cs_log_dbg(D_READER, "cccam: last_s=%ld, last_g=%ld", rdr->last_s, rdr->last_g);
 
 	cl->pfd = cl->udp_fd;
-	cs_debug_mask(D_READER, "cccam: pfd=%d", cl->pfd);
+	cs_log_dbg(D_READER, "cccam: pfd=%d", cl->pfd);
 
 	if(cc_send_cli_data(cl) <= 0)
 	{
@@ -4263,14 +3858,17 @@ int32_t cc_cli_connect(struct s_client *cl)
 		return -3;
 	}
 
-	rdr->caid = rdr->ftab.filts[0].caid;
-	rdr->nprov = rdr->ftab.filts[0].nprids;
-	for(n = 0; n < rdr->nprov; n++)
+	if (rdr->ftab.filts)
 	{
-		rdr->prid[n][0] = rdr->ftab.filts[0].prids[n] >> 24;
-		rdr->prid[n][1] = rdr->ftab.filts[0].prids[n] >> 16;
-		rdr->prid[n][2] = rdr->ftab.filts[0].prids[n] >> 8;
-		rdr->prid[n][3] = rdr->ftab.filts[0].prids[n] & 0xff;
+		rdr->caid = rdr->ftab.filts[0].caid;
+		rdr->nprov = rdr->ftab.filts[0].nprids;
+		for(n = 0; n < rdr->nprov; n++)
+		{
+			rdr->prid[n][0] = rdr->ftab.filts[0].prids[n] >> 24;
+			rdr->prid[n][1] = rdr->ftab.filts[0].prids[n] >> 16;
+			rdr->prid[n][2] = rdr->ftab.filts[0].prids[n] >> 8;
+			rdr->prid[n][3] = rdr->ftab.filts[0].prids[n] & 0xff;
+		}
 	}
 
 	rdr->card_status = CARD_NEED_INIT;
@@ -4281,7 +3879,7 @@ int32_t cc_cli_connect(struct s_client *cl)
 	cl->crypted = 1;
 	cc->ecm_busy = 0;
 
-	cc_cache_filter_out(cl);
+	cc_cacheex_filter_out(cl);
 
 	return 0;
 }
@@ -4299,9 +3897,9 @@ int32_t cc_cli_init_int(struct s_client *cl)
 
 	if(rdr->tcp_rto < 1)
 		{ rdr->tcp_rto = 30; } // timeout to 30s
-	cs_debug_mask(D_READER, "cccam: inactivity timeout: %d seconds, receive timeout: %d seconds", rdr->tcp_ito, rdr->tcp_rto);
+	cs_log_dbg(D_READER, "cccam: inactivity timeout: %d seconds, receive timeout: %d seconds", rdr->tcp_ito, rdr->tcp_rto);
 	cc_check_version(rdr->cc_version, rdr->cc_build);
-	cs_debug_mask(D_READER, "proxy reader: %s (%s:%d) cccam v%s build %s, maxhops: %d",
+	cs_log_dbg(D_READER, "proxy reader: %s (%s:%d) cccam v%s build %s, maxhops: %d",
 				  rdr->label, rdr->device, rdr->r_port, rdr->cc_version,
 				  rdr->cc_build, rdr->cc_maxhops);
 
@@ -4330,9 +3928,9 @@ int32_t cc_cli_init(struct s_client *cl)
 		//              if (res)
 		//                  return res;
 		//          }
-		//          cs_debug_mask(D_READER, "%s restarting reader in %d seconds", reader->label, cfg.reader_restart_seconds);
+		//          cs_log_dbg(D_READER, "%s restarting reader in %d seconds", reader->label, cfg.reader_restart_seconds);
 		//          cs_sleepms(cfg.reader_restart_seconds*1000);
-		//          cs_debug_mask(D_READER, "%s restarting reader...", reader->label);
+		//          cs_log_dbg(D_READER, "%s restarting reader...", reader->label);
 		//          cc_cli_connect(cl);
 		//      }
 	}
@@ -4357,7 +3955,7 @@ int32_t cc_available(struct s_reader *rdr, int32_t checktype, ECM_REQUEST *er)
 		if(!card)
 			{ return 0; }
 	}
-	//cs_debug_mask(D_TRACE, "checking reader %s availibility", rdr->label);
+	//cs_log_dbg(D_TRACE, "checking reader %s availibility", rdr->label);
 	if(!cc || rdr->tcp_connected != 2)
 	{
 		//Two cases:
@@ -4380,7 +3978,7 @@ int32_t cc_available(struct s_reader *rdr, int32_t checktype, ECM_REQUEST *er)
 			{ cc_cycle_connection(cl); }
 		if(!rdr->tcp_connected || cc->ecm_busy)
 		{
-			cs_debug_mask(D_TRACE, "checking reader %s availibility=0 (unavail)",
+			cs_log_dbg(D_TRACE, "checking reader %s availibility=0 (unavail)",
 						  rdr->label);
 			return 0; //We are processing EMMs/ECMs
 		}
@@ -4460,7 +4058,7 @@ bool cccam_forward_origin_card(ECM_REQUEST *er)
 		}
 		if(eab)
 		{
-			cs_debug_mask(D_LB, "loadbalancer: forward card: forced by card %d to reader %s", card->id, eab->reader->label);
+			cs_log_dbg(D_LB, "loadbalancer: forward card: forced by card %d to reader %s", card->id, eab->reader->label);
 			eab->status |= READER_ACTIVE;
 			return true;
 		}
@@ -4493,14 +4091,14 @@ bool cccam_client_extended_mode(struct s_client *cl)
 #ifdef MODULE_CCCSHARE
 static void cc_s_idle(struct s_client *cl)
 {
-	cs_debug_mask(D_TRACE, "ccc idle %s", username(cl));
+	cs_log_dbg(D_TRACE, "ccc idle %s", username(cl));
 	if(cfg.cc_keep_connected)
 	{
 		cc_cmd_send(cl, NULL, 0, MSG_KEEPALIVE);
 	}
 	else
 	{
-		cs_debug_mask(D_CLIENT, "%s keepalive after maxidle is reached", getprefix());
+		cs_log_dbg(D_CLIENT, "%s keepalive after maxidle is reached", getprefix());
 		cs_disconnect_client(cl);
 	}
 }
@@ -4530,10 +4128,7 @@ void module_cccam(struct s_module *ph)
 #endif
 	ph->c_available = cc_available;
 	ph->c_card_info = cc_card_info;
-#ifdef CS_CACHEEX
-	ph->c_cache_push = cc_cache_push_out;
-	ph->c_cache_push_chk = cc_cache_push_chk;
-#endif
+	cc_cacheex_module_init(ph);
 
 	cc_update_nodeid();
 

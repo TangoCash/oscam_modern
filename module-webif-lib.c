@@ -1,3 +1,5 @@
+#define MODULE_LOG_PREFIX "webif"
+
 #include "globals.h"
 
 #ifdef WEBIF
@@ -290,7 +292,7 @@ int32_t check_auth(char *authstring, char *method, char *path, IN_ADDR_T addr, c
 			else
 			{
 				authok = 2;
-				cs_debug_mask(D_TRACE, "WebIf: Received stale header from %s (nonce=%s, expectednonce=%s, opaque=%s).", cs_inet_ntoa(addr), authnonce, expectednonce, opaque);
+				cs_log_dbg(D_TRACE, "WebIf: Received stale header from %s (nonce=%s, expectednonce=%s, opaque=%s).", cs_inet_ntoa(addr), authnonce, expectednonce, opaque);
 			}
 		}
 	}
@@ -373,7 +375,7 @@ void send_headers(FILE *f, int32_t status, char *title, char *extra, char *mime,
 		{ pos += snprintf(pos, sizeof(buf) - (pos - buf), "Connection: Keep-Alive\r\n"); }
 	else
 		{ pos += snprintf(pos, sizeof(buf) - (pos - buf), "Connection: close\r\n"); }
-	pos += snprintf(pos, sizeof(buf) - (pos - buf), "\r\n");
+	snprintf(pos, sizeof(buf) - (pos - buf), "\r\n");
 	if(forcePlain == 1) { fwrite(buf, 1, strlen(buf), f); }
 	else { webif_write(buf, f); }
 }
@@ -385,7 +387,7 @@ void send_error(FILE *f, int32_t status, char *title, char *extra, char *text, i
 	pos += snprintf(pos, sizeof(buf) - (pos - buf), "<HTML><HEAD><TITLE>%d %s</TITLE></HEAD>\r\n", status, title);
 	pos += snprintf(pos, sizeof(buf) - (pos - buf), "<BODY><H4>%d %s</H4>\r\n", status, title);
 	pos += snprintf(pos, sizeof(buf) - (pos - buf), "%s\r\n", text);
-	pos += snprintf(pos, sizeof(buf) - (pos - buf), "</BODY></HTML>\r\n");
+	snprintf(pos, sizeof(buf) - (pos - buf), "</BODY></HTML>\r\n");
 	send_headers(f, status, title, extra, "text/html", 0, strlen(buf), NULL, forcePlain);
 	if(forcePlain == 1) { fwrite(buf, 1, strlen(buf), f); }
 	else { webif_write(buf, f); }
@@ -757,12 +759,12 @@ void calc_cpu_usage_pct(struct pstat* cur_usage, struct pstat* last_usage)
 		cur_usage->check_available &= ~(1 << 10);
 		cur_usage->check_available &= ~(1 << 11);
 
-		cur_usage->cpu_usage_user = 100.0 * abs(cur_ticks - last_ticks) / total_time_diff;
+		cur_usage->cpu_usage_user = 100.0 * llabs(cur_ticks - last_ticks) / total_time_diff;
 
 		cur_ticks = cur_usage->stime_ticks + cur_usage->cstime_ticks;
 		last_ticks = last_usage->stime_ticks + last_usage->cstime_ticks;
 
-		cur_usage->cpu_usage_sys = 100.0 * abs(cur_ticks - last_ticks) / total_time_diff;
+		cur_usage->cpu_usage_sys = 100.0 * llabs(cur_ticks - last_ticks) / total_time_diff;
 	}
 }
 #endif
@@ -842,11 +844,6 @@ static void SSL_dyn_destroy_function(struct CRYPTO_dynlock_value *l, const char 
 /* Init necessary structures for SSL in WebIf*/
 SSL_CTX *SSL_Webif_Init(void)
 {
-	SSL_library_init();
-	SSL_load_error_strings();
-	ERR_load_BIO_strings();
-	ERR_load_SSL_strings();
-
 	SSL_CTX *ctx;
 
 	static const char *cs_cert = "oscam.pem";
@@ -894,30 +891,28 @@ SSL_CTX *SSL_Webif_Init(void)
 		{ cs_strncpy(path, cfg.http_cert, sizeof(path)); }
 
 	if(!ctx)
-	{
-		ERR_print_errors_fp(stderr);
-		return NULL;
-	}
+		goto out_err;
 
 	if(SSL_CTX_use_certificate_file(ctx, path, SSL_FILETYPE_PEM) <= 0)
-	{
-		ERR_print_errors_fp(stderr);
-		return NULL;
-	}
+		goto out_err;
 
 	if(SSL_CTX_use_PrivateKey_file(ctx, path, SSL_FILETYPE_PEM) <= 0)
-	{
-		ERR_print_errors_fp(stderr);
-		return NULL;
-	}
+		goto out_err;
 
 	if(!SSL_CTX_check_private_key(ctx))
 	{
 		cs_log("SSL: Private key does not match the certificate public key");
-		return NULL;
+		goto out_err;
 	}
+
 	cs_log("load ssl certificate file %s", path);
 	return ctx;
+
+out_err:
+	ERR_print_errors_fp(stderr);
+	ERR_remove_state(0);
+	SSL_CTX_free(ctx);
+	return NULL;
 }
 #endif
 

@@ -121,9 +121,34 @@ static int32_t set_provider_info(struct s_reader *reader, int32_t i)
 	}
 	else
 		// add entitlement info
-		{ cs_add_entitlement(reader, reader->caid, provid, get_pbm(reader, i), 0, 0, mktime(&lt), (i) ? 6 : 7); }
+		{ cs_add_entitlement(reader, reader->caid, provid, get_pbm(reader, i), 0, 0, mktime(&lt), (i) ? 6 : 7, 1); }
 
 	return OK;
+}
+
+static int32_t get_maturity(struct s_reader *reader)
+{
+	// Get maturity on card
+	static const uchar ins16[] = { 0xC1, 0x16, 0x00, 0x00, 0x06 };
+	
+	def_resp;
+	
+	write_cmd(ins16, NULL);
+	if((cta_res[cta_lr - 2] == 0x90) && cta_res[cta_lr - 1] == 0x00)
+	{
+		reader->maturity=cta_res[cta_lr - 4] & 0xF ;
+	//	rdr_log(reader, "Maturity rating on the card 0x%X!", reader->maturity);
+		if (reader->maturity<0xF)
+		{
+			rdr_log(reader, "Maturity level [%X]= older than %i years", reader->maturity, reader->maturity);
+		}
+		else
+			{
+				rdr_log(reader, "Maturity level [%X]=no age limit", reader->maturity);
+			}
+	}	
+	rdr_log_dbg(reader, D_READER, "ins30_answer: %02x%02x", cta_res[0], cta_res[1]);
+	return 0;
 }
 
 static int32_t unlock_parental(struct s_reader *reader)
@@ -149,6 +174,7 @@ static int32_t unlock_parental(struct s_reader *reader)
 	}
 
 	write_cmd(ins30, ins30data);
+	rdr_log_dbg(reader, D_READER, "ins30_answer: %02x%02x", cta_res[0], cta_res[1]);
 	if(!(cta_res[cta_lr - 2] == 0x90 && cta_res[cta_lr - 1] == 0))
 	{
 		if(strcmp(reader->pincode, "none"))
@@ -161,9 +187,11 @@ static int32_t unlock_parental(struct s_reader *reader)
 		}
 	}
 	else
-		{ rdr_log(reader, "Parental lock disabled"); }
+		{
+			rdr_log(reader, "Parental lock disabled");
+			get_maturity(reader);
+		}
 
-	rdr_debug_mask(reader, D_READER, "ins30_answer: %02x%02x", cta_res[0], cta_res[1]);
 	return 0;
 }
 
@@ -218,21 +246,23 @@ static int32_t seca_card_init(struct s_reader *reader, ATR *newatr)
 	int seca_version = atr[9] & 0X0F; //Get seca cardversion from cardatr
 	if(seca_version == 10){ // check for nagra smartcard (seca3) 
 		reader->secatype = 3;
-		rdr_debug_mask(reader, D_IFD, "Detected seca/nagra (seca3) card");
+		rdr_log_dbg(reader, D_IFD, "Detected seca/nagra (seca3) card");
 	}
 	if(seca_version == 7){ // check for seca smartcard (seca2)
 		reader->secatype = 2;
 		rdr_log(reader, "Detected seca2 card");
 	}
 
+	get_maturity(reader);
 	// Unlock parental control
 	if(cfg.ulparent != 0)
 	{
 		unlock_parental(reader);
+		get_maturity(reader);
 	}
 	else
 	{
-		rdr_debug_mask(reader, D_IFD, "parental locked");
+		rdr_log_dbg(reader, D_IFD, "parental locked");
 	}
 	
 	struct seca_data *csystem_data = reader->csystem_data;
@@ -375,7 +405,7 @@ static int32_t seca_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, struc
 
 static int32_t seca_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)  //returns 1 if shared emm matches SA, unique emm matches serial, or global or unknown
 {
-	rdr_debug_mask(rdr, D_EMM, "Entered seca_get_emm_type ep->emm[0]=%i", ep->emm[0]);
+	rdr_log_dbg(rdr, D_EMM, "Entered seca_get_emm_type ep->emm[0]=%i", ep->emm[0]);
 	int32_t i;
 	char tmp_dbg[25];
 	switch(ep->emm[0])
@@ -384,8 +414,8 @@ static int32_t seca_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)  //return
 		ep->type = UNIQUE;
 		memset(ep->hexserial, 0, 8);
 		memcpy(ep->hexserial, ep->emm + 3, 6);
-		rdr_debug_mask_sensitive(rdr, D_EMM, "UNIQUE , ep->hexserial  = {%s}", cs_hexdump(1, ep->hexserial, 6, tmp_dbg, sizeof(tmp_dbg)));
-		rdr_debug_mask_sensitive(rdr, D_EMM, "UNIQUE , rdr->hexserial = {%s}", cs_hexdump(1, rdr->hexserial, 6, tmp_dbg, sizeof(tmp_dbg)));
+		rdr_log_dbg_sensitive(rdr, D_EMM, "UNIQUE , ep->hexserial  = {%s}", cs_hexdump(1, ep->hexserial, 6, tmp_dbg, sizeof(tmp_dbg)));
+		rdr_log_dbg_sensitive(rdr, D_EMM, "UNIQUE , rdr->hexserial = {%s}", cs_hexdump(1, rdr->hexserial, 6, tmp_dbg, sizeof(tmp_dbg)));
 		return (!memcmp(rdr->hexserial, ep->hexserial, 6));
 		break;
 
@@ -394,10 +424,10 @@ static int32_t seca_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)  //return
 		memset(ep->hexserial, 0, 8);
 		memcpy(ep->hexserial, ep->emm + 5, 3); //dont include custom byte; this way the network also knows SA
 		i = get_prov_index(rdr, ep->emm + 3);
-		rdr_debug_mask_sensitive(rdr, D_EMM, "SHARED, ep->hexserial = {%s}", cs_hexdump(1, ep->hexserial, 3, tmp_dbg, sizeof(tmp_dbg)));
+		rdr_log_dbg_sensitive(rdr, D_EMM, "SHARED, ep->hexserial = {%s}", cs_hexdump(1, ep->hexserial, 3, tmp_dbg, sizeof(tmp_dbg)));
 		if(i == -1)  //provider not found on this card
 			{ return 0; } //do not pass this EMM
-		rdr_debug_mask_sensitive(rdr, D_EMM, "SHARED, rdr->sa[%i] = {%s}", i, cs_hexdump(1, rdr->sa[i], 3, tmp_dbg, sizeof(tmp_dbg)));
+		rdr_log_dbg_sensitive(rdr, D_EMM, "SHARED, rdr->sa[%i] = {%s}", i, cs_hexdump(1, rdr->sa[i], 3, tmp_dbg, sizeof(tmp_dbg)));
 		return (!memcmp(rdr->sa[i], ep->hexserial, 3));
 		break;
 
@@ -405,7 +435,7 @@ static int32_t seca_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)  //return
 		// FIXME: Drop EMM's until there are implemented
 	case 0x83:
 		ep->type = GLOBAL;
-		rdr_debug_mask(rdr, D_EMM, "GLOBAL, PROVID: %04X", (ep->emm[3] << 8) | ep->emm[4]);
+		rdr_log_dbg(rdr, D_EMM, "GLOBAL, PROVID: %04X", (ep->emm[3] << 8) | ep->emm[4]);
 		return 1;
 		/*  EMM-G manadge ppv by provid
 		 83 00 74 33 41 04 70 00 BF 20 A1 15 48 1B 88 FF
@@ -514,7 +544,7 @@ static int32_t seca_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 	default:
 		rdr_log(reader, "EMM: Congratulations, you have discovered a new EMM on SECA.");
 		rdr_log(reader, "This has not been decoded yet, so send this output to authors:");
-		cs_dump(ep->emm, emm_length + 3, "EMM:");
+		rdr_log_dump(reader, ep->emm, emm_length + 3, "EMM:");
 		return ERROR;
 	}
 
@@ -573,15 +603,16 @@ static int32_t seca_card_info(struct s_reader *reader)
 	return OK;
 }
 
-void reader_seca(struct s_cardsystem *ph)
+const struct s_cardsystem reader_seca =
 {
-	ph->do_emm = seca_do_emm;
-	ph->do_ecm = seca_do_ecm;
-	ph->card_info = seca_card_info;
-	ph->card_init = seca_card_init;
-	ph->get_emm_type = seca_get_emm_type;
-	ph->get_emm_filter = seca_get_emm_filter;
-	ph->caids[0] = 0x01;
-	ph->desc = "seca";
-}
+	.desc           = "seca",
+	.caids          = (uint16_t[]){ 0x01, 0 },
+	.do_emm         = seca_do_emm,
+	.do_ecm         = seca_do_ecm,
+	.card_info      = seca_card_info,
+	.card_init      = seca_card_init,
+	.get_emm_type   = seca_get_emm_type,
+	.get_emm_filter = seca_get_emm_filter,
+};
+
 #endif

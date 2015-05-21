@@ -425,7 +425,7 @@ static void swap_lb(unsigned char *buff, int32_t len)
 	}
 }
 
-inline void __xxor(unsigned char *data, int32_t len, const unsigned char *v1, const unsigned char *v2)
+void __xxor(unsigned char *data, int32_t len, const unsigned char *v1, const unsigned char *v2)
 {
 	uint32_t i;
 	switch(len)   // looks ugly but the cpu don't crash!
@@ -769,6 +769,7 @@ int32_t checksum_ok(const unsigned char *ird_payload)		/*checksum for precam dat
 void memorize_cmd_table(struct s_reader *reader, const unsigned char *mem, int32_t size)
 {
 	struct videoguard_data *csystem_data = reader->csystem_data;
+	NULLFREE(csystem_data->cmd_table);
 	if(cs_malloc(&csystem_data->cmd_table, size))
 		{ memcpy(csystem_data->cmd_table, mem, size); }
 }
@@ -814,11 +815,11 @@ int32_t read_cmd_len(struct s_reader *reader, const unsigned char *cmd)
 	{
 		if(cta_res[0] == 0)         //some cards reply len=0x00 for not supported ins
 		{
-			rdr_debug_mask(reader, D_READER, "failed to read %02x%02x cmd length (%02x %02x)", cmd[1], cmd[2], cta_res[1], cta_res[2]);
+			rdr_log_dbg(reader, D_READER, "failed to read %02x%02x cmd length (%02x %02x)", cmd[1], cmd[2], cta_res[1], cta_res[2]);
 		}
 		else                        //others reply only status byte
 		{
-			rdr_debug_mask(reader, D_READER, "failed to read %02x%02x cmd length (%02x %02x)", cmd[1], cmd[2], cta_res[0], cta_res[1]);
+			rdr_log_dbg(reader, D_READER, "failed to read %02x%02x cmd length (%02x %02x)", cmd[1], cmd[2], cta_res[0], cta_res[1]);
 		}
 		return -1;
 	}
@@ -842,7 +843,7 @@ int32_t do_cmd(struct s_reader *reader, const unsigned char *ins, const unsigned
 				if (len == 0xFF) return -1;
 			}
 		}
-		else if(mode != 0) { ins2[4] = len; }
+		else if((mode != 0)&&((ins2[3]!=0x7f)&&(ins2[4]!=0x02))) { ins2[4] = len; }
 	}
 	if(ins2[0] == 0xd3)
 	{
@@ -868,7 +869,7 @@ int32_t do_cmd(struct s_reader *reader, const unsigned char *ins, const unsigned
 	}
 	cCamCryptVG_PostProcess_Decrypt(reader, rxbuff);
 	if(ins2[0] == 0xd3)
-		rdr_ddump_mask(reader, D_READER, rxbuff + 5, rxbuff[4], "Decrypted payload");
+		rdr_log_dump_dbg(reader, D_READER, rxbuff + 5, rxbuff[4], "Decrypted payload");
 
 	return len;
 }
@@ -907,17 +908,17 @@ int32_t videoguard_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)
 	switch(emmtype)
 	{
 	case VG_EMMTYPE_G:
-		rdr_debug_mask(rdr, D_EMM, "GLOBAL");
+		rdr_log_dbg(rdr, D_EMM, "GLOBAL");
 		ep->type = GLOBAL;
 		return 1;
 
 	case VG_EMMTYPE_U:
 	case VG_EMMTYPE_S:
-		rdr_debug_mask(rdr, D_EMM, "%s", (emmtype == VG_EMMTYPE_U) ? "UNIQUE" : "SHARED");
+		rdr_log_dbg(rdr, D_EMM, "%s", (emmtype == VG_EMMTYPE_U) ? "UNIQUE" : "SHARED");
 		ep->type = emmtype;
 		if(ep->emm[1] == 0)  // detected UNIQUE EMM from cccam (there is no serial)
 		{
-			rdr_debug_mask(rdr, D_EMM, "CCCam unique EMM detected, no serial available, skipping filter check");
+			rdr_log_dbg(rdr, D_EMM, "CCCam unique EMM detected, no serial available, skipping filter check");
 			ep->skip_filter_check = 1;
 			return 1;
 		}
@@ -934,7 +935,7 @@ int32_t videoguard_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)
 
 	default:
 		//remote emm without serial
-		rdr_debug_mask(rdr, D_EMM, "UNKNOWN");
+		rdr_log_dbg(rdr, D_EMM, "UNKNOWN");
 		ep->type = UNKNOWN;
 		return 1;
 	}
@@ -1030,7 +1031,7 @@ int32_t videoguard_do_emm(struct s_reader *reader, EMM_PACKET *ep, unsigned char
 					ins42[4] = ep->emm[offs];
 					int32_t l = (*docmd)(reader, ins42, &ep->emm[offs + 1], NULL, cta_res);
 					rc = (l > 0 && status_ok(cta_res)) ? OK : ERROR;
-					rdr_debug_mask(reader, D_EMM, "request return code : %02X%02X", cta_res[0], cta_res[1]);
+					rdr_log_dbg(reader, D_EMM, "request return code : %02X%02X", cta_res[0], cta_res[1]);
 					if(status_ok(cta_res) && (cta_res[1] & 0x01))
 						{ (*read_tiers)(reader); }
 				}

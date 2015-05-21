@@ -37,7 +37,7 @@ static void set_gpio(struct s_reader *reader, int32_t level)
 		{ reader->gpio &= ~GPIO_PIN; }
 	ret |= write(reader->gpio_out, &reader->gpio, sizeof(reader->gpio));
 
-	rdr_debug_mask(reader, D_IFD, "%s level: %d ret: %d", __func__, level, ret);
+	rdr_log_dbg(reader, D_IFD, "%s level: %d ret: %d", __func__, level, ret);
 }
 
 static void set_gpio_input(struct s_reader *reader)
@@ -46,7 +46,7 @@ static void set_gpio_input(struct s_reader *reader)
 	ret |= read(reader->gpio_outen, &reader->gpio, sizeof(reader->gpio));
 	reader->gpio &= ~GPIO_PIN;
 	ret |= write(reader->gpio_outen, &reader->gpio, sizeof(reader->gpio));
-	rdr_debug_mask(reader, D_IFD, "%s ret:%d", __func__, ret);
+	rdr_log_dbg(reader, D_IFD, "%s ret:%d", __func__, ret);
 }
 
 static int32_t get_gpio(struct s_reader *reader)
@@ -54,7 +54,7 @@ static int32_t get_gpio(struct s_reader *reader)
 	int ret = 0;
 	set_gpio_input(reader);
 	ret = read(reader->gpio_in, &reader->gpio, sizeof(reader->gpio));
-	rdr_debug_mask(reader, D_IFD, "%s ok:%d ret:%d", __func__, reader->gpio & GPIO_PIN, ret);
+	rdr_log_dbg(reader, D_IFD, "%s ok:%d ret:%d", __func__, reader->gpio & GPIO_PIN, ret);
 	if(reader->gpio & GPIO_PIN)
 		{ return OK; }
 	else
@@ -65,7 +65,11 @@ int32_t Phoenix_Init(struct s_reader *reader)
 {
 	// First set card in reset state, to not change any parameters while communication ongoing
 	IO_Serial_RTS_Set(reader);
-	if(reader->crdr.flush) { IO_Serial_Flush(reader); }
+
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
+	if(crdr_ops->flush) { IO_Serial_Flush(reader); }
 
 	// define reader->gpio number used for card detect and reset. ref to globals.h
 	if(reader_use_gpio(reader))
@@ -73,18 +77,18 @@ int32_t Phoenix_Init(struct s_reader *reader)
 		reader->gpio_outen = open("/dev/gpio/outen", O_RDWR);
 		reader->gpio_out   = open("/dev/gpio/out",   O_RDWR);
 		reader->gpio_in    = open("/dev/gpio/in",    O_RDWR);
-		rdr_debug_mask(reader, D_IFD, "init gpio_outen:%d gpio_out:%d gpio_in:%d",
+		rdr_log_dbg(reader, D_IFD, "init gpio_outen:%d gpio_out:%d gpio_in:%d",
 					   reader->gpio_outen, reader->gpio_out, reader->gpio_in);
 		set_gpio_input(reader);
 	}
 
-	rdr_debug_mask(reader, D_IFD, "Initializing reader type=%d", reader->typ);
+	rdr_log_dbg(reader, D_IFD, "Initializing reader type=%d", reader->typ);
 
 	/* Default serial port settings */
 	if(reader->atr[0] == 0)
 	{
 		if(IO_Serial_SetParams(reader, DEFAULT_BAUDRATE, 8, PARITY_EVEN, 2, NULL, NULL)) { return ERROR; }
-		if(reader->crdr.flush) { IO_Serial_Flush(reader); }
+		if(crdr_ops->flush) { IO_Serial_Flush(reader); }
 	}
 	return OK;
 }
@@ -105,7 +109,7 @@ int32_t Phoenix_GetStatus(struct s_reader *reader, int32_t *status)
 
 int32_t Phoenix_Reset(struct s_reader *reader, ATR *atr)
 {
-	rdr_debug_mask(reader, D_IFD, "Resetting card");
+	rdr_log_dbg(reader, D_IFD, "Resetting card");
 	int32_t ret;
 	int32_t i;
 	unsigned char buf[ATR_MAX_SIZE];
@@ -113,10 +117,13 @@ int32_t Phoenix_Reset(struct s_reader *reader, ATR *atr)
 
 	call(IO_Serial_SetBaudrate(reader, DEFAULT_BAUDRATE));
 
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	for(i = 0; i < 3; i++)
 	{
-		if(reader->crdr.flush) { IO_Serial_Flush(reader); }
-		if(reader->crdr.set_parity) { IO_Serial_SetParity(reader, parity[i]); }
+		if(crdr_ops->flush) { IO_Serial_Flush(reader); }
+		if(crdr_ops->set_parity) { IO_Serial_SetParity(reader, parity[i]); }
 
 		ret = ERROR;
 
@@ -153,7 +160,7 @@ int32_t Phoenix_Reset(struct s_reader *reader, ATR *atr)
 
 int32_t Phoenix_Close(struct s_reader *reader)
 {
-	rdr_debug_mask(reader, D_IFD, "Closing phoenix device %s", reader->device);
+	rdr_log_dbg(reader, D_IFD, "Closing phoenix device %s", reader->device);
 	if(reader_use_gpio(reader))
 	{
 		if(reader->gpio_outen > -1)
@@ -195,10 +202,13 @@ int32_t Phoenix_FastReset (struct s_reader * reader, int32_t delay)
 */
 static int32_t mouse_init(struct s_reader *reader)
 {
+	const struct s_cardreader *crdr_ops = reader->crdr;
+	if (!crdr_ops) return ERROR;
+
 	if(detect_db2com_reader(reader))
 	{
-		cardreader_db2com(&reader->crdr);
-		return reader->crdr.reader_init(reader);
+		reader->crdr = crdr_ops = &cardreader_db2com;
+		return crdr_ops->reader_init(reader);
 	}
 
 	reader->handle = open(reader->device,  O_RDWR | O_NOCTTY | O_NONBLOCK);
@@ -217,20 +227,21 @@ static int32_t mouse_init(struct s_reader *reader)
 	return OK;
 }
 
-void cardreader_mouse(struct s_cardreader *crdr)
+const struct s_cardreader cardreader_mouse =
 {
-	crdr->desc          = "mouse";
-	crdr->typ           = R_MOUSE;
-	crdr->flush         = 1;
-	crdr->read_written  = 1;
-	crdr->need_inverse  = 1;
-	crdr->reader_init   = mouse_init;
-	crdr->get_status    = Phoenix_GetStatus;
-	crdr->activate      = Phoenix_Reset;
-	crdr->transmit      = IO_Serial_Transmit;
-	crdr->receive       = IO_Serial_Receive;
-	crdr->close         = Phoenix_Close;
-	crdr->set_parity    = IO_Serial_SetParity;
-	crdr->set_baudrate  = IO_Serial_SetBaudrate;
-}
+	.desc          = "mouse",
+	.typ           = R_MOUSE,
+	.flush         = 1,
+	.read_written  = 1,
+	.need_inverse  = 1,
+	.reader_init   = mouse_init,
+	.get_status    = Phoenix_GetStatus,
+	.activate      = Phoenix_Reset,
+	.transmit      = IO_Serial_Transmit,
+	.receive       = IO_Serial_Receive,
+	.close         = Phoenix_Close,
+	.set_parity    = IO_Serial_SetParity,
+	.set_baudrate  = IO_Serial_SetBaudrate,
+};
+
 #endif
