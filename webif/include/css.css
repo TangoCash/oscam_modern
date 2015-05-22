@@ -1880,3 +1880,4 @@ textarea#singleemm{width: 100%;}
 a.tosingleemm{color:#FF0000;text-shadow: 2px 2px 2px #000000;}
 a.tosingleemm:hover{color:#FFFF00;text-shadow: 2px 2px 2px #000000;}
 ul#nav li div#regexdata ul li.regex{margin:10px;}
+select#scriptselect{height: 24px;}
