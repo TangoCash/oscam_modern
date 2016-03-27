@@ -39,13 +39,13 @@ LLIST *get_cardlist(uint16_t caid, LLIST **list)
 
 LLIST **get_and_lock_sharelist(void)
 {
-	cs_readlock(&cc_shares_lock);
+	cs_readlock(__func__, &cc_shares_lock);
 	return reported_carddatas_list;
 }
 
 void unlock_sharelist(void)
 {
-	cs_readunlock(&cc_shares_lock);
+	cs_readunlock(__func__, &cc_shares_lock);
 }
 
 void add_good_sids(struct s_sidtab *ptr, struct cc_card *card)
@@ -265,6 +265,31 @@ int32_t write_card(struct cc_data *cc, uint8_t *buf, struct cc_card *card, int32
 	return ofs;
 }
 
+static int32_t is_client_au_allowed(struct cc_card *card, struct s_client *cl)
+{
+	if(!card || !card->origin_reader)
+	{
+		return 0;
+	}
+	
+	if(!cl || !cl->aureader_list || !ll_count(cl->aureader_list))
+	{
+		return 0;
+	}
+		
+	struct s_reader *rdr = NULL;
+	LL_ITER itr = ll_iter_create(cl->aureader_list);
+	while((rdr = ll_iter_next(&itr)))
+	{
+		if(rdr == card->origin_reader)
+		{
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
 static int32_t send_card_to_client(struct cc_card *card, struct s_client *cl)
 {
 	uint8_t buf[CC_MAXMSGSIZE];
@@ -310,7 +335,7 @@ static int32_t send_card_to_client(struct cc_card *card, struct s_client *cl)
 
 	struct cc_data *cc = cl->cc;
 	int32_t is_ext = cc->cccam220 && can_use_ext(card);
-	int32_t len = write_card(cc, buf, card, 1, is_ext, ll_count(cl->aureader_list), cl);
+	int32_t len = write_card(cc, buf, card, 1, is_ext, is_client_au_allowed(card, cl), cl);
 	//buf[10] = card->hop-1;
 	buf[11] = new_reshare;
 
@@ -329,7 +354,7 @@ int32_t send_card_to_all_clients(struct cc_card *card)
 {
 	int32_t count = 0;
 	struct s_client *cl;
-	cs_readlock(&clientlist_lock);
+	cs_readlock(__func__, &clientlist_lock);
 	for(cl = first_client; cl; cl = cl->next)
 	{
 		if(cl->cc && cl->typ == 'c' && !cl->kill && get_module(cl)->num == R_CCCAM)  //CCCam-Client!
@@ -337,7 +362,7 @@ int32_t send_card_to_all_clients(struct cc_card *card)
 			count += send_card_to_client(card, cl);
 		}
 	}
-	cs_readunlock(&clientlist_lock);
+	cs_readunlock(__func__, &clientlist_lock);
 	return count;
 }
 
@@ -354,7 +379,7 @@ void send_remove_card_to_clients(struct cc_card *card)
 
 	struct s_client *cl;
 	struct s_clientmsg *clientmsg;
-	cs_readlock(&clientlist_lock);
+	cs_readlock(__func__, &clientlist_lock);
 	for(cl = first_client; cl; cl = cl->next)
 	{
 		struct cc_data *cc = cl->cc;
@@ -372,7 +397,7 @@ void send_remove_card_to_clients(struct cc_card *card)
 			}
 		}
 	}
-	cs_readunlock(&clientlist_lock);
+	cs_readunlock(__func__, &clientlist_lock);
 }
 
 
@@ -478,14 +503,6 @@ int32_t card_valid_for_client(struct s_client *cl, struct cc_card *card)
 	//Check group:
 	if(card->grp && !(card->grp & cl->grp))
 		{ return 0; }
-
-	if(card->aufilter)    //aufilter (0=any, 1=au clients only, 2=nonau clients only)
-	{
-		int8_t cl_au = ll_count(cl->aureader_list) > 0; //client has au allowed
-		int8_t card_au = card->aufilter == 1;
-		if(card_au != cl_au)
-			{ return 0; }
-	}
 
 	//Check idents:
 	if(!chk_ident(&cl->ftab, card))
@@ -885,23 +902,6 @@ int32_t add_card_to_serverlist(LLIST *cardlist, struct cc_card *card, int8_t fre
 	if(!card)
 		{ return modified; }
 
-	if(card)
-	{
-		if(!card->aufilter && is_au_card(card))
-		{
-
-			//card keeps their hexserial, set aufilter (0=any, 1=au clients only, 2=nonau clients only)
-			card->aufilter = 1;
-			struct cc_card *card3 = create_card(card);
-
-			add_card_providers(card3, card, 1); //copy providers to new card. Copy remote nodes to new card
-
-			//create a copy of the card, set aufilter to 2 and remove hexserial:
-			card3->aufilter = 2;
-			memset(card3->hexserial, 0, sizeof(card3->hexserial));
-			modified = add_card_to_serverlist(cardlist, card3, 1);
-		}
-	}
 	LL_ITER it = ll_iter_create(cardlist);
 	struct cc_card *card2;
 
@@ -1174,7 +1174,7 @@ void update_card_list(void)
 		struct s_reader *rdr;
 		int32_t r = 0;
 
-		cs_readlock(&readerlist_lock);
+		cs_readlock(__func__, &readerlist_lock);
 
 		for(rdr = first_active_reader; rdr; rdr = rdr->next)
 		{
@@ -1398,47 +1398,47 @@ void update_card_list(void)
 				int32_t count = 0;
 				if(rcc && rcc->cards && !rc->kill)
 				{
-					cs_readlock(&rcc->cards_busy);
+					cs_readlock(__func__, &rcc->cards_busy);
 
 					it = ll_iter_create(rcc->cards);
 					while((card = ll_iter_next(&it)))
 					{
 						if(chk_ctab(card->caid, &rdr->ctab))
 						{
-							int32_t ignore = 0;
+							int32_t dont_ignore = ll_count(card->providers) ?  0 : 1;
 
 							it2 = ll_iter_create(card->providers);
 							struct cc_provider *prov;
 							while((prov = ll_iter_next(&it2)))
 							{
 								uint32_t prid = prov->prov;
-								if(!chk_srvid_by_caid_prov(rc, card->caid, prid))
+								if(chk_srvid_by_caid_prov(rc, card->caid, prid))
 								{
-									ignore = 1;
+									dont_ignore = 1;
 									break;
 								}
 							}
 
-							if(!ignore)    //Filtered by service
+							if(dont_ignore)    //Filtered by service
 							{
 								add_card_to_serverlist(get_cardlist(card->caid, server_cards), card, 0);
 								count++;
 							}
 						}
 					}
-					cs_readunlock(&rcc->cards_busy);
+					cs_readunlock(__func__, &rcc->cards_busy);
 				}
 				else
 					{ cs_log_dbg(D_TRACE, "reader %s not active!", rdr->label); }
 				cs_log_dbg(D_TRACE, "got %d cards from %s", count, rdr->label);
 			}
 		}
-		cs_readunlock(&readerlist_lock);
+		cs_readunlock(__func__, &readerlist_lock);
 	}
 
 	LLIST *new_cards = ll_create("new_cards"); //List of new (added) cards
 
-	cs_writelock(&cc_shares_lock);
+	cs_writelock(__func__, &cc_shares_lock);
 
 	//report reshare cards:
 	//cs_log_dbg(D_TRACE, "%s reporting %d cards", getprefix(), ll_count(server_cards));
@@ -1477,7 +1477,7 @@ void update_card_list(void)
 	ll_destroy(&new_cards);
 
 
-	cs_writeunlock(&cc_shares_lock);
+	cs_writeunlock(__func__, &cc_shares_lock);
 
 	cs_log_dbg(D_TRACE, "reported/updated +%d/-%d/dup %d of %d cards to sharelist",
 				  card_added_count, card_removed_count, card_dup_count, card_count);
@@ -1489,7 +1489,7 @@ int32_t cc_srv_report_cards(struct s_client *cl)
 	struct cc_card *card;
 	int32_t i, count = 0;
 	LL_ITER it;
-	cs_readlock(&cc_shares_lock);
+	cs_readlock(__func__, &cc_shares_lock);
 	for(i = 0; i < CAID_KEY; i++)
 	{
 		if(reported_carddatas_list[i])
@@ -1501,7 +1501,7 @@ int32_t cc_srv_report_cards(struct s_client *cl)
 			}
 		}
 	}
-	cs_readunlock(&cc_shares_lock);
+	cs_readunlock(__func__, &cc_shares_lock);
 	cs_log_dbg(D_TRACE, "reported %d cards for %s", count, username(cl));
 
 	return cl->cc && !cl->kill;
@@ -1554,7 +1554,7 @@ void share_updater(void)
 		struct s_reader *rdr;
 		struct cc_data *cc;
 
-		cs_readlock(&readerlist_lock);
+		cs_readlock(__func__, &readerlist_lock);
 
 		for(rdr = first_active_reader; rdr; rdr = rdr->next)
 		{
@@ -1595,7 +1595,7 @@ void share_updater(void)
 			}
 		}
 
-		cs_readunlock(&readerlist_lock);
+		cs_readunlock(__func__, &readerlist_lock);
 
 		//update cardlist if reader config has changed, also set interval to 1s / 30times
 		if(cur_check != last_check || last_sidtab_generation != cfg_sidtab_generation || last_check_rdroptions != cur_check_rdroptions)
@@ -1649,26 +1649,18 @@ struct cc_card **get_sorted_card_copy(LLIST *cards, int32_t reverse, int32_t *si
 
 void cccam_init_share(void)
 {
-
 	memset(reported_carddatas_list, 0, sizeof(reported_carddatas_list));
-	cs_lock_create(&cc_shares_lock, "cc_shares_lock", 200000);
+	cs_lock_create(__func__, &cc_shares_lock, "cc_shares_lock", 200000);
 
 	share_updater_thread = 0;
 	share_updater_thread_active = 1;
+	
 	pthread_t temp;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
-	int32_t ret = pthread_create(&temp, &attr, (void *)&share_updater, NULL);
-	if(ret)
-		{ cs_log("ERROR: can't create share updater thread (errno=%d %s)", ret, strerror(ret)); }
-	else
+	int32_t ret = start_thread("share updater", (void *)&share_updater, NULL, &temp, 1, 1);
+	if(!ret)
 	{
-		cs_log_dbg(D_TRACE, "share updater thread started");
-		pthread_detach(temp);
 		share_updater_thread = temp;
 	}
-	pthread_attr_destroy(&attr);
 }
 
 void cccam_done_share(void)

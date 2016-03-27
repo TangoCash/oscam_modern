@@ -12,6 +12,7 @@
 "aufmt":"##CLIENTCAUHTTP##",
 "request": {
     "caid": "##CLIENTCAID##",
+    "provid": "##CLIENTPROVID##",
     "srvid": "##CLIENTSRVID##",
     "ecmtime": "##CLIENTLASTRESPONSETIME##",
     "ecmhistory": "##CLIENTLASTRESPONSETIMEHIST##",
@@ -22,7 +23,7 @@
     "chantitle":"##LASTCHANNELTITLE##",
     "msvalue":"##MSVALUE##",
     "lbvalue":"##LBLRPSTRVALUE##",
-    "$": "##CLIENTSRVPROVIDER####CLIENTSRVNAME##"
+    "$": "##CLIENTSRVNAME####CLIENTSRVPROVIDER##"
 },
 "times": {
     "login": "##CLIENTLOGINDATE##",

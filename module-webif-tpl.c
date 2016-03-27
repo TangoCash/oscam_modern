@@ -111,8 +111,12 @@ void webif_tpls_prepare(void)
 
 void webif_tpls_free(void)
 {
-	int32_t i;
-	for(i = 0; i < tpls_count; ++i)
+	int32_t i, tmp;
+	
+	tmp = tpls_count;
+	tpls_count = 0;
+	
+	for(i = 0; i < tmp; ++i)
 	{
 		NULLFREE(tpls[i].extra_data);
 	}
@@ -406,12 +410,14 @@ char *tpl_getUnparsedTpl(const char *name, int8_t removeHeader, const char *subd
 											check_conf(CARDREADER_SMART, ptr2);
 											check_conf(CARDREADER_DB2COM, ptr2);
 											check_conf(CARDREADER_STAPI, ptr2);
+											check_conf(CARDREADER_STAPI5, ptr2);
 											check_conf(WEBIF_LIVELOG, ptr2);
 											check_conf(WEBIF_JQUERY, ptr2);
 											check_conf(TOUCH, ptr2);
 											check_conf(CS_ANTICASC, ptr2);
 											check_conf(CS_CACHEEX, ptr2);
 											check_conf(HAVE_DVBAPI, ptr2);
+											check_conf(READ_SDT_CHARSETS, ptr2);
 											check_conf(CLOCKFIX, ptr2);
 											check_conf(IPV6SUPPORT, ptr2);
 											check_conf(IRDETO_GUESSING, ptr2);
@@ -449,6 +455,7 @@ char *tpl_getUnparsedTpl(const char *name, int8_t removeHeader, const char *subd
 											check_conf(WITH_LIBCRYPTO, ptr2);
 											check_conf(WITH_SSL, ptr2);
 											check_conf(WITH_STAPI, ptr2);
+											check_conf(WITH_STAPI5, ptr2);
 										} // for
 										if(ok == 0)
 										{
@@ -715,11 +722,13 @@ void urldecode(char *s)
 }
 
 /* Encode values in a http url. Do not call free() or realloc on the returned reference or you will get memory corruption! */
-char *urlencode(struct templatevars *vars, char *str)
+char *urlencode(struct templatevars *vars, const char *str)
 {
 	char *buf;
 	if(!cs_malloc(&buf, strlen(str) * 3 + 1)) { return ""; }
-	char *pstr = str, *pbuf = buf;
+	const char *pstr = str;
+	char *pbuf = buf;
+	
 	while(*pstr)
 	{
 		if(isalnum((uchar)*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~') { *pbuf++ = *pstr; }

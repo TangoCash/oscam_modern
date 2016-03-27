@@ -207,6 +207,13 @@ set card init mode for AzBox internal reader, default:none
 
 <P>
 
+<B> ins2e06</B> = <B>payload</B>
+<DL COMPACT><DT><DD>
+add check control for pin payload (4 hex bytes) for NDS Videoguard 2 SCs, valid for physical readers only, default:none
+</DL>
+
+<P>
+
 <B>ins7e</B> = <B>payload</B>
 <DL COMPACT><DT><DD>
 add 26 hex-bytes payload for NDS Videoguard 2 SCs, valid for physical readers only, default:none
@@ -221,16 +228,9 @@ set TA1 byte for NDS Videoguard 2 SCs, valid for physical readers only, default:
 
 <P>
 
-<B>fix07</B> = <B>payload</B>
+<B>fix07</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
 1=enable 0x07 fix for NDS Videoguard 2 SCs, valid for physical readers only, default:1
-</DL>
-
-<P>
-
-<B></B> = <B>payload</B>
-<DL COMPACT><DT><DD>
-add check control for pin payload for NDS Videoguard 2 SCs, valid for physical readers only, default:none
 </DL>
 
 <P>
@@ -244,7 +244,7 @@ add check control for pin payload for NDS Videoguard 2 SCs, valid for physical r
 
 <B>nagra_read</B> = <B>0</B>|<B>1</B>|<B>2</B>
 <DL COMPACT><DT><DD>
-read Nagravison records (on NCMED cards only):
+read Nagravison records (on NCMED SCs only):
 <P>
 <BR>&nbsp;<B>0</B>&nbsp;=&nbsp;disabled&nbsp;(default)
 <BR>&nbsp;<B>1</B>&nbsp;=&nbsp;read&nbsp;all&nbsp;records&nbsp;with&nbsp;expired&nbsp;rights
@@ -260,9 +260,9 @@ RSA key for Nagravision/Tiger SCs, CAM key data for Irdeto SCs, Conax SCs, defau
 
 <P>
 
-<B>fix9993</B> = <B>0</B>|<B>1</B>
+<B>deskey</B> = <B>DES key</B>
 <DL COMPACT><DT><DD>
-1 = enable fix for 9993 error with CAID 0919 SCs, default:0
+DES key for Viaccess SCs post-processing, default:none
 </DL>
 
 <P>
@@ -277,6 +277,24 @@ box key for Nagravision SCs / CAM key for Irdeto SCs
 <B>pincode</B> = <B>pincode</B>
 <DL COMPACT><DT><DD>
 pincode for Conax, Cryptoworks and Viaccess SCs, default:none
+</DL>
+
+<P>
+
+<B>fix9993</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 = enable fix for 9993 error with CAID 0919 Videoguard SCs, default:0
+</DL>
+
+<P>
+
+<B>readtiers</B> = <B>0</B>|<B>1</B>|<B>2</B>
+<DL COMPACT><DT><DD>
+method to get tiers of NDS Videoguard SCs:
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;disabled&nbsp;(default)
+<BR>&nbsp;<B>1</B>&nbsp;=&nbsp;ins70&nbsp;method
+<BR>&nbsp;<B>2</B>&nbsp;=&nbsp;ins76&nbsp;method
 </DL>
 
 <P>
@@ -554,6 +572,13 @@ cache exchange incoming ECM filter setting (mode 2 only) for Cardservproxy, defa
 
 <P>
 
+<B>cacheex_block_fakecws</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 = enable fake DCWs blocking (for cache exchange mode 2 only), get fake DCWs form <B>oscam.fakecws</B>, default:0
+</DL>
+
+<P>
+
 <B>ecmwhitelist</B> = [<B>CAID</B>[@<B>provid</B>]:]<B>length</B>[,<B>length</B>]...[;[<B>CAID</B>[@<B>provid</B>]:]<B>length</B>[,<B>length</B>]...]...
 <DL COMPACT><DT><DD>
 set valid ECM length per CAID and provid in hex, default:none,provid=000000
@@ -678,17 +703,10 @@ block all types of EMMs by length, default:none
 
 <P>
 
-<B>via_emm_global</B> = <B>0</B>|<B>1</B>
-<DL COMPACT><DT><DD>
-1 = enable global EMM filter for Viaccess SCs, default:0, <I>for camd35/cs357x  protocol only</I>
-</DL>
-
-<P>
-
 <B>read_old_classes</B> = <B>0</B>|<B>1</B> <I>(Viaccess SCs only)</I>
 <DL COMPACT><DT><DD>
-0 = read only active entitlements (default)
-1 = read all entitlements
+0 = read only active entitlements
+1 = read all entitlements (default)
 </DL>
 
 <P>
@@ -1077,7 +1095,7 @@ gbox reader
 <A NAME="lbAI">&nbsp;</A>
 <H2>SEE ALSO</H2>
 
-<B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cacheex">oscam.cacheex</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.conf">oscam.conf</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ratelimit">oscam.ratelimit</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
+<B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cacheex">oscam.cacheex</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.conf">oscam.conf</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.fakecws">oscam.fakecws</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ratelimit">oscam.ratelimit</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid2">oscam.srvid2</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
 <P>
 
 <HR>

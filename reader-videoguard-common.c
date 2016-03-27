@@ -105,6 +105,12 @@ void set_known_card_info(struct s_reader *reader, const unsigned char *atr, cons
 			18, 2000, 0, NDS2, "VideoGuard Viasat (093E)"
 		},
 		{   {
+				0x3F, 0xFD, 0x11, 0x25, 0x02, 0x50, 0x80, 0x0F, 0x41, 0xB0, 0x0A, 0x69, 0xFF, 0x4A, 0x50, 0x70,
+				0x80, 0x00, 0x5A, 0x45, 0x03
+			},
+			21, 2004, 0, NDS2, "VideoGuard Get Norway (0941)"
+		},
+		{   {
 				0x3F, 0xFF, 0x13, 0x25, 0x02, 0x50, 0x80, 0x0F, 0x54, 0xB0, 0x03, 0xFF, 0xFF, 0x4A, 0x50, 0x80,
 				0x00, 0x00, 0x00, 0x00, 0x47, 0x4C, 0x05
 			},
@@ -116,6 +122,12 @@ void set_known_card_info(struct s_reader *reader, const unsigned char *atr, cons
 			},
 			23, 2004, 0, NDS2, "VideoGuard Sky Mexico (095B)"
 		},
+		{   {
+				0x3F, 0xFF, 0x13, 0x25, 0x02, 0x50, 0x80, 0x0F, 0x54, 0xB0, 0x03, 0xFF, 0xFF, 0x4A, 0x50, 0x80,
+				0x00, 0x00, 0x00, 0x00, 0x54, 0x56, 0x05
+			},
+			23, 2004, 0, NDS2, "VideoGuard Sky Mexico (095B)"
+		},		
 		{   {
 				0x3F, 0xFD, 0x13, 0x25, 0x02, 0x50, 0x00, 0x0F, 0x33, 0xB0, 0x0F, 0x69, 0xFF, 0x4A, 0x50, 0xD0,
 				0x00, 0x00, 0x53, 0x59, 0x02
@@ -169,6 +181,24 @@ void set_known_card_info(struct s_reader *reader, const unsigned char *atr, cons
 				0x00, 0x58, 0x34, 0x01, 0x00, 0x14
 			},
 			22, 1997, 0, NDS2, "VideoGuard Cingal Philippines (09B4)"
+		},
+		{   {
+				0x3F, 0xFF, 0x13, 0x25, 0x03, 0x10, 0x80, 0x41, 0xB0, 0x07, 0x69, 0xFF, 0x4A, 0x50, 0x70, 0x80,
+				0x00, 0x58, 0x36, 0x01, 0x00, 0x15
+			},
+			22, 2004, 0, NDS2, "VideoGuard Teleclub (09B6)"
+		},
+		{   {
+				0x3F, 0xFF, 0x14, 0x25, 0x03, 0x10, 0x80, 0x41, 0xB0, 0x07, 0x69, 0xFF, 0x4A, 0x50, 0x70, 0x80,
+				0x00, 0x58, 0x36, 0x01, 0x00, 0x15
+			},
+			22, 2004, 0, NDS2, "VideoGuard Teleclub (09B6) FastMode"
+		},
+		{   {
+				0x3F, 0xFF, 0x15, 0x25, 0x03, 0x10, 0x80, 0x41, 0xB0, 0x07, 0x69, 0xFF, 0x4A, 0x50, 0x70, 0x80,
+				0x00, 0x58, 0x36, 0x01, 0x00, 0x15
+			},
+			22, 2004, 0, NDS2, "VideoGuard Teleclub (09B6) FastMode"
 		},
 		{   {
 				0x3F, 0xFF, 0x14, 0x25, 0x03, 0x10, 0x80, 0x41, 0xB0, 0x02, 0x69, 0xFF, 0x4A, 0x50, 0x70, 0x80,
@@ -1047,11 +1077,78 @@ int32_t videoguard_do_emm(struct s_reader *reader, EMM_PACKET *ep, unsigned char
 	return rc;
 }
 
+uint8_t videoguard_get_emm_filter_address_byte(uint8_t isUnique, uint32_t n)
+{
+	uint8_t ret;
+	
+	switch(n) 
+	{
+		default:
+		case 0:
+			//do not filter by sub-emm count
+			ret = 0;
+			break;
+		case 1:
+			//unused
+			//here we would need two filters, 
+			//one with sub-emm count 1x, and one with 01
+			ret = 0x10;
+			break;
+		case 2:
+			//filter sub-emm count with 1x
+			ret = 0x20;
+			break;
+		case 3:
+			//filter sub-emm count with 11
+			ret = 0x30;
+			break;	
+	}
+	
+	if(isUnique)
+	{
+		ret |= 0x40;
+	}
+	else //shared
+	{
+		ret |= 0x80;
+	}
+	
+	return ret;
+}
+
+uint8_t videoguard_get_emm_filter_address_mask(uint32_t n)
+{
+	uint8_t ret = 0xC0;
+	
+	switch(n) 
+	{
+		default:
+		case 0:
+			// at least 1 sub-emm is always present, so we do not care
+			break;
+		case 1:
+			//must have 2 sub-emms or more (01, 10, 11, but not 00)
+			//we could create a 1x and 01 filter here,
+			//but atm we do not care, to keep the filter number low
+			break;
+		case 2:
+			//must have 3 sub-emms or more (10, 11, but not 00, 01)
+			ret |= 0x20;
+			break;
+		case 3:
+			//must have 4 sub-emms (11)
+			ret |= 0x30;
+			break;	
+	}
+
+	return ret;
+}
+
 int32_t videoguard_get_emm_filter(struct s_reader *rdr, struct s_csystem_emm_filter **emm_filters, unsigned int *filter_count)
 {
 	if(*emm_filters == NULL)
 	{
-		const unsigned int max_filter_count = 7;
+		const unsigned int max_filter_count = 7;		
 		if(!cs_malloc(emm_filters, max_filter_count * sizeof(struct s_csystem_emm_filter)))
 			{ return ERROR; }
 
@@ -1059,7 +1156,7 @@ int32_t videoguard_get_emm_filter(struct s_reader *rdr, struct s_csystem_emm_fil
 		*filter_count = 0;
 
 		int32_t idx = 0;
-		unsigned int n;
+		uint32_t n;
 
 		for(n = 0; n < 3; ++n)
 		{
@@ -1067,8 +1164,8 @@ int32_t videoguard_get_emm_filter(struct s_reader *rdr, struct s_csystem_emm_fil
 			filters[idx].enabled  = 1;
 			filters[idx].filter[0] = 0x82;
 			filters[idx].mask[0]   = 0xFF;
-			filters[idx].filter[1] = 0x40;
-			filters[idx].mask[1]   = 0xC0;
+			filters[idx].filter[1] = videoguard_get_emm_filter_address_byte(1, n);
+			filters[idx].mask[1]   = videoguard_get_emm_filter_address_mask(n);
 			memcpy(&filters[idx].filter[2 + 4 * n], rdr->hexserial + 2, 4);
 			memset(&filters[idx].mask[2 + 4 * n], 0xFF, 4);
 			idx++;
@@ -1081,8 +1178,8 @@ int32_t videoguard_get_emm_filter(struct s_reader *rdr, struct s_csystem_emm_fil
 			filters[idx].enabled  = 1;
 			filters[idx].filter[0] = 0x82;
 			filters[idx].mask[0]   = 0xFF;
-			filters[idx].filter[1] = 0x80;
-			filters[idx].mask[1]   = 0xC0;
+			filters[idx].filter[1] = videoguard_get_emm_filter_address_byte(0, n);
+			filters[idx].mask[1]   = videoguard_get_emm_filter_address_mask(n);
 			memcpy(&filters[idx].filter[2 + 4 * n], rdr->hexserial + 2, 3);
 			memset(&filters[idx].mask[2 + 4 * n], 0xFF, 3);
 			idx++;

@@ -350,7 +350,7 @@ static int32_t seca_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, struc
 		{
 			write_cmd(ins3a, NULL); //get cw
 			snprintf(ea->msglog, MSGLOGSIZE, "fake 96 00 ecm");
-			return ERROR;
+			return E_CORRUPT;
 		}; //exit if fake 96 00 ecm
 		if(ret)
 		{
@@ -374,7 +374,7 @@ static int32_t seca_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, struc
 	if (er->ecm[5]==0x01 && ((reader->card_atr[9] & 0X0F) == 10)) // seca3: nano 01 in effect?
 	{ 
 		
-		if(check_filled(reader->boxkey, 16) == 16)
+		if(reader->boxkey_length == 16)
 		{	
 			unsigned char v[8];
 			memset(v, 0, sizeof(v));

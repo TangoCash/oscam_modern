@@ -11,6 +11,8 @@
 #include "oscam-string.h"
 #include "oscam-time.h"
 
+extern int32_t exit_oscam;
+
 struct STDEVICE
 {
 	char name[20];
@@ -73,7 +75,7 @@ static void stapi_off(void)
 {
 	int32_t i;
 
-	pthread_mutex_lock(&filter_lock);
+	SAFE_MUTEX_LOCK(&filter_lock);
 
 	cs_log("stapi shutdown");
 
@@ -96,7 +98,7 @@ static void stapi_off(void)
 		}
 	}
 
-	pthread_mutex_unlock(&filter_lock);
+	SAFE_MUTEX_UNLOCK(&filter_lock);
 	sleep(2);
 	return;
 }
@@ -198,7 +200,7 @@ int32_t stapi_open(void)
 
 	if(i == 0) { return 0; }
 
-	pthread_mutex_init(&filter_lock, NULL);
+	SAFE_MUTEX_INIT(&filter_lock, NULL);
 
 	for(i = 0; i < PTINUM; i++)
 	{
@@ -211,14 +213,11 @@ int32_t stapi_open(void)
 		para->id = i;
 		para->cli = cur_client();
 
-		int32_t ret = pthread_create(&dev_list[i].thread, NULL, stapi_read_thread, (void *)para);
+		int32_t ret = start_thread("stapi read", stapi_read_thread, (void *)para, &dev_list[i].thread, 1, 0);
 		if(ret)
 		{
-			cs_log("ERROR: can't create stapi read thread (errno=%d %s)", ret, strerror(ret));
 			return 0;
 		}
-		else
-			{ pthread_detach(dev_list[i].thread); }
 	}
 
 	atexit(stapi_off);
@@ -459,7 +458,7 @@ static void stapi_cleanup_thread(void *dev)
 	int32_t ErrorCode;
 	ErrorCode = oscam_stapi_Close(dev_list[dev_index].SessionHandle);
 
-	printf("liboscam_stapi: PTI %s closed - %d\n", dev_list[dev_index].name, ErrorCode);
+	cs_log("liboscam_stapi: PTI %s closed - %d\n", dev_list[dev_index].name, ErrorCode);
 	dev_list[dev_index].SessionHandle = 0;
 }
 
@@ -472,13 +471,13 @@ static void *stapi_read_thread(void *sparam)
 	struct read_thread_param *para = sparam;
 	dev_index = para->id;
 
-	pthread_setspecific(getclient, para->cli);
+	SAFE_SETSPECIFIC(getclient, para->cli);
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	pthread_cleanup_push(stapi_cleanup_thread, (void *) dev_index);
 
 	int32_t error_count = 0;
 
-	while(1)
+	while(!exit_oscam)
 	{
 		QueryBufferHandle = 0;
 		ErrorCode = oscam_stapi_SignalWaitBuffer(dev_list[dev_index].SignalHandle, &QueryBufferHandle, 1000);
@@ -532,7 +531,7 @@ static void *stapi_read_thread(void *sparam)
 		if(DataSize <= 0)
 			{ continue; }
 
-		pthread_mutex_lock(&filter_lock); // don't use cs_lock() here; multiple threads using same s_client struct
+		SAFE_MUTEX_LOCK(&filter_lock); // don't use cs_lock() here; multiple threads using same s_client struct
 		for(k = 0; k < NumFilterMatches; k++)
 		{
 			for(i = 0; i < MAX_DEMUX; i++)
@@ -549,9 +548,12 @@ static void *stapi_read_thread(void *sparam)
 				}
 			}
 		}
-		pthread_mutex_unlock(&filter_lock);
+		SAFE_MUTEX_UNLOCK(&filter_lock);
 	}
+	
 	pthread_cleanup_pop(0);
+	
+	return NULL;
 }
 
 #define ASSOCIATE 1
@@ -650,11 +652,11 @@ static void stapi_startdescrambler(int32_t demux_id, int32_t dev_index, int32_t 
 	return;
 }
 
-int32_t stapi_set_pid(int32_t demux_id, int32_t UNUSED(num), int32_t idx, uint16_t UNUSED(pid), char *UNUSED(pmtfile))
+int32_t stapi_set_pid(int32_t demux_id, int32_t UNUSED(num), ca_index_t idx, uint16_t UNUSED(pid), char *UNUSED(pmtfile))
 {
 	int32_t n;
 
-	if(idx == -1)
+	if(idx == INDEX_INVALID)
 	{
 		for(n = 0; n < PTINUM; n++)
 		{
@@ -702,14 +704,13 @@ int32_t stapi_write_cw(int32_t demux_id, uchar *cw, uint16_t *STREAMpids, int32_
 		if(demux[demux_id].DescramblerHandle[n] == 0) { continue; }
 		
 		int32_t pidnum = demux[demux_id].pidindex; // get current pidindex used for descrambling
-		int32_t idx = demux[demux_id].ECMpids[pidnum].index;
+		ca_index_t idx = demux[demux_id].ECMpids[pidnum].index[0];
 
-		if(!idx)   // if no indexer for this pid get one!
+		if(idx == INDEX_INVALID)   // if no indexer for this pid get one!
 		{
-			idx = dvbapi_get_descindex(demux_id);
-			demux[demux_id].ECMpids[pidnum].index = idx;
+			idx = dvbapi_get_descindex(demux_id, pidnum, 0);
 			cs_log_dbg(D_DVBAPI, "Demuxer %d PID: %d CAID: %04X ECMPID: %04X is using index %d", demux_id, pidnum,
-					  demux[demux_id].ECMpids[pidnum].CAID, demux[demux_id].ECMpids[pidnum].ECM_PID, idx - 1);
+					  demux[demux_id].ECMpids[pidnum].CAID, demux[demux_id].ECMpids[pidnum].ECM_PID, idx);
 		}
 		
 		for(k = 0; k < STREAMpidcount; k++)

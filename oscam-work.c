@@ -47,7 +47,8 @@ static void free_job_data(struct job_data *data)
 
 void free_joblist(struct s_client *cl)
 {
-	pthread_mutex_trylock(&cl->thread_lock);
+	int32_t lock_status = pthread_mutex_trylock(&cl->thread_lock);
+	
 	LL_ITER it = ll_iter_create(cl->joblist);
 	struct job_data *data;
 	while((data = ll_iter_next(&it)))
@@ -59,7 +60,10 @@ void free_joblist(struct s_client *cl)
 	if(cl->work_job_data)  // Free job_data that was not freed by work_thread
 		{ free_job_data(cl->work_job_data); }
 	cl->work_job_data = NULL;
-	pthread_mutex_unlock(&cl->thread_lock);
+	
+	if(lock_status == 0)
+		{ SAFE_MUTEX_UNLOCK(&cl->thread_lock); }
+	
 	pthread_mutex_destroy(&cl->thread_lock);
 }
 
@@ -102,7 +106,7 @@ void *work_thread(void *ptr)
 	struct job_data tmp_data;
 	struct pollfd pfd[1];
 
-	pthread_setspecific(getclient, cl);
+	SAFE_SETSPECIFIC(getclient, cl);
 	cl->thread = pthread_self();
 	cl->thread_active = 1;
 
@@ -111,7 +115,7 @@ void *work_thread(void *ptr)
 	struct s_module *module = get_module(cl);
 	uint16_t bufsize = module->bufsize; //CCCam needs more than 1024bytes!
 	if(!bufsize)
-		{ bufsize = 1024; }
+		{ bufsize = DEFAULT_MODULE_BUFSIZE; }
 
 	uint8_t *mbuf;
 	if(!cs_malloc(&mbuf, bufsize))
@@ -127,9 +131,9 @@ void *work_thread(void *ptr)
 		{
 			if(!cl || cl->kill || !is_valid_client(cl))
 			{
-				pthread_mutex_lock(&cl->thread_lock);
+				SAFE_MUTEX_LOCK(&cl->thread_lock);
 				cl->thread_active = 0;
-				pthread_mutex_unlock(&cl->thread_lock);
+				SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 				cs_log_dbg(D_TRACE, "ending thread (kill)");
 				__free_job_data(cl, data);
 				cl->work_mbuf = NULL; // Prevent free_client from freeing mbuf (->work_mbuf)
@@ -148,7 +152,7 @@ void *work_thread(void *ptr)
 			{
 				if(!cl->kill && cl->typ != 'r')
 					{ client_check_status(cl); } // do not call for physical readers as this might cause an endless job loop
-				pthread_mutex_lock(&cl->thread_lock);
+				SAFE_MUTEX_LOCK(&cl->thread_lock);
 				if(cl->joblist && ll_count(cl->joblist) > 0)
 				{
 					LL_ITER itr = ll_iter_create(cl->joblist);
@@ -157,7 +161,7 @@ void *work_thread(void *ptr)
 						{ set_work_thread_name(data); }
 					//cs_log_dbg(D_TRACE, "start next job from list action=%d", data->action);
 				}
-				pthread_mutex_unlock(&cl->thread_lock);
+				SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 			}
 
 			if(!data)
@@ -169,13 +173,13 @@ void *work_thread(void *ptr)
 				pfd[0].fd = cl->pfd;
 				pfd[0].events = POLLIN | POLLPRI;
 
-				pthread_mutex_lock(&cl->thread_lock);
+				SAFE_MUTEX_LOCK(&cl->thread_lock);
 				cl->thread_active = 2;
-				pthread_mutex_unlock(&cl->thread_lock);
+				SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 				rc = poll(pfd, 1, 3000);
-				pthread_mutex_lock(&cl->thread_lock);
+				SAFE_MUTEX_LOCK(&cl->thread_lock);
 				cl->thread_active = 1;
-				pthread_mutex_unlock(&cl->thread_lock);
+				SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 				if(rc > 0)
 				{
 					cs_ftime(&end); // register end time
@@ -384,16 +388,16 @@ void *work_thread(void *ptr)
 		}
 
 		// Check for some race condition where while we ended, another thread added a job
-		pthread_mutex_lock(&cl->thread_lock);
+		SAFE_MUTEX_LOCK(&cl->thread_lock);
 		if(cl->joblist && ll_count(cl->joblist) > 0)
 		{
-			pthread_mutex_unlock(&cl->thread_lock);
+			SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 			continue;
 		}
 		else
 		{
 			cl->thread_active = 0;
-			pthread_mutex_unlock(&cl->thread_lock);
+			SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 			break;
 		}
 	}
@@ -441,7 +445,7 @@ int32_t add_job(struct s_client *cl, enum actions action, void *ptr, int32_t len
 	data->len    = len;
 	cs_ftime(&data->time);
 
-	pthread_mutex_lock(&cl->thread_lock);
+	SAFE_MUTEX_LOCK(&cl->thread_lock);
 	if(cl && !cl->kill && cl->thread_active)
 	{
 		if(!cl->joblist)
@@ -449,19 +453,18 @@ int32_t add_job(struct s_client *cl, enum actions action, void *ptr, int32_t len
 		ll_append(cl->joblist, data);
 		if(cl->thread_active == 2)
 			{ pthread_kill(cl->thread, OSCAM_SIGNAL_WAKEUP); }
-		pthread_mutex_unlock(&cl->thread_lock);
+		SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 		cs_log_dbg(D_TRACE, "add %s job action %d queue length %d %s",
 					  action > ACTION_CLIENT_FIRST ? "client" : "reader", action,
 					  ll_count(cl->joblist), username(cl));
 		return 1;
 	}
-
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	/* pcsc doesn't like this either; segfaults on x86, x86_64 */
+	
+	/* pcsc doesn't like this; segfaults on x86, x86_64 */
+	int8_t modify_stacksize = 0;
 	struct s_reader *rdr = cl->reader;
 	if(cl->typ != 'r' || !rdr || rdr->typ != R_PCSC)
-		{ pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE); }
+		{ modify_stacksize = 1; }
 
 	if(action != ACTION_READER_CHECK_HEALTH)
 	{
@@ -469,20 +472,15 @@ int32_t add_job(struct s_client *cl, enum actions action, void *ptr, int32_t len
 					  action > ACTION_CLIENT_FIRST ? "client" : "reader", action);
 	}
 
-	int32_t ret = pthread_create(&cl->thread, &attr, work_thread, (void *)data);
+	int32_t ret = start_thread("client work", work_thread, (void *)data, &cl->thread, 1, modify_stacksize);
 	if(ret)
 	{
 		cs_log("ERROR: can't create thread for %s (errno=%d %s)",
 			   action > ACTION_CLIENT_FIRST ? "client" : "reader", ret, strerror(ret));
 		free_job_data(data);
 	}
-	else
-	{
-		pthread_detach(cl->thread);
-	}
-	pthread_attr_destroy(&attr);
 
 	cl->thread_active = 1;
-	pthread_mutex_unlock(&cl->thread_lock);
+	SAFE_MUTEX_UNLOCK(&cl->thread_lock);
 	return 1;
 }

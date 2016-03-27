@@ -100,6 +100,7 @@ static void protocol_fn(const char *token, char *value, void *setting, FILE *f)
 			{ "gbox",       R_GBOX },
 			{ "cccam",      R_CCCAM },
 			{ "cccam_ext",  R_CCCAM },
+			{ "cccam_mcs",  R_CCCAM },
 			{ "constcw",    R_CONSTCW },
 			{ "radegast",   R_RADEGAST },
 			{ "scam",       R_SCAM },
@@ -230,6 +231,7 @@ static void rsakey_fn(const char *token, char *value, void *setting, FILE *f)
 		int32_t len = strlen(value);
 		if(len != 128 && len != 240)
 		{
+			rdr->rsa_mod_length = 0;
 			memset(rdr->rsa_mod, 0, 120);
 		}
 		else
@@ -237,21 +239,60 @@ static void rsakey_fn(const char *token, char *value, void *setting, FILE *f)
 			if(key_atob_l(value, rdr->rsa_mod, len))
 			{
 				fprintf(stderr, "reader rsakey parse error, %s=%s\n", token, value);
+				rdr->rsa_mod_length = 0;
 				memset(rdr->rsa_mod, 0, sizeof(rdr->rsa_mod));
+			}
+			else
+			{
+				rdr->rsa_mod_length = len/2;	
 			}
 		}
 		return;
 	}
-	int32_t len = check_filled(rdr->rsa_mod, 120);
+	int32_t len = rdr->rsa_mod_length;
 	if(len > 0)
 	{
-		if(len > 64) { len = 120; }
-		else { len = 64; }
 		char tmp[len * 2 + 1];
 		fprintf_conf(f, "rsakey", "%s\n", cs_hexdump(0, rdr->rsa_mod, len, tmp, sizeof(tmp)));
 	}
 	else if(cfg.http_full_cfg)
 		{ fprintf_conf(f, "rsakey", "\n"); }
+}
+
+static void deskey_fn(const char *token, char *value, void *setting, FILE *f)
+{
+	struct s_reader *rdr = setting;
+	if(value)
+	{
+		int32_t len = strlen(value);
+		if(((len % 16) != 0) || len == 0 || len > 64)
+		{
+			rdr->des_key_length = 0;
+			memset(rdr->des_key, 0, sizeof(rdr->des_key));
+		}
+		else
+		{
+			if(key_atob_l(value, rdr->des_key, len))
+			{
+				fprintf(stderr, "reader 3DES key parse error, %s=%s\n", token, value);
+				rdr->des_key_length = 0;
+				memset(rdr->des_key, 0, sizeof(rdr->des_key));
+			}
+			else
+			{
+				rdr->des_key_length = len/2;
+			}
+		}
+		return;
+	}
+	int32_t len = rdr->des_key_length;
+	if(len > 0)
+	{
+		char tmp[len * 2 + 1];
+		fprintf_conf(f, "deskey", "%s\n", cs_hexdump(0, rdr->des_key, len, tmp, sizeof(tmp)));
+	}
+	else if(cfg.http_full_cfg)
+		{ fprintf_conf(f, "deskey", "\n"); }
 }
 
 static void boxkey_fn(const char *token, char *value, void *setting, FILE *f)
@@ -260,8 +301,9 @@ static void boxkey_fn(const char *token, char *value, void *setting, FILE *f)
 	if(value)
 	{
 		int32_t len = strlen(value);
-		if(len != 16 && len != 32)
+		if(((len % 8) != 0) || len == 0 || len > 32)
 		{
+			rdr->boxkey_length = 0;
 			memset(rdr->boxkey, 0, sizeof(rdr->boxkey));
 		}
 		else
@@ -269,16 +311,19 @@ static void boxkey_fn(const char *token, char *value, void *setting, FILE *f)
 			if(key_atob_l(value, rdr->boxkey, len))
 			{
 				fprintf(stderr, "reader boxkey parse error, %s=%s\n", token, value);
+				rdr->boxkey_length = 0;
 				memset(rdr->boxkey, 0, sizeof(rdr->boxkey));
+			}
+			else
+			{
+				rdr->boxkey_length = len/2;	
 			}
 		}
 		return;
 	}
-	int32_t len = check_filled(rdr->boxkey, sizeof(rdr->boxkey));
+	int32_t len = rdr->boxkey_length;
 	if(len > 0)
 	{
-		if(len > 8) { len = 16; }
-		else { len = 8; }
 		char tmp[len * 2 + 1];
 		fprintf_conf(f, "boxkey", "%s\n", cs_hexdump(0, rdr->boxkey, len, tmp, sizeof(tmp)));
 	}
@@ -465,7 +510,7 @@ static void emmcache_fn(const char *token, char *value, void *setting, FILE *f)
 		}
 		return;
 	}
-	if(rdr->cachemm || cfg.http_full_cfg)
+	if(rdr->cachemm || rdr->logemm || cfg.http_full_cfg)
 		{ fprintf_conf(f, token, "%d,%d,%d,%d\n", rdr->cachemm, rdr->rewritemm, rdr->logemm,rdr->deviceemm); }
 }
 
@@ -776,13 +821,15 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_FUNC("cacheex_ecm_filter"       , OFS(cacheex.filter_caidtab),  cacheex_hitvaluetab_fn),
 	DEF_OPT_UINT8("cacheex_allow_request"   , OFS(cacheex.allow_request),   0),
 	DEF_OPT_UINT8("cacheex_drop_csp"        , OFS(cacheex.drop_csp),        0),
-	DEF_OPT_UINT8("cacheex_allow_filter", OFS(cacheex.allow_filter),    1),	
+	DEF_OPT_UINT8("cacheex_allow_filter", OFS(cacheex.allow_filter),    1),
+	DEF_OPT_UINT8("cacheex_block_fakecws",OFS(cacheex.block_fakecws),   0),
 #endif
 	DEF_OPT_FUNC("caid"                 , OFS(ctab),                    reader_caid_fn),
 	DEF_OPT_FUNC("atr"                  , 0,                            atr_fn),
 	DEF_OPT_FUNC("boxid"                , 0,                            boxid_fn),
 	DEF_OPT_FUNC("boxkey"               , 0,                            boxkey_fn),
 	DEF_OPT_FUNC("rsakey"               , 0,                            rsakey_fn),
+	DEF_OPT_FUNC("deskey"               , 0,                            deskey_fn),
 	DEF_OPT_FUNC_X("ins7e"              , OFS(ins7E),                   ins7E_fn, SIZEOF(ins7E)),
 	DEF_OPT_FUNC_X("ins7e11"            , OFS(ins7E11),                 ins7E_fn, SIZEOF(ins7E11)),
 	DEF_OPT_FUNC_X("ins2e06"            , OFS(ins2e06),                 ins7E_fn, SIZEOF(ins2e06)),
@@ -852,7 +899,7 @@ static const struct config_list reader_opts[] =
 	DEF_OPT_FUNC("cooldown"             , 0,                            cooldown_fn),
 	DEF_OPT_FUNC("cooldowndelay"        , 0,                            cooldowndelay_fn),
 	DEF_OPT_FUNC("cooldowntime"         , 0,                            cooldowntime_fn),
-	DEF_OPT_UINT8("read_old_classes"    , OFS(read_old_classes),        0),
+	DEF_OPT_UINT8("read_old_classes"    , OFS(read_old_classes),        1),
 	DEF_LAST_OPT
 };
 
@@ -874,7 +921,7 @@ static bool reader_check_setting(const struct config_list *UNUSED(clist), void *
 	static const char *hw_only_settings[] =
 	{
 		"readnano", "resetcycle", "smargopatch", "autospeed", "sc8in1_dtrrts_patch", "boxid","fix07",
-		"fix9993", "rsakey", "ins7e", "ins7e11", "ins2e06", "force_irdeto", "needsemmfirst", "boxkey",
+		"fix9993", "rsakey", "deskey", "ins7e", "ins7e11", "ins2e06", "force_irdeto", "needsemmfirst", "boxkey",
 		"atr", "detect", "nagra_read", "mhz", "cardmhz", "readtiers", "read_old_classes",
 #ifdef WITH_AZBOX
 		"mode",
@@ -1033,8 +1080,13 @@ void free_reader(struct s_reader *rdr)
 	ftab_clear(&rdr->fchid);
 	ftab_clear(&rdr->ftab);
 
-	caidtab_clear(&rdr->ctab);
+    NULLFREE(rdr->cltab.aclass);
+ 	NULLFREE(rdr->cltab.bclass);
 
+	caidtab_clear(&rdr->ctab);
+#ifdef CS_CACHEEX	
+	cecspvaluetab_clear(&rdr->cacheex.filter_caidtab);
+#endif
 	lb_destroy_stats(rdr);
 
 	cs_clear_entitlement(rdr);

@@ -7,7 +7,7 @@ void cw_process_thread_wakeup(void);
 void convert_to_beta(struct s_client *cl, ECM_REQUEST *er, uint16_t caidto);
 void convert_to_nagra(struct s_client *cl, ECM_REQUEST *er, uint16_t caidto);
 
-int32_t write_ecm_answer(struct s_reader *reader, ECM_REQUEST *er, int8_t rc, uint8_t rcEx, uint8_t *cw, char *msglog);
+int32_t write_ecm_answer(struct s_reader *reader, ECM_REQUEST *er, int8_t rc, uint8_t rcEx, uint8_t *cw, char *msglog, uint16_t used_cardtier, EXTENDED_CW* cw_ex);
 
 void get_cw(struct s_client *, ECM_REQUEST *);
 
@@ -42,7 +42,9 @@ uint8_t checkCWpart(uchar *cw, int8_t part);
         } \
     } while(0)
 
-int32_t ecmfmt(uint16_t caid, uint16_t onid, uint32_t prid, uint16_t chid, uint16_t pid, uint16_t srvid, uint16_t l, char *ecmd5hex, char *csphash, char *cw, char *result, size_t size, uint16_t origin_peer, uint8_t distance);
+int32_t ecmfmt(char *result, size_t size, uint16_t caid, uint16_t onid, uint32_t prid, uint16_t chid, uint16_t pid,
+		 uint16_t srvid, uint16_t l, char *ecmd5hex, char *csphash, char *cw, uint16_t origin_peer, uint8_t distance, char *payload, char *tier);
+
 int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size);
 
 #endif

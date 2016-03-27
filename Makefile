@@ -39,6 +39,7 @@ CONF_DIR = /usr/local/etc
 
 LIB_PTHREAD = -lpthread
 LIB_DL = -ldl
+
 LIB_RT :=
 ifeq ($(uname_S),Linux)
 ifeq "$(shell ./config.sh --enabled CLOCKFIX)" "Y"
@@ -91,7 +92,9 @@ TARGET := $(shell $(CC) -dumpmachine 2>/dev/null)
 
 # Process USE_ variables
 DEFAULT_STAPI_LIB = -L./stapi -loscam_stapi
+DEFAULT_STAPI5_LIB = -L./stapi -loscam_stapi5
 DEFAULT_COOLAPI_LIB = -lnxp -lrt
+DEFAULT_COOLAPI2_LIB = -llnxUKAL -llnxcssUsr -llnxscsUsr -llnxnotifyqUsr -llnxplatUsr -lrt
 DEFAULT_SU980_LIB = -lentropic -lrt
 DEFAULT_AZBOX_LIB = -Lextapi/openxcas -lOpenXCASAPI
 DEFAULT_LIBCRYPTO_LIB = -lcrypto
@@ -132,6 +135,8 @@ ifeq ($(uname_S),Cygwin)
 DEFAULT_PCSC_LIB += -lwinscard
 endif
 
+DEFAULT_UTF8_FLAGS = -DWITH_UTF8
+
 # Function to initialize USE related variables
 #   Usage: $(eval $(call prepare_use_flags,FLAG_NAME,PLUS_TARGET_TEXT))
 define prepare_use_flags
@@ -153,7 +158,9 @@ endef
 
 # Initialize USE variables
 $(eval $(call prepare_use_flags,STAPI,stapi))
+$(eval $(call prepare_use_flags,STAPI5,stapi5))
 $(eval $(call prepare_use_flags,COOLAPI,coolapi))
+$(eval $(call prepare_use_flags,COOLAPI2,coolapi2))
 $(eval $(call prepare_use_flags,SU980,su980))
 $(eval $(call prepare_use_flags,AZBOX,azbox))
 $(eval $(call prepare_use_flags,MCA,mca))
@@ -161,6 +168,7 @@ $(eval $(call prepare_use_flags,SSL,ssl))
 $(eval $(call prepare_use_flags,LIBCRYPTO,))
 $(eval $(call prepare_use_flags,LIBUSB,libusb))
 $(eval $(call prepare_use_flags,PCSC,pcsc))
+$(eval $(call prepare_use_flags,UTF8))
 
 # Add PLUS_TARGET and EXTRA_TARGET to TARGET
 ifdef NO_PLUS_TARGET
@@ -235,6 +243,7 @@ SRC-$(CONFIG_WITH_CARDREADER) += csctapi/protocol_t0.c
 SRC-$(CONFIG_WITH_CARDREADER) += csctapi/protocol_t1.c
 SRC-$(CONFIG_CARDREADER_INTERNAL_AZBOX) += csctapi/ifd_azbox.c
 SRC-$(CONFIG_CARDREADER_INTERNAL_COOLAPI) += csctapi/ifd_cool.c
+SRC-$(CONFIG_CARDREADER_INTERNAL_COOLAPI2) += csctapi/ifd_cool.c
 SRC-$(CONFIG_CARDREADER_DB2COM) += csctapi/ifd_db2com.c
 SRC-$(CONFIG_CARDREADER_MP35) += csctapi/ifd_mp35.c
 SRC-$(CONFIG_CARDREADER_PCSC) += csctapi/ifd_pcsc.c
@@ -245,6 +254,7 @@ SRC-$(CONFIG_CARDREADER_SMARGO) += csctapi/ifd_smargo.c
 SRC-$(CONFIG_CARDREADER_SMART) += csctapi/ifd_smartreader.c
 SRC-$(CONFIG_CARDREADER_STINGER) += csctapi/ifd_stinger.c
 SRC-$(CONFIG_CARDREADER_STAPI) += csctapi/ifd_stapi.c
+SRC-$(CONFIG_CARDREADER_STAPI5) += csctapi/ifd_stapi.c
 
 SRC-$(CONFIG_LIB_MINILZO) += minilzo/minilzo.c
 
@@ -262,8 +272,10 @@ SRC-$(CONFIG_CW_CYCLE_CHECK) += module-cw-cycle-check.c
 SRC-$(CONFIG_WITH_AZBOX) += module-dvbapi-azbox.c
 SRC-$(CONFIG_WITH_MCA) += module-dvbapi-mca.c
 SRC-$(CONFIG_WITH_COOLAPI) += module-dvbapi-coolapi.c
+SRC-$(CONFIG_WITH_COOLAPI2) += module-dvbapi-coolapi.c
 SRC-$(CONFIG_WITH_SU980) += module-dvbapi-coolapi.c
 SRC-$(CONFIG_WITH_STAPI) += module-dvbapi-stapi.c
+SRC-$(CONFIG_WITH_STAPI5) += module-dvbapi-stapi5.c
 SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi-chancache.c
 SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox-helper.c
@@ -275,6 +287,7 @@ SRC-$(CONFIG_LCDSUPPORT) += module-lcd.c
 SRC-$(CONFIG_LEDSUPPORT) += module-led.c
 SRC-$(CONFIG_MODULE_MONITOR) += module-monitor.c
 SRC-$(CONFIG_MODULE_NEWCAMD) += module-newcamd.c
+SRC-$(CONFIG_MODULE_NEWCAMD) += module-newcamd-des.c
 SRC-$(CONFIG_MODULE_PANDORA) += module-pandora.c
 SRC-$(CONFIG_MODULE_GHTTP) += module-ghttp.c
 SRC-$(CONFIG_MODULE_RADEGAST) += module-radegast.c
@@ -561,6 +574,16 @@ OSCam build system documentation\n\
                      In order for USE_STAPI to work you have to create stapi\n\
                      directory and put liboscam_stapi.a file in it.\n\
 \n\
+   USE_STAPI5=1    - Request linking with STAPI5. The variables that control\n\
+                     USE_STAPI5=1 build are:\n\
+                         STAPI5_FLAGS='$(DEFAULT_STAPI5_FLAGS)'\n\
+                         STAPI5_CFLAGS='$(DEFAULT_STAPI5_FLAGS)'\n\
+                         STAPI5_LDFLAGS='$(DEFAULT_STAPI5_FLAGS)'\n\
+                         STAPI5_LIB='$(DEFAULT_STAPI5_LIB)'\n\
+                     Using USE_STAPI5=1 adds to '-stapi' to PLUS_TARGET.\n\
+                     In order for USE_STAPI5 to work you have to create stapi\n\
+                     directory and put liboscam_stapi5.a file in it.\n\
+\n\
    USE_COOLAPI=1  - Request support for Coolstream API (libnxp) aka NeutrinoHD\n\
                     box. The variables that control the build are:\n\
                          COOLAPI_FLAGS='$(DEFAULT_COOLAPI_FLAGS)'\n\
@@ -569,6 +592,17 @@ OSCam build system documentation\n\
                          COOLAPI_LIB='$(DEFAULT_COOLAPI_LIB)'\n\
                      Using USE_COOLAPI=1 adds to '-coolapi' to PLUS_TARGET.\n\
                      In order for USE_COOLAPI to work you have to have libnxp.so\n\
+                     library in your cross compilation toolchain.\n\
+\n\
+   USE_COOLAPI2=1  - Request support for Coolstream API aka NeutrinoHD\n\
+                    box. The variables that control the build are:\n\
+                         COOLAPI_FLAGS='$(DEFAULT_COOLAPI2_FLAGS)'\n\
+                         COOLAPI_CFLAGS='$(DEFAULT_COOLAPI2_FLAGS)'\n\
+                         COOLAPI_LDFLAGS='$(DEFAULT_COOLAPI2_FLAGS)'\n\
+                         COOLAPI_LIB='$(DEFAULT_COOLAPI2_LIB)'\n\
+                     Using USE_COOLAPI2=1 adds to '-coolapi2' to PLUS_TARGET.\n\
+                     In order for USE_COOLAPI2 to work you have to have liblnxUKAL.so,\n\
+                     liblnxcssUsr.so, liblnxscsUsr.so, liblnxnotifyqUsr.so, liblnxplatUsr.so\n\
                      library in your cross compilation toolchain.\n\
 \n\
    USE_SU980=1  - Request support for SU980 API (libentropic) aka Enimga2 arm\n\
@@ -615,6 +649,8 @@ OSCam build system documentation\n\
                          SSL_LDFLAGS='$(DEFAULT_SSL_FLAGS)'\n\
                          SSL_LIB='$(DEFAULT_SSL_LIB)'\n\
                      Using USE_SSL=1 adds to '-ssl' to PLUS_TARGET.\n\
+\n\
+   USE_UTF8=1       - Request UTF-8 enabled webif by default.\n\
 \n\
  Automatically intialized variables:\n\
 \n\
@@ -688,7 +724,8 @@ OSCam build system documentation\n\
     make sh4           - Builds OSCam for SH4 boxes\n\
     make azbox         - Builds OSCam for AZBox STBs\n\
     make mca           - Builds OSCam for Matrix Cam Air (MCA)\n\
-    make coolstream    - Builds OSCam for Coolstream\n\
+    make coolstream    - Builds OSCam for Coolstream HD1\n\
+    make coolstream2   - Builds OSCam for Coolstream HD2\n\
     make dockstar      - Builds OSCam for Dockstar\n\
     make qboxhd        - Builds OSCam for QBoxHD STBs\n\
     make opensolaris   - Builds OSCam for OpenSolaris\n\
@@ -716,6 +753,8 @@ OSCam build system documentation\n\
      make CROSS=sh4-linux- USE_STAPI=1 CONF_DIR=/var/tuxbox/config\n\n\
    Build OSCam for ARM with COOLAPI (coolstream aka NeutrinoHD):\n\
      make CROSS=arm-cx2450x-linux-gnueabi- USE_COOLAPI=1\n\n\
+   Build OSCam for ARM with COOLAPI2 (coolstream aka NeutrinoHD):\n\
+     make CROSS=arm-pnx8400-linux-uclibcgnueabi- USE_COOLAPI2=1\n\n\
    Build OSCam for MIPSEL with AZBOX support:\n\
      make CROSS=mipsel-linux-uclibc- USE_AZBOX=1\n\n\
    Build OSCam for ARM with MCA support:\n\

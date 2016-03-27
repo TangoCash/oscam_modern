@@ -852,7 +852,7 @@ static int32_t videoguard2_card_init(struct s_reader *reader, ATR *newatr)
 						{
 							rdr_log(reader, "classD0 ins7E11: Scheduling card reset for TA1 change from %02X to %02X", TA1, reader->ins7E11[0x00]);
 							reader->ins7e11_fast_reset = 1;
-#ifdef WITH_COOLAPI
+#if defined(WITH_COOLAPI) || defined(WITH_COOLAPI2)
 							if(reader->typ == R_MOUSE || reader->typ == R_SC8in1 || reader->typ == R_SMART || reader->typ == R_INTERNAL)
 							{
 #else
@@ -987,6 +987,7 @@ static int32_t videoguard2_card_init(struct s_reader *reader, ATR *newatr)
 		rdr_log(reader, "classD1 ins4Ca: failed");
 		return ERROR;
 	}
+	memcpy(reader->payload4C, payload4C, 0xF);
 
 	if(reader->ins7E[0x1A])
 	{
@@ -1166,6 +1167,11 @@ static int32_t videoguard2_do_ecm(struct s_reader *reader, const ECM_REQUEST *er
 			switch(tag)
 				{
 				case 0x0F:	// Debug ecm info
+					if(t_len > 6)
+					{
+						t_len = 6;
+					}
+									
 					memcpy(buff_0F, t_body, t_len);
 					break;
 				case 0x25:  // CW2 tag
@@ -1182,42 +1188,63 @@ static int32_t videoguard2_do_ecm(struct s_reader *reader, const ECM_REQUEST *er
 				}
 		ind += t_len + 2;
 		}
+		
+		if(12 < payloadLen)
+		{
+			ea->tier = b2i(2, &payload[10]);
+		}
 
+		memcpy(reader->VgLastPayload, buff_0F, 6);
+			
 		int32_t test_0F = 1;
 		if(!cw_is_valid(rbuff + 5))  //sky cards report 90 00 = ok but send cw = 00 when something goes wrong :(
 			{
-				if (buff_0F[0]&1){ 			//case 0f_0x 01 xx xx xx xx
+				if (buff_0F[0]&1){ 					//case 0f_0x 01 xx xx xx xx xx
           			rdr_log(reader, "classD3 ins54: no cw --> Bad/wrong ECM");
 					test_0F = 0;
 				}
-				if ((buff_0F[0]>>1)&1){ 	//case 0f_0x 02 xx xx xx xx
-          			rdr_log(reader, "classD3 ins54: no cw --> Card isn't active");
-					test_0F = 0;
-				}
-				if (buff_0F[1]&1){ 			//case 0f_0x xx 01 xx xx xx
+				if (buff_0F[1]&1){ 					//case 0f_0x xx 01 xx xx xx xx
 					rdr_log(reader, "classD3 ins54: no cw --> Card appears in error");
 					test_0F = 0;
 				}
-				if ((buff_0F[1]>>4)&1){ 	//case 0f_0x xx 10 xx xx xx
-					rdr_log(reader, "classD3 ins54: no cw --> Card needs pairing/extra data");	
+				if ((buff_0F[0]>>1)&1){ 			//case 0f_0x 02 xx xx xx xx xx
+          			rdr_log(reader, "classD3 ins54: no cw --> Card isn't active");
 					test_0F = 0;
 				}
-				if ((buff_0F[1]>>5)&1){ 	//case 0f_0x xx 20 xx xx xx
-					rdr_log(reader, "classD3 ins54: no cw --> No tier found");	//check this
-					test_0F = 0;
+				else{								//These Messages are only nessensary if the Card is active
+					if ((buff_0F[1]>>4)&1){ 		//case 0f_0x xx 10 xx xx xx xx
+						rdr_log(reader, "classD3 ins54: no cw --> Card needs pairing/extra data");	
+						test_0F = 0;
+					}
+					if ((buff_0F[1]>>5)&1){ 		//case 0f_0x xx 20 xx xx xx xx
+						rdr_log(reader, "classD3 ins54: no cw --> No tier found");	//check this
+						test_0F = 0;
+					}				
+					if ((buff_0F[2]>>5)&1){ 		//case 0f_0x xx xx 20 xx xx xx
+						rdr_log(reader, "classD3 ins54: no cw --> Tier expired");
+						test_0F = 0;
+					}
+					if ((buff_0F[1]>>6)&1){ 		//case 0f_0x xx 40 xx xx xx xx
+						rdr_log(reader, "classD3 ins54: no cw --> Card needs pin");
+						test_0F = 0;
+					}
+				}	
+				
+				if (reader->caid == 0x98C){							//Only for Sky Germany 'V14' Card
+					if ((~buff_0F[5]&1) && ((buff_0F[5]>>3)&1)){ 	//case 0f_0x xx xx xx xx xx 08  >  0x08 = binary xxxx1xx0
+						rdr_log(reader, "classD3 ins54: no cw --> Card is paired! (Debug-ECM-Info: 0F_06 %02X %02X %02X %02X %02X %02X)",buff_0F[0],buff_0F[1],buff_0F[2],buff_0F[3],buff_0F[4],buff_0F[5]);
+					}
+					if ((~buff_0F[5]&1) && (~(buff_0F[5]>>3)&1)){	//case 0f_0x xx xx xx xx xx 00  >  0x00 = binary xxxx0xx0
+						rdr_log(reader, "classD3 ins54: no cw --> Card is prepaired / Card is paired, but the pairing is deactivated (Debug-ECM-Info: 0F_06 %02X %02X %02X %02X %02X %02X)",buff_0F[0],buff_0F[1],buff_0F[2],buff_0F[3],buff_0F[4],buff_0F[5]);
+					}
+					if (buff_0F[5]&1){ 								//case 0f_0x xx xx xx xx xx 01  >  0x01 = binary xxxxxxx1
+						rdr_log(reader, "classD3 ins54: no cw --> Card is not paired (Debug-ECM-Info: 0F_06 %02X %02X %02X %02X %02X %02X)",buff_0F[0],buff_0F[1],buff_0F[2],buff_0F[3],buff_0F[4],buff_0F[5]);
+					}
 				}
-				if ((buff_0F[1]>>6)&1){ 	//case 0f_0x xx 40 xx xx xx
-					rdr_log(reader, "classD3 ins54: no cw --> Card needs pin");
-					test_0F = 0;
-				}
-				if ((buff_0F[2]>>5)&1){ 	//case 0f_0x xx xx 20 xx xx
-					rdr_log(reader, "classD3 ins54: no cw --> Tier expired");	//other discovered values can be added in the same way
-					test_0F = 0;
-				}
-				if (test_0F)		
-				{
+				
+				if (test_0F){						//case unknown error		
 					rdr_log(reader, "classD3 ins54: status 90 00 = ok but cw=00 tag 0F: %02X %02X %02X %02X %02X %02X, please report to the developers with decrypted ins54",buff_0F[0],buff_0F[1],buff_0F[2],buff_0F[3],buff_0F[4],buff_0F[5]);
-				}				
+				}			
 
 				return ERROR;
 			}
@@ -1320,6 +1347,7 @@ const struct s_cardsystem reader_videoguard2 =
 	.do_ecm         = videoguard2_do_ecm,
 	.card_info      = videoguard2_card_info,
 	.card_init      = videoguard2_card_init,
+	.poll_status    = videoguard2_poll_status,
 	.card_done      = videoguard2_card_done,
 	.get_emm_type   = videoguard_get_emm_type,
 	.get_emm_filter = videoguard_get_emm_filter,

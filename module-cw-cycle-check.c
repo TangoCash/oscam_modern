@@ -146,7 +146,7 @@ void cleanupcwcycle(void)
 	bool bcleanup = false;
 
 	//write lock
-	cs_writelock(&cwcycle_lock);
+	cs_writelock(__func__, &cwcycle_lock);
 	for(currentnode = cw_cc_list, prv = NULL; currentnode; prv = currentnode, currentnode = currentnode->next, count++)   // First Remove old Entrys
 	{
 		if((now - currentnode->time) <= kct)    // delete Entry which old to hold list small
@@ -165,7 +165,7 @@ void cleanupcwcycle(void)
 		bcleanup = true;
 		break; //we need only once, all follow to old
 	}
-	cs_writeunlock(&cwcycle_lock);
+	cs_writeunlock(__func__, &cwcycle_lock);
 	while(currentnode != NULL)
 	{
 		temp = currentnode->next;
@@ -196,7 +196,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 	struct s_cw_cycle_check *currentnode = NULL, *cwc = NULL;
 
 	/*for(list = cw_cc_list; list; list = list->next) { // List all Entrys in Log for DEBUG
-	    cs_log_dbg(D_CWC, "cyclecheck: [LIST] %04X:%06X:%04X OLD: %i Time: %ld DifftoNow: %ld Stage: %i cw: %s", list->caid, list->provid, list->sid, list->old, list->time, now - list->time, list->stage, cs_hexdump(0, list->cw, 16, cwstr, sizeof(cwstr)));
+	    cs_log_dbg(D_CWC, "cyclecheck: [LIST] %04X@%06X:%04X OLD: %i Time: %ld DifftoNow: %ld Stage: %i cw: %s", list->caid, list->provid, list->sid, list->old, list->time, now - list->time, list->stage, cs_hexdump(0, list->cw, 16, cwstr, sizeof(cwstr)));
 
 	}*/
 
@@ -204,7 +204,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 	{ return 3; } //cwc ign	
 
 	//read lock
-	cs_readlock(&cwcycle_lock);
+	cs_readlock(__func__, &cwcycle_lock);
 	for(currentnode = cw_cc_list; currentnode; currentnode = currentnode->next)
 	{
 		if(currentnode->caid != er->caid || currentnode->provid != er->prid || currentnode->sid != er->srvid || currentnode->chid != er->chid)
@@ -237,19 +237,19 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 				cw_cc_list_size--;
 			}
 			//now we have all data and can leave read lock
-			cs_readunlock(&cwcycle_lock);
+			cs_readunlock(__func__, &cwcycle_lock);
 
 			cs_hexdump(0, cwc->ecm_md5[cwc->cwc_hist_entry].md5, 16, cwc_md5, sizeof(cwc_md5));
 			cs_hexdump(0, (void *)&cwc->ecm_md5[cwc->cwc_hist_entry].csp_hash, 4, cwc_csp, sizeof(cwc_csp));
 			cs_hexdump(0, cwc->cw, 16, cwc_cw, sizeof(cwc_cw));
-			ecmfmt(cwc->caid, 0, cwc->provid, cwc->chid, 0, cwc->sid, cwc->ecmlen, cwc_md5, cwc_csp, cwc_cw, cwc_ecmf, ECM_FMT_LEN, 0, 0);
+			ecmfmt(cwc_ecmf, ECM_FMT_LEN, cwc->caid, 0, cwc->provid, cwc->chid, 0, cwc->sid, cwc->ecmlen, cwc_md5, cwc_csp, cwc_cw, 0, 0, NULL, NULL);
 
 // Cycletime over Cacheex
 			if (cfg.cwcycle_usecwcfromce)
 			{
 				if(cycletime_fr > 0 && next_cw_cycle_fr < 2)
 				{
-					cs_log_dbg(D_CWC, "cyclecheck [Use Info in Request] Client: %s cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", user, cycletime_fr, next_cw_cycle_fr, er->caid, er->prid, er->srvid);
+					cs_log_dbg(D_CWC, "cyclecheck [Use Info in Request] Client: %s cycletime: %isek - nextcwcycle: CW%i for %04X@%06X:%04X", user, cycletime_fr, next_cw_cycle_fr, er->caid, er->prid, er->srvid);
 					cwc->stage = 3;
 					cwc->cycletime = cycletime_fr;
 					cwc->nextcyclecw = next_cw_cycle_fr;
@@ -424,10 +424,13 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 			{
 				if(now > cwc->locktime)
 				{
+					int16_t diff = now - cwc->time - cwc->cycletime;
 					if(cwc->stage <= 0)    // stage 0 is passed; we update the cw's and time and store cycletime
 					{
-						if(cwc->cycletime == now - cwc->time)    // if we got a stable cycletime we go to stage 1
+						// if(cwc->cycletime == now - cwc->time)    // if we got a stable cycletime we go to stage 1
+						if(diff > -2 && diff < 2)    // if we got a stable cycletime we go to stage 1
 						{
+							cwc->cycletime = now - cwc->time;
 							cs_log_dbg(D_CWC, "cyclecheck [Set Stage 1] %s Cycletime: %i Lockdiff: %ld", cwc_ecmf, cwc->cycletime, now - cwc->locktime);
 							cwc->stage++; // increase stage
 						}
@@ -439,8 +442,10 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 					}
 					else if(cwc->stage == 1)     // stage 1 is passed; we update the cw's and time and store cycletime
 					{
-						if(cwc->cycletime == now - cwc->time)    // if we got a stable cycletime we go to stage 2
+						// if(cwc->cycletime == now - cwc->time)    // if we got a stable cycletime we go to stage 2
+						if(diff > -2 && diff < 2)    // if we got a stable cycletime we go to stage 2
 						{
+							cwc->cycletime = now - cwc->time;
 							cs_log_dbg(D_CWC, "cyclecheck [Set Stage 2] %s Cycletime: %i Lockdiff: %ld", cwc_ecmf, cwc->cycletime, now - cwc->locktime);
 							cwc->stage++; // increase stage
 						}
@@ -452,8 +457,10 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 					}
 					else if(cwc->stage == 2)     // stage 2 is passed; we update the cw's and compare cycletime
 					{
-						if(cwc->cycletime == now - cwc->time && cwc->cycletime > 0)    // if we got a stable cycletime we go to stage 3
+						// if(cwc->cycletime == now - cwc->time && cwc->cycletime > 0)    // if we got a stable cycletime we go to stage 3
+						if(diff > -2 && diff < 2 && cwc->cycletime > 0)    // if we got a stable cycletime we go to stage 3
 						{
+							cwc->cycletime = now - cwc->time;
 							n = memcmp(cwc->cw, cw, 8);
 							m = memcmp(cwc->cw + 8, cw + 8, 8);
 							if(n == 0)
@@ -556,7 +563,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 
 	if(need_new_entry)
 	{
-		cs_readunlock(&cwcycle_lock);
+		cs_readunlock(__func__, &cwcycle_lock);
 		if(cw_cc_list_size <= mcl)    //only add when we have space
 		{
 			struct s_cw_cycle_check *new = NULL;
@@ -590,7 +597,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 				new->old = 0;
 				new->stage4_repeat = 0;
 				//write lock
-				cs_writelock(&cwcycle_lock);
+				cs_writelock(__func__, &cwcycle_lock);
 				if(cw_cc_list)    // the new entry on top
 				{
 					cw_cc_list->prev = new;
@@ -599,7 +606,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 				cw_cc_list = new;
 				cw_cc_list_size++;
 				//write unlock /
-				cs_writeunlock(&cwcycle_lock);
+				cs_writeunlock(__func__, &cwcycle_lock);
 
 				cs_log_dbg(D_CWC, "cyclecheck [Store New Entry] %s Time: %ld Stage: %i Cycletime: %i Locktime: %ld", er_ecmf, new->time, new->stage, new->cycletime, new->locktime);
 			}
@@ -630,7 +637,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 		memcpy(cwc->ecm_md5[cwc->cwc_hist_entry].cw, cw, sizeof(cwc->cw));
 		cwc->ecmlen = er->ecmlen;
 		//write lock /
-		cs_writelock(&cwcycle_lock);
+		cs_writelock(__func__, &cwcycle_lock);
 		if(cw_cc_list)    // the clone entry on top
 		{
 			cw_cc_list->prev = cwc;
@@ -639,7 +646,7 @@ static int32_t checkcwcycle_int(ECM_REQUEST *er, char *er_ecmf , char *user, uch
 		cw_cc_list = cwc;
 		cw_cc_list_size++;
 		//write unlock /
-		cs_writeunlock(&cwcycle_lock);
+		cs_writeunlock(__func__, &cwcycle_lock);
 		cs_log_dbg(D_CWC, "cyclecheck [Update Entry and add on top] %s Time: %ld Stage: %i Cycletime: %i", er_ecmf, cwc->time, cwc->stage, cwc->cycletime);
 	}
 	else if(cwc)

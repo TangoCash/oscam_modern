@@ -1123,7 +1123,8 @@ path.graph_curve {stroke-opacity:0.8;stroke-width:0.7px;fill:none}
 	border:1px dotted #AAA;
 	background-color:#FAFAFA;
 	color:#666;
-	font-family: "Courier New",monospace
+	font-family: "Andale Mono","Courier New",monospace;
+	font-weight: bold;
 }
 #livelogdata {
 	list-style:none;
@@ -1181,27 +1182,55 @@ div.colorPicker-swatch {
 	line-height: 12px;
 }
 /* User-Page polling */
-#inc,#dec {
-	padding:0 3px;
-	margin: -3px 3px;
+#inc,#polling,#dec,.regexbutton {
+	margin:-3px 2px;
 	border:none;
-	background-color:#A00;
 	color:#FFF;
+	cursor:pointer;
 	border-radius:4px;
 	font-size:14px;
 	font-weight:700;
-	width: 22px;
-	height: 22px;
+	width:22px;
+	height:22px;
+	line-height:0px
 }
-#inc:hover,#dec:hover {
-	background-color:red;
+#inc,#dec,.regexbutton {
+	background-color:#A00
+}
+#inc:hover,#dec:hover,.regexbutton:hover {
+	background-color:#F00
+}
+#inc[disabled],
+#dec[disabled] {
+	color: #6D6C6D;
+	cursor: inherit;
+	background-color: #DDD;
+}
+.pollingenabled {
+	background-image:url(image?i=ICSTOP);
+	background-repeat:no-repeat;
+	background-position:center;
+	background-color:#A00
+}
+.pollingdisabled {
+	background-image:url(image?i=ICSTART);
+	background-repeat:no-repeat;
+	background-position:center;
+	background-color:#A00
+}
+.pollingenabled:hover {
+ 	background-color:#F00
+}
+.pollingdisabled:hover {
+ 	background-color:#F00
+}
+#poll button {
+	margin-bottom:1px;
+	vertical-align:middle
 }
 #nav li.pollselect {
-	display:inline;
-	list-style:none;
-	position: absolute;
-	right:10px;
-	top:7px;
+	position:absolute;
+	right:10px
 }
 input.pintervall {
 	font-size:14px;
@@ -1210,17 +1239,16 @@ input.pintervall {
 	height:18px;
 	color:#000;
 	background-color:transparent;
-	border:none !important;
+	border:none;
 	border-radius:4px;
 	text-align:center;
-	margin: 0 4px;
-	padding: 0;
+	margin:0 4px;
+	padding:0
 }
 /* polling heartbeat */
 #picolor {
-	background-color:#A00; 
+	background-color:#A00
 }
-
 /* **************** 18. ECM BAR HISTORY */
 #chart {
 	position:absolute;
@@ -1866,14 +1894,12 @@ div.footer .top_link a { color:#FFFFFF; }
 div.footer .top_link a:hover { color:red; }
 div.footer .top_link a:before { color:#FFFFFF; content:"\25b2"; font-weight:normal; position:absolute; left:1px;}
 #livelog, div.extract pre{padding:10px;border-radius:5px;text-shadow:2px 2px 2px #000000;background-color:#333333;color:#FFFFFF;overflow: auto;}
-#livelog{font: 12px Verdana,Geneva,sans-serif,Arial;}
 table.invisible tbody tr td,td.invisible tr td{border:0;}
 textarea.bt{width: 480px;}
 table.config tbody tr td input,input.medium {width: 200px;}
 table.config tbody tr td input[type="checkbox"],td.invisible input[type="checkbox"],input#chb {width: 10px;}
 td.configcolsave input[type="submit"], input.withunit.short {width: 50px;}
 tr.configcontrol td.centered input[type="submit"] {width: 105px;}
-div#regexdata{ border: 5px solid red; padding-top: 20px; background-color: rgb(221, 221, 221); width: 65%; height: 170px; margin-left: auto; margin-right: auto;}
 div#content form div.extract p.emmhead{margin-top: 10px;}
 div#content form div.extract pre{margin-top: 5px; margin-bottom: 10px;}
 textarea#singleemm{width: 100%;}
@@ -1881,3 +1907,74 @@ a.tosingleemm{color:#FF0000;text-shadow: 2px 2px 2px #000000;}
 a.tosingleemm:hover{color:#FFFF00;text-shadow: 2px 2px 2px #000000;}
 ul#nav li div#regexdata ul li.regex{margin:10px;}
 select#scriptselect{height: 24px;}
+/* **************** 17. POLLING */
+/*  for UL in logpoll.html */
+#livelog {
+	resize:vertical;
+	height:574px;
+	max-width:1500px;
+	overflow-y:auto;
+	margin:1px auto 15px;
+	padding:0px 4px
+}
+#livelogdata {
+	white-space:pre
+}
+li.regex, li.regexdata_nav, li.regexdata_save{
+	white-space:nowrap
+}
+input.regexinput {
+	cursor:text;
+	padding:2px;
+	margin:3px 15px 1px 3px;
+	width:400px
+}
+.regexdata_nav input {
+	width:100px
+}
+.regexdata_save input {
+	width:90px;
+	margin-top:10px
+}
+.colorPicker_def_color {
+	color:#DDD
+}
+.colorPicker_def_fcolor {
+	color:#00F
+}
+div.colorPicker-picker {
+	height:16px;
+	width:16px;
+	display:inline;
+	margin:3px;
+	padding:4px 8px;
+	border:1px solid #CCC;
+	cursor:pointer;
+	line-height:16px;
+	font-size:0.75em;
+	font-weight:bold;
+	text-align:center
+}
+div.colorPicker-palette {
+	width:110px;
+	position:absolute;
+	border:1px solid #598FEF;
+	background-color:#EFEFEF;
+	padding:2px;
+	z-index:9999
+}
+div.colorPicker_hexWrap {width:100%;float:left}
+div.colorPicker_hexWrap label {font-size:95%;color:#2F2F2F;margin:5px 2px;width:25%}
+div.colorPicker_hexWrap input {margin:5px 2px;padding:0;font-size:95%;border:1px solid #000;width:65%}
+
+div.colorPicker-swatch {
+	height:12px;
+	width:12px;
+	border:1px solid #000;
+	margin:2px;
+	float:left;
+	cursor:pointer;
+	line-height:12px
+}
+#regex{margin-bottom: 20px; padding-bottom: 10px; margin-top: -10px;}
+#logsizemenu{margin-top: -25px; margin-bottom: 5px;}

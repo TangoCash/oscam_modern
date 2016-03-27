@@ -22,7 +22,7 @@ static void refresh_lcd_file(void)
 {
 	char targetfile[256];
 	char temp_file[256];
-	char channame[32];
+	char channame[CS_SERVICENAME_SIZE];
 
 	set_thread_name(__func__);
 
@@ -215,18 +215,18 @@ static void refresh_lcd_file(void)
 				seconds = now - cl->lastecm;
 
 				if(cl->typ == 'c' && seconds < 15)
-				{
+				{		
 					type = "U";
 					idx = count_u;
 					label = cl->account->usr;
 					count_u++;
-
-					get_servicename(cl, cl->last_srvid, cl->last_caid, channame);
+							
+					get_servicename(cl, cl->last_srvid, cl->last_provid, cl->last_caid, channame, sizeof(channame));
 					fprintf(fpsave, "%s%d | %-10.10s | %-10.10s:%-17.17s| % 4d\n",
 							type,
 							idx,
 							label,
-							cl->last_srvidptr && cl->last_srvidptr->prov ? cl->last_srvidptr->prov : "",
+							get_cl_lastprovidername(cl),
 							cl->last_srvidptr && cl->last_srvidptr->name ? cl->last_srvidptr->name : "",
 							cl->cwlastresptime);
 
@@ -252,7 +252,7 @@ void lcd_thread_start(void)
 	if(cfg.enablelcd)
 	{
 		running = 1;
-		start_thread((void *) &refresh_lcd_file, "LCD");
+		start_thread("LCD", (void *) &refresh_lcd_file, NULL, NULL, 1, 1);
 	}
 }
 

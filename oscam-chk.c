@@ -5,6 +5,7 @@
 #include "oscam-chk.h"
 #include "oscam-ecm.h"
 #include "oscam-client.h"
+#include "oscam-lock.h"
 #include "oscam-net.h"
 #include "oscam-string.h"
 #include "module-stat.h"
@@ -302,11 +303,11 @@ int32_t chk_sfilter(ECM_REQUEST *er, PTAB *ptab)
 				for(i = 0; (!rc) && i < ptab->ports[pi].ncd->ncd_ftab.filts[j].nprids; i++)
 				{
 					sprid = ptab->ports[pi].ncd->ncd_ftab.filts[j].prids[i];
-					cs_log_dbg(D_CLIENT, "trying server filter %04X:%06X", scaid, sprid);
+					cs_log_dbg(D_CLIENT, "trying server filter %04X@%06X", scaid, sprid);
 					if(prid == sprid)
 					{
 						rc = 1;
-						cs_log_dbg(D_CLIENT, "%04X:%06X allowed by server filter %04X:%06X",
+						cs_log_dbg(D_CLIENT, "%04X@%06X allowed by server filter %04X@%06X",
 									  caid, prid, scaid, sprid);
 					}
 				}
@@ -314,8 +315,8 @@ int32_t chk_sfilter(ECM_REQUEST *er, PTAB *ptab)
 		}
 		if(!rc)
 		{
-			cs_log_dbg(D_CLIENT, "no match, %04X:%06X rejected by server filters", caid, prid);
-			snprintf(er->msglog, MSGLOGSIZE, "no server match %04X:%06X",
+			cs_log_dbg(D_CLIENT, "no match, %04X@%06X rejected by server filters", caid, prid);
+			snprintf(er->msglog, MSGLOGSIZE, "no server match %04X@%06X",
 					 caid, (uint32_t) prid);
 
 			if(!er->rcEx) { er->rcEx = (E1_LSERVER << 4) | E2_IDENT; }
@@ -418,7 +419,7 @@ int32_t chk_ufilters(ECM_REQUEST *er)
 			{
 				if (er->prid == 0)
 				{
-					cs_log_dbg(D_CLIENT, "%04X:%06X allowed by user '%s' filter caid %04X prid %06X",
+					cs_log_dbg(D_CLIENT, "%04X@%06X allowed by user '%s' filter caid %04X prid %06X",
 								  er->caid, er->prid, cur_cl->account->usr, ucaid, 0);
 					rc = 1;
 					break;
@@ -426,12 +427,12 @@ int32_t chk_ufilters(ECM_REQUEST *er)
 				for(j = rc = 0; (!rc) && (j < f->filts[i].nprids); j++)
 				{
 					uprid = f->filts[i].prids[j];
-					cs_log_dbg(D_CLIENT, "trying user '%s' filter %04X:%06X",
+					cs_log_dbg(D_CLIENT, "trying user '%s' filter %04X@%06X",
 								  cur_cl->account->usr, ucaid, uprid);
 					if(er->prid == uprid)
 					{
 						rc = 1;
-						cs_log_dbg(D_CLIENT, "%04X:%06X allowed by user '%s' filter %04X:%06X",
+						cs_log_dbg(D_CLIENT, "%04X@%06X allowed by user '%s' filter %04X@%06X",
 									  er->caid, er->prid, cur_cl->account->usr, ucaid, uprid);
 					}
 				}
@@ -439,9 +440,9 @@ int32_t chk_ufilters(ECM_REQUEST *er)
 		}
 		if(!rc)
 		{
-			cs_log_dbg(D_CLIENT, "no match, %04X:%06X rejected by user '%s' filters",
+			cs_log_dbg(D_CLIENT, "no match, %04X@%06X rejected by user '%s' filters",
 						  er->caid, er->prid, cur_cl->account->usr);
-			snprintf(er->msglog, MSGLOGSIZE, "no card support %04X:%06X",
+			snprintf(er->msglog, MSGLOGSIZE, "no card support %04X@%06X",
 					 er->caid, (uint32_t) er->prid);
 
 			if(!er->rcEx) { er->rcEx = (E1_USER << 4) | E2_IDENT; }
@@ -469,7 +470,7 @@ int32_t chk_rsfilter(struct s_reader *reader, ECM_REQUEST *er)
 
 	if(reader->ncd_disable_server_filt)
 	{
-		cs_log_dbg(D_CLIENT, "%04X:%06X allowed - server filters disabled",
+		cs_log_dbg(D_CLIENT, "%04X@%06X allowed - server filters disabled",
 					  er->caid, er->prid);
 		return 1;
 	}
@@ -483,19 +484,19 @@ int32_t chk_rsfilter(struct s_reader *reader, ECM_REQUEST *er)
 			prid = (uint32_t)((reader->prid[i][1] << 16) |
 							  (reader->prid[i][2] << 8) |
 							  (reader->prid[i][3]));
-			cs_log_dbg(D_CLIENT, "trying server '%s' filter %04X:%06X",
+			cs_log_dbg(D_CLIENT, "trying server '%s' filter %04X@%06X",
 						  reader->device, caid, prid);
 			if(prid == er->prid)
 			{
 				rc = 1;
-				cs_log_dbg(D_CLIENT, "%04X:%06X allowed by server '%s' filter %04X:%06X",
+				cs_log_dbg(D_CLIENT, "%04X@%06X allowed by server '%s' filter %04X@%06X",
 							  er->caid, er->prid, reader->device, caid, prid);
 			}
 		}
 	}
 	if(!rc)
 	{
-		cs_log_dbg(D_CLIENT, "no match, %04X:%06X rejected by server '%s' filters",
+		cs_log_dbg(D_CLIENT, "no match, %04X@%06X rejected by server '%s' filters",
 					  er->caid, er->prid, reader->device);
 		if(!er->rcEx) { er->rcEx = (E1_SERVER << 4) | E2_IDENT; }
 		return 0;
@@ -520,12 +521,12 @@ int32_t chk_rfilter2(uint16_t rcaid, uint32_t rprid, struct s_reader *rdr)
 				for(j = 0; (!rc) && (j < rdr->ftab.filts[i].nprids); j++)
 				{
 					prid = rdr->ftab.filts[i].prids[j];
-					cs_log_dbg(D_CLIENT, "trying reader '%s' filter %04X:%06X",
+					cs_log_dbg(D_CLIENT, "trying reader '%s' filter %04X@%06X",
 								  rdr->label, caid, prid);
 					if(prid == rprid)
 					{
 						rc = 1;
-						cs_log_dbg(D_CLIENT, "%04X:%06X allowed by reader '%s' filter %04X:%06X",
+						cs_log_dbg(D_CLIENT, "%04X@%06X allowed by reader '%s' filter %04X@%06X",
 									  rcaid, rprid, rdr->label, caid, prid);
 					}
 				}
@@ -533,7 +534,7 @@ int32_t chk_rfilter2(uint16_t rcaid, uint32_t rprid, struct s_reader *rdr)
 		}
 		if(!rc)
 		{
-			cs_log_dbg(D_CLIENT, "no match, %04X:%06X rejected by reader '%s' filters",
+			cs_log_dbg(D_CLIENT, "no match, %04X@%06X rejected by reader '%s' filters",
 						  rcaid, rprid, rdr->label);
 			return 0;
 		}
@@ -807,14 +808,16 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr)
 		int8_t found = 0;
 		while((item = ll_iter_next(&itr)))
 		{
-			//if (item->caid == er->caid && (!er->prid || !item->provid || item->provid == er->prid)) {     //provid check causing problems?
-			if(item->caid == er->caid || item->caid == er->ocaid)                                           //... so check at least caid only
-			{
-				found = 1;
-				break;
-			}
+			if(item->caid != er->caid) continue; // skip wrong caid!
+			if(item->type == 7) continue; // skip seca-admin type (provid 000000) since its not used for decoding!
+			if(er->prid && item->provid && er->prid != item->provid) continue; // skip non matching provid!
+			if(!er->prid && caid_is_seca(er->caid)) continue; // dont accept requests without provid for seca cas.
+			if(!er->prid && caid_is_viaccess(er->caid)) continue; // dont accept requests without provid for viaccess cas
+			if(!er->prid && caid_is_cryptoworks(er->caid)) continue; // dont accept requests without provid for cryptoworks cas
+			found =1;
+			break;
 		}
-		if(!found)
+		if(!found && er->ecm[0]) // ecmrequest can get corrected provid parsed from payload in ecm
 		{
 			cs_log_dbg(D_TRACE, "entitlements check failed on reader %s", rdr->label);
 			return 0;
@@ -916,14 +919,14 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr)
 		}
 		if(foundcaid == 1 && foundprovid == 1 && byteok == 1 && entryok == 1)
 		{
-			//cs_log("ECM for %04X:%06X:%04X is valid for ECMHeaderwhitelist of reader %s.", er->caid, er->prid, er->srvid, rdr->label);
+			//cs_log("ECM for %04X@%06X:%04X is valid for ECMHeaderwhitelist of reader %s.", er->caid, er->prid, er->srvid, rdr->label);
 		}
 		else
 		{
 			if(skip == 0 || (foundcaid == 1 && foundprovid == 1 && entryok == 0 && skip == 1))
 			{
 				cs_log_dump_dbg(D_TRACE, er->ecm, er->ecmlen,
-							  "following ECM %04X:%06X:%04X was filtered by ECMHeaderwhitelist of Reader %s from User %s because of not matching Header:",
+							  "following ECM %04X@%06X:%04X was filtered by ECMHeaderwhitelist of Reader %s from User %s because of not matching Header:",
 							  er->caid, er->prid, er->srvid, rdr->label, username(er->client));
 				rdr->ecmsfilteredhead += 1;
 				return (0);
@@ -950,7 +953,7 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr)
 		return 0;
 	}
 
-	if(!reader_slots_available(rdr, er))  // check free slots
+	if(!reader_slots_available(rdr, er)&& er->ecmlen > 0)  // check free slots, er->ecmlen>0 trick to skip this test for matching readers in dvbapi module
 	{
 		return 0;
 	}
@@ -1089,4 +1092,23 @@ uint16_t caidvaluetab_get_value(CAIDVALUETAB *cv, uint16_t caid, uint16_t defaul
 			return cvdata->value;
 	}
 	return default_value;
+}
+
+int32_t chk_is_fakecw(uint8_t *cw)
+{
+	uint32_t i, is_fakecw = 0;
+	uint32_t idx = ((cw[0]&0xF)<<4) | (cw[8]&0xF); 
+	
+	cs_readlock(__func__, &config_lock);
+	for(i=0; i<cfg.fakecws[idx].count; i++)
+	{
+		if(memcmp(cw, cfg.fakecws[idx].data[i].cw, 16) == 0)
+		{
+			is_fakecw = 1;
+			break;
+		}	
+	}
+	cs_readunlock(__func__, &config_lock);
+	
+	return is_fakecw;
 }

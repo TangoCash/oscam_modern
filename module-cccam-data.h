@@ -118,7 +118,6 @@ struct cc_card
 	struct s_reader  *origin_reader;
 	uint32_t origin_id;
 	cc_card_type card_type;
-	int8_t aufilter;
 	struct s_sidtab *sidtab; //pointer to sidtab entry if card_type = CT_CARD_BY_SERVICE
 	uint64_t grp;
 	uint8_t rdr_reshare;
@@ -212,7 +211,6 @@ struct cc_data
 	int8_t ecm_busy;
 	CS_MUTEX_LOCK cards_busy;
 	struct timeb ecm_time;
-	time_t answer_on_keepalive;
 	uint8_t last_msg;
 	uint8_t cmd05NOK;
 
@@ -227,6 +225,9 @@ struct cc_data
 	//Extended Mode for SPECIAL clients:
 	uint8_t extended_mode;
 	LLIST *extended_ecm_idx;
+
+	//multics detection
+	int8_t multics_mode;
 
 	//stats:
 	int32_t num_hop1;

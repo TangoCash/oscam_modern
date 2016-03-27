@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -228,15 +229,142 @@ typedef unsigned char uchar;
 //checking if (X) free(X) unneccessary since freeing a null pointer doesnt do anything
 #define NULLFREE(X) {if (X) {void *tmpX=X; X=NULL; free(tmpX); }}
 
+#ifdef __CYGWIN__
+#define cs_recv(a,b,c,d) cygwin_recv(a,b,c,d)
+#else
+#define cs_recv(a,b,c,d) recv(a,b,c,d)
+#endif
+
+//safe wrappers to pthread functions
+#define fprintf_stderr(fmt, params...)	fprintf(stderr, fmt, ##params)
+
+#define SAFE_PTHREAD_1ARG(a, b, c) { \
+	int32_t pter = a(b); \
+	if(pter != 0) \
+	{ \
+		c("FATAL ERROR: %s() failed in %s with error %d %s\n", #a, __func__, pter, strerror(pter)); \
+	} }
+
+#define SAFE_MUTEX_LOCK(a)			SAFE_PTHREAD_1ARG(pthread_mutex_lock, a, cs_log)
+#define SAFE_MUTEX_UNLOCK(a)		SAFE_PTHREAD_1ARG(pthread_mutex_unlock, a, cs_log)
+#define SAFE_COND_SIGNAL(a)			SAFE_PTHREAD_1ARG(pthread_cond_signal, a, cs_log)
+#define SAFE_COND_BROADCAST(a)		SAFE_PTHREAD_1ARG(pthread_cond_broadcast, a, cs_log)
+#define SAFE_RWLOCK_RDLOCK(a)		SAFE_PTHREAD_1ARG(pthread_rwlock_rdlock, a, cs_log)
+#define SAFE_RWLOCK_WRLOCK(a)		SAFE_PTHREAD_1ARG(pthread_rwlock_wrlock, a, cs_log)
+#define SAFE_RWLOCK_UNLOCK(a)		SAFE_PTHREAD_1ARG(pthread_rwlock_unlock, a, cs_log)
+#define SAFE_ATTR_INIT(a)			SAFE_PTHREAD_1ARG(pthread_attr_init, a, cs_log)
+#define SAFE_MUTEXATTR_INIT(a)		SAFE_PTHREAD_1ARG(pthread_mutexattr_init, a, cs_log)
+#define SAFE_CONDATTR_INIT(a)		SAFE_PTHREAD_1ARG(pthread_condattr_init, a, cs_log)
+
+#define SAFE_MUTEX_LOCK_NOLOG(a)	SAFE_PTHREAD_1ARG(pthread_mutex_lock, a, fprintf_stderr)
+#define SAFE_MUTEX_UNLOCK_NOLOG(a)	SAFE_PTHREAD_1ARG(pthread_mutex_unlock, a, fprintf_stderr)
+#define SAFE_COND_SIGNAL_NOLOG(a)	SAFE_PTHREAD_1ARG(pthread_cond_signal, a, fprintf_stderr)
+#define SAFE_MUTEX_UNLOCK_NOLOG(a)	SAFE_PTHREAD_1ARG(pthread_mutex_unlock, a, fprintf_stderr)
+#define SAFE_ATTR_INIT_NOLOG(a)		SAFE_PTHREAD_1ARG(pthread_attr_init, a, fprintf_stderr)
+#define SAFE_CONDATTR_INIT_NOLOG(a)	SAFE_PTHREAD_1ARG(pthread_condattr_init, a, fprintf_stderr)
+
+#define SAFE_PTHREAD_2ARG(a, b, c, d) { \
+	int32_t pter = a(b, c); \
+	if(pter != 0) \
+	{ \
+		d("FATAL ERROR: %s() failed in %s with error %d %s\n", #a, __func__, pter, strerror(pter)); \
+	} }
+
+#define SAFE_COND_WAIT(a,b)			SAFE_PTHREAD_2ARG(pthread_cond_wait, a, b, cs_log)
+#define SAFE_THREAD_JOIN(a,b)		SAFE_PTHREAD_2ARG(pthread_join, a, b, cs_log)
+#define SAFE_SETSPECIFIC(a,b)		SAFE_PTHREAD_2ARG(pthread_setspecific, a, b, cs_log)
+#define SAFE_MUTEXATTR_SETTYPE(a,b)	SAFE_PTHREAD_2ARG(pthread_mutexattr_settype, a, b, cs_log)
+#define SAFE_MUTEX_INIT(a,b)		SAFE_PTHREAD_2ARG(pthread_mutex_init, a, b, cs_log)
+#define SAFE_COND_INIT(a,b)			SAFE_PTHREAD_2ARG(pthread_cond_init, a, b, cs_log)
+#define SAFE_CONDATTR_SETCLOCK(a,b)	SAFE_PTHREAD_2ARG(pthread_condattr_setclock, a, b, cs_log)
+
+#define SAFE_MUTEX_INIT_NOLOG(a,b)			SAFE_PTHREAD_2ARG(pthread_mutex_init, a, b, fprintf_stderr)
+#define SAFE_COND_INIT_NOLOG(a,b)			SAFE_PTHREAD_2ARG(pthread_cond_init, a, b, fprintf_stderr)
+#define SAFE_THREAD_JOIN_NOLOG(a,b)			SAFE_PTHREAD_2ARG(pthread_join, a, b, fprintf_stderr)
+#define SAFE_CONDATTR_SETCLOCK_NOLOG(a,b)	SAFE_PTHREAD_2ARG(pthread_condattr_setclock, a, b, fprintf_stderr)
+
+#define SAFE_PTHREAD_1ARG_R(a, b, c, d) { \
+	int32_t pter = a(b); \
+	if(pter != 0) \
+	{ \
+		c("FATAL ERROR: %s() failed in %s (called from %s) with error %d %s\n", #a, __func__, d, pter, strerror(pter)); \
+	} }
+
+#define SAFE_MUTEX_LOCK_R(a, b)			SAFE_PTHREAD_1ARG_R(pthread_mutex_lock, a, cs_log, b)
+#define SAFE_MUTEX_UNLOCK_R(a, b)		SAFE_PTHREAD_1ARG_R(pthread_mutex_unlock, a, cs_log, b)
+#define SAFE_COND_SIGNAL_R(a, b)		SAFE_PTHREAD_1ARG_R(pthread_cond_signal, a, cs_log, b)
+#define SAFE_COND_BROADCAST_R(a, b)		SAFE_PTHREAD_1ARG_R(pthread_cond_broadcast, a, cs_log, b)
+#define SAFE_CONDATTR_INIT_R(a, b)		SAFE_PTHREAD_1ARG_R(pthread_condattr_init, a, cs_log, b)
+
+#define SAFE_MUTEX_LOCK_NOLOG_R(a, b)		SAFE_PTHREAD_1ARG_R(pthread_mutex_lock, a, fprintf_stderr, b)
+#define SAFE_MUTEX_UNLOCK_NOLOG_R(a, b)		SAFE_PTHREAD_1ARG_R(pthread_mutex_unlock, a, fprintf_stderr, b)
+#define SAFE_CONDATTR_INIT_NOLOG_R(a, b)	SAFE_PTHREAD_1ARG_R(pthread_condattr_init, a, fprintf_stderr, b)
+
+#define SAFE_PTHREAD_2ARG_R(a, b, c, d, e) { \
+	int32_t pter = a(b, c); \
+	if(pter != 0) \
+	{ \
+		d("FATAL ERROR: %s() failed in %s (called from %s) with error %d %s\n", #a, __func__, e, pter, strerror(pter)); \
+	} }
+
+#define SAFE_MUTEX_INIT_R(a,b,c)		SAFE_PTHREAD_2ARG_R(pthread_mutex_init, a, b, cs_log, c)
+#define SAFE_COND_INIT_R(a,b,c)			SAFE_PTHREAD_2ARG_R(pthread_cond_init, a, b, cs_log, c)
+#define SAFE_CONDATTR_SETCLOCK_R(a,b,c)	SAFE_PTHREAD_2ARG(pthread_condattr_setclock, a, b, cs_log, c)
+
+#define SAFE_MUTEX_INIT_NOLOG_R(a,b,c)	SAFE_PTHREAD_2ARG_R(pthread_mutex_init, a, b, fprintf_stderr, c)
+#define SAFE_COND_INIT_NOLOG_R(a,b,c)	SAFE_PTHREAD_2ARG_R(pthread_cond_init, a, b, fprintf_stderr, c)
+#define SAFE_CONDATTR_SETCLOCK_NOLOG_R(a,b,c)	SAFE_PTHREAD_2ARG(pthread_condattr_setclock, a, b, fprintf_stderr, c)
+
+#define SAFE_COND_TIMEDWAIT(a, b, c) { \
+	int32_t pter; \
+	if((c)->tv_nsec < 0) (c)->tv_nsec = 0; \
+	if((c)->tv_nsec > 999999999) (c)->tv_nsec = 999999999; \
+	pter = pthread_cond_timedwait(a, b, c); \
+	if(pter != 0 && pter != ETIMEDOUT) \
+	{ \
+		cs_log("FATAL ERROR: pthread_cond_timedwait failed in %s with error %d %s\n", __func__, pter, strerror(pter)); \
+	} }
+
+#define SAFE_COND_TIMEDWAIT_R(a, b, c, d) { \
+	int32_t pter; \
+	if((c)->tv_nsec < 0) (c)->tv_nsec = 0; \
+	if((c)->tv_nsec > 999999999) (c)->tv_nsec = 999999999; \
+	pter = pthread_cond_timedwait(a, b, c); \
+	if(pter != 0 && pter != ETIMEDOUT) \
+	{ \
+		cs_log("FATAL ERROR: pthread_cond_timedwait failed in %s (called from %s) with error %d %s\n", __func__, d, pter, strerror(pter)); \
+	} }
+
+#define SAFE_ATTR_SETSTACKSIZE(a,b) { \
+	int32_t pter = pthread_attr_setstacksize(a, b); \
+	if(pter != 0) \
+	{ \
+		cs_log("WARNING: pthread_attr_setstacksize() failed in %s with error %d %s\n", __func__, pter, strerror(pter)); \
+	} }
+	
+#define SAFE_ATTR_SETSTACKSIZE_NOLOG(a,b) { \
+	int32_t pter = pthread_attr_setstacksize(a, b); \
+	if(pter != 0) \
+	{ \
+		fprintf_stderr("WARNING: pthread_attr_setstacksize() failed in %s with error %d %s\n", __func__, pter, strerror(pter)); \
+	} }
+
+#ifdef NO_PTHREAD_STACKSIZE
+#undef SAFE_ATTR_SETSTACKSIZE
+#undef SAFE_ATTR_SETSTACKSIZE_NOLOG
+#define SAFE_ATTR_SETSTACKSIZE(a,b)
+#define SAFE_ATTR_SETSTACKSIZE_NOLOG(a,b)
+#endif
+
 /* ===========================
  *         constants
  * =========================== */
 #define CS_VERSION    "1.20-modern_svn"
 #ifndef CS_SVN_VERSION
-#   define CS_SVN_VERSION "tested"
+#   define CS_SVN_VERSION "modern"
 #endif
 #ifndef CS_TARGET
-#   define CS_TARGET "unknown"
+#   define CS_TARGET "modern"
 #endif
 #ifndef CS_CONFDIR
 #define CS_CONFDIR    "/usr/local/etc"
@@ -245,10 +373,10 @@ typedef unsigned char uchar;
 #define CS_LOGFILE    "/var/log/oscam.log"
 #endif
 #define CS_QLEN       128 // size of request queue
-#define CS_MAXCAIDTAB 32  // max. caid-defs/user
 #define CS_MAXPROV    32
 #define CS_MAXPORTS   32  // max server ports
 #define CS_CLIENT_HASHBUCKETS 32
+#define CS_SERVICENAME_SIZE 32
 
 #define CS_ECMSTORESIZE   16  // use MD5()
 #define CS_EMMSTORESIZE   16  // use MD5()
@@ -258,10 +386,11 @@ typedef unsigned char uchar;
 #define CS_DELAY          0
 #define CS_ECM_RINGBUFFER_MAX 0x10 // max size for ECM last responsetimes ringbuffer. Keep this set to power of 2 values!
 
-#ifndef PTHREAD_STACK_MIN
-#define PTHREAD_STACK_MIN 64000
-#endif
-#define PTHREAD_STACK_SIZE PTHREAD_STACK_MIN+32768
+// Support for multiple CWs per channel and other encryption algos
+//#define WITH_EXTENDED_CW 1
+
+#define MAX_ECM_SIZE 596
+#define MAX_EMM_SIZE 512
 
 #define CS_EMMCACHESIZE  512 //nr of EMMs that each reader will cache
 #define MSGLOGSIZE 64   //size of string buffer for a ecm to return messages
@@ -456,6 +585,17 @@ enum {E2_GLOBAL = 0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E
 #define REQUEST_SENT            0x10
 #define REQUEST_ANSWERED        0x20
 
+#define CW_MODE_ONE_CW 0
+#define CW_MODE_MULTIPLE_CW 1
+#define CW_TYPE_VIDEO 0
+#define CW_TYPE_AUDIO 1
+#define CW_TYPE_DATA 2
+#define CW_ALGO_CSA 0
+#define CW_ALGO_DES 1
+#define CW_ALGO_AES128 2
+#define CW_ALGO_MODE_ECB 0
+#define CW_ALGO_MODE_CBC 1
+
 /* ===========================
  *      Default Values
  * =========================== */
@@ -482,6 +622,7 @@ enum {E2_GLOBAL = 0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E
 #define MAX_LEN      256
 
 #define NO_CAID_VALUE  0xfffe
+#define NO_PROVID_VALUE  0xfffffe
 #define NO_SRVID_VALUE 0xfffe
 
 // If NULL return empty string
@@ -540,8 +681,8 @@ typedef struct s_classtab
 {
 	uchar           an;
 	uchar           bn;
-	uchar           aclass[31];
-	uchar           bclass[31];
+	uchar           *aclass;
+	uchar           *bclass;
 } CLASSTAB;
 
 typedef struct s_caidtab_data
@@ -661,8 +802,8 @@ struct s_emmcache
 {
 	uchar			emmd5[CS_EMMSTORESIZE];
 	uchar			type;
-	uchar			len;
-	uchar			emm[258];
+	uint16_t		len;
+	uchar			emm[MAX_EMM_SIZE];
 	struct timeb    firstseen;
 	struct timeb    lastseen;
 };
@@ -714,6 +855,8 @@ struct emm_packet_t ;
 struct s_ecm_answer ;
 struct demux_s ;
 
+#define DEFAULT_MODULE_BUFSIZE 1024
+
 struct s_module
 {
 	const char      *desc;
@@ -730,7 +873,7 @@ struct s_module
 	void (*cleanup)(struct s_client *);
 	int32_t (*c_recv_chk)(struct s_client *, uchar *, int32_t *, uchar *, int32_t);
 	int32_t (*c_init)(struct s_client *);
-	int32_t (*c_send_ecm)(struct s_client *, struct ecm_request_t *, uchar *);
+	int32_t (*c_send_ecm)(struct s_client *, struct ecm_request_t *);
 	int32_t (*c_send_emm)(struct emm_packet_t *);
 	int32_t (*c_available)(struct s_reader *, int32_t, struct ecm_request_t *);             //Schlocke: available check for load-balancing,
 	// params:
@@ -830,12 +973,27 @@ struct s_cardsystem
 	int32_t (*get_tunemm_filter)(struct s_reader *, struct s_csystem_emm_filter **, unsigned int *);
 };
 
-#define MAX_ECM_SIZE 512
+#ifdef WITH_EXTENDED_CW
+typedef struct cw_extendted_t
+{
+	uchar           mode;
+	uchar           audio[4][16];
+	uchar           data[16];
+	uchar           algo;
+	uchar           algo_mode;
+} EXTENDED_CW;
+#else
+typedef struct cw_extendted_t
+{
+	uchar			disabled;
+} EXTENDED_CW;
+#endif
 
 typedef struct ecm_request_t
 {
 	uchar           ecm[MAX_ECM_SIZE];
 	uchar           cw[16];
+	EXTENDED_CW     cw_ex;
 	uchar           ecmd5[CS_ECMSTORESIZE];
 	int16_t         ecmlen;
 	uint16_t        caid;
@@ -909,6 +1067,9 @@ typedef struct ecm_request_t
 #ifdef CW_CYCLE_CHECK
 	char            cwc_msg_log[MSGLOGSIZE];
 #endif
+#ifdef WITH_STAPI5
+	char			dev_name[20];
+#endif
 	struct ecm_request_t    *parent;
 	struct ecm_request_t    *next;
 } ECM_REQUEST;
@@ -922,9 +1083,11 @@ struct s_ecm_answer
 	int8_t          rc;
 	uint8_t     rcEx;
 	uchar           cw[16];
+	EXTENDED_CW     cw_ex;
 	char            msglog[MSGLOGSIZE];
 	struct timeb    time_request_sent;  //using for evaluate ecm_time
 	int32_t         ecm_time;
+	uint16_t        tier; //only filled by local videoguard reader atm
 #ifdef WITH_LB
 	int32_t     value;
 	int32_t     time;
@@ -985,7 +1148,7 @@ struct emm_rass
 {
 	int16_t         emmlen;
 	int32_t			provid;
-	uint8_t         emm[512];
+	uint8_t         emm[MAX_EMM_SIZE];
 };
 
 struct s_client
@@ -1026,13 +1189,17 @@ struct s_client
 	int8_t          typ;                // first s_client is type s=starting (master) thread; type r = physical reader, type p = proxy reader both always have 1 s_reader struct allocated; type c = client (user logging in into oscam) type m = monitor type h = http server a = anticascader
 	uint8_t         module_idx;
 	uint16_t        last_srvid;
+	uint32_t        last_provid;
 	uint16_t        last_caid;
+	struct s_provid *last_providptr;
 	struct s_srvid  *last_srvidptr;
+	uint32_t        last_srvidptr_search_provid;
 	int32_t         tosleep;
 	struct s_auth   *account;
 	int32_t         udp_fd;
 	struct SOCKADDR udp_sa;
 	socklen_t       udp_sa_len;
+	int8_t          tcp_nodelay;
 	int8_t          log;
 	int32_t         logcounter;
 	int32_t         cwfound;            // count found ECMs per client
@@ -1192,6 +1359,7 @@ struct ecmrl
 {
 	struct timeb    last;
 	uchar           kindecm;
+	bool			once;
 	uchar           ecmd5[CS_ECMSTORESIZE];
 	uint16_t        caid;
 	uint32_t        provid;
@@ -1203,26 +1371,48 @@ struct ecmrl
 };
 #define MAXECMRATELIMIT 20
 
+#ifdef MODULE_SERIAL
+struct ecmtw
+{
+	uint16_t        caid;
+	uint32_t        provid;
+	uint16_t        srvid;
+	uint16_t        deg;
+	uint16_t        freq;
+};
+#endif
+
+typedef struct ce_csp_tab_data
+{
+	int32_t     caid;
+	int32_t     cmask;
+	int32_t     prid;
+	int32_t     srvid;
+	int16_t     awtime;
+	int16_t     dwtime;
+} CECSPVALUETAB_DATA;
+
 typedef struct ce_csp_tab
 {
-	uint16_t    n;
-	int32_t     caid[CS_MAXCAIDTAB];
-	int32_t     cmask[CS_MAXCAIDTAB];
-	int32_t     prid[CS_MAXCAIDTAB];
-	int32_t     srvid[CS_MAXCAIDTAB];
-	int16_t     awtime[CS_MAXCAIDTAB];
-	int16_t     dwtime[CS_MAXCAIDTAB];
+	int32_t            cevnum;
+	CECSPVALUETAB_DATA *cevdata;
 } CECSPVALUETAB;
+
+typedef struct cacheex_check_cw_tab_data
+{
+	int32_t     caid;
+	int32_t     cmask;
+	int32_t     prid;
+	int32_t     srvid;
+	int8_t      mode;
+	uint32_t    counter;
+} CWCHECKTAB_DATA;
 
 typedef struct cacheex_check_cw_tab
 {
-	uint16_t    n;
-	int32_t     caid[CS_MAXCAIDTAB];
-	int32_t     cmask[CS_MAXCAIDTAB];
-	int32_t     prid[CS_MAXCAIDTAB];
-	int32_t     srvid[CS_MAXCAIDTAB];
-	int8_t      mode[CS_MAXCAIDTAB];
-	uint32_t    counter[CS_MAXCAIDTAB];
+	int32_t    cwchecknum;
+	CWCHECKTAB_DATA *cwcheckdata;
+
 } CWCHECKTAB;
 
 typedef struct cacheex_check_cw
@@ -1240,6 +1430,7 @@ typedef struct ce_csp_t
 	uint8_t         allow_reforward;
 	uint8_t         drop_csp;
 	uint8_t         allow_filter;
+	uint8_t         block_fakecws;
 } CECSP;
 
 struct s_emmlen_range
@@ -1294,9 +1485,13 @@ struct s_reader                                     //contains device info, read
 	CAIDTAB         ctab;
 	uint32_t        boxid;
 	int8_t          nagra_read;                     // read nagra ncmed records: 0 Disabled (default), 1 read all records, 2 read valid records only
-	uint8_t         boxkey[16];                      // n3 boxkey 8byte, seca sessionkey 16byte
 	int8_t          force_irdeto;
-	uchar           rsa_mod[120];                   // rsa modulus for nagra cards.
+	uint8_t         boxkey[16];                     // n3 boxkey 8 bytes, seca sessionkey 16 bytes, viaccess camid 4 bytes
+	uint8_t         boxkey_length;
+	uint8_t         rsa_mod[120];                   // rsa modulus for nagra cards.
+	uint8_t         rsa_mod_length;
+	uint8_t         des_key[32];                    // 3des key for Viaccess 16 bytes
+	uint8_t         des_key_length;
 	uchar           atr[64];
 	uchar           card_atr[64];                   // ATR readed from card
 	int8_t          card_atr_length;                // length of ATR
@@ -1418,6 +1613,7 @@ struct s_reader                                     //contains device info, read
 	unsigned char   VgFuse;
 	unsigned char	VgCountryC[3];
 	unsigned char   VgRegionC[8];
+	unsigned char	VgLastPayload[6];
 #ifdef WITH_LB
 	int32_t         lb_weight;                      //loadbalance weight factor, if unset, weight=100. The higher the value, the higher the usage-possibility
 	int8_t          lb_force_fallback;				//force this reader as fallback if fallback or fallback_percaid paramters set
@@ -1427,6 +1623,7 @@ struct s_reader                                     //contains device info, read
 	struct timeb    lb_last;                        //time for oldest reader
 	LLIST           *lb_stat;                       //loadbalancer reader statistics
 	CS_MUTEX_LOCK   lb_stat_lock;
+	int32_t         lb_stat_busy;                   //do not add while saving
 #endif
 
 	AES_ENTRY       *aes_list;                      // multi AES linked list
@@ -1458,6 +1655,11 @@ struct s_reader                                     //contains device info, read
 	uint8_t         ins2e06[0x04 + 1];
 	int8_t          ins7e11_fast_reset;
 	uint8_t         sc8in1_dtrrts_patch; // fix for kernel commit 6a1a82df91fa0eb1cc76069a9efe5714d087eccd
+#ifdef READER_VIACCESS	
+	unsigned char	initCA28; 							// To set when CA28 succeed
+	uint32_t 		key_schedule1[32];
+	uint32_t 		key_schedule2[32];
+#endif
 #ifdef MODULE_GBOX
 	uint8_t		gbox_maxdist;
 	uint8_t		gbox_maxecmsend;
@@ -1515,6 +1717,7 @@ struct s_auth
 	CLASSTAB        cltab;
 	TUNTAB          ttab;
 	int8_t          preferlocalcards;
+	uint32_t        max_connections;
 #ifdef CS_ANTICASC
 	int32_t         ac_fakedelay;                   // When this is -1, the global ac_fakedelay is used
 	int32_t         ac_users;                       // 0 - unlimited
@@ -1578,17 +1781,25 @@ struct s_auth
 	struct s_auth   *next;
 };
 
+
+struct s_srvid_caid
+{
+	uint16_t        caid;
+	uint16_t        nprovid;
+	uint32_t        *provid;
+};
+
 struct s_srvid
 {
-	uint16_t        srvid;
-	int8_t          ncaid;
-	uint16_t        caid[10];
-	char            *data;
-	char            *prov;
-	char            *name;
-	char            *type;
-	char            *desc;
-	struct s_srvid  *next;
+	uint16_t             srvid;
+	int8_t               ncaid;
+	struct s_srvid_caid  *caid;
+	char                 *data;
+	const char           *prov;
+	const char           *name;
+	const char           *type;
+	const char           *desc;
+	struct s_srvid       *next;
 };
 
 struct s_rlimit
@@ -1596,6 +1807,25 @@ struct s_rlimit
 	struct ecmrl    rl;
 	struct s_rlimit *next;
 };
+
+struct s_cw
+{
+	uint8_t cw[16];
+};
+
+struct s_fakecws
+{
+	uint32_t count;
+	struct s_cw *data;	
+};
+
+#ifdef MODULE_SERIAL
+struct s_twin
+{
+	struct ecmtw    tw;
+	struct s_twin *next;
+};
+#endif
 
 struct s_tierid
 {
@@ -1609,7 +1839,8 @@ struct s_tierid
 struct s_provid
 {
 	uint16_t        caid;
-	uint32_t        provid;
+	uint16_t        nprovid;
+	uint32_t        *provid;
 	char            prov[33];
 	char            sat[33];
 	char            lang[33];
@@ -1682,8 +1913,11 @@ struct s_config
 	uint8_t         logtostdout;
 	uint8_t         logtosyslog;
 	int8_t          logduplicatelines;
+	int32_t         initial_debuglevel;
+	char			*sysloghost;
+	int32_t			syslogport;
 #if defined(WEBIF) || defined(MODULE_MONITOR)
-	uint32_t        loghistorysize;
+	uint32_t        loghistorylines;
 #endif
 	int8_t          disablelog;
 	int8_t          disablemail;
@@ -1692,7 +1926,6 @@ struct s_config
 	struct s_auth   *account;
 	struct s_srvid  *srvid[16];
 	struct s_tierid *tierid;
-	//Todo #ifdef CCCAM
 	struct s_provid *provid;
 	struct s_sidtab *sidtab;
 #ifdef MODULE_MONITOR
@@ -1765,7 +1998,8 @@ struct s_config
 	IN_ADDR_T       c35_tcp_srvip;
 #endif
 	int8_t          c35_suppresscmd08; // used in cccam module
-	int32_t    umaxidle; //User max Idle
+	int8_t		getblockemmauprovid;
+	int32_t		umaxidle; //User max Idle
 #ifdef MODULE_NEWCAMD
 	PTAB            ncd_ptab;
 	IN_ADDR_T       ncd_srvip;
@@ -1857,6 +2091,10 @@ struct s_config
 	int32_t     dvbapi_listenport;                  // TCP port to listen instead of camd.socket (network mode, default=0 -> disabled)
 	SIDTABS     dvbapi_sidtabs;
 	int32_t     dvbapi_delayer;                     // delayer ms, minimum time to write cw
+	int8_t      dvbapi_ecminfo_type;
+	int8_t      dvbapi_read_sdt;
+	int8_t      dvbapi_write_sdt_prov;
+	int8_t      dvbapi_extended_cw_api;
 #endif
 
 #ifdef CS_ANTICASC
@@ -1945,6 +2183,13 @@ struct s_config
 
 	//Ratelimit list
 	struct s_rlimit *ratelimit_list;
+	
+	// fake cws
+	struct s_fakecws fakecws[0x100];
+
+#ifdef MODULE_SERIAL
+	struct s_twin *twin_list;
+#endif
 };
 
 struct s_clientinit
@@ -1988,10 +2233,9 @@ typedef struct cs_stat_query
 	int16_t         ecmlen;
 } STAT_QUERY;
 
-
 typedef struct emm_packet_t
 {
-	uchar           emm[258];
+	uchar           emm[MAX_EMM_SIZE];
 	int16_t         emmlen;
 	uchar           caid[2];
 	uchar           provid[4];
@@ -2033,18 +2277,25 @@ void    cs_restart_oscam(void);
 int32_t cs_get_restartmode(void);
 
 void set_thread_name(const char *thread_name);
-void start_thread(void *startroutine, char *nameroutine);
+int32_t start_thread(char *nameroutine, void *startroutine, void *arg, pthread_t *pthread, int8_t detach, int8_t modify_stacksize);
+int32_t start_thread_nolog(char *nameroutine, void *startroutine, void *arg, pthread_t *pthread, int8_t detach, int8_t modify_stacksize);
 void kill_thread(struct s_client *cl);
 
 struct s_module *get_module(struct s_client *cl);
 void module_reader_set(struct s_reader *rdr);
 
 // Until we find a better place for these (they are implemented in oscam-simples.h)
-char *get_servicename(struct s_client *cl, uint16_t srvid, uint16_t caid, char *buf);
-char *get_servicename_or_null(struct s_client *cl, uint16_t srvid, uint16_t caid, char *buf);
+char *get_servicename(struct s_client *cl, uint16_t srvid, uint32_t provid, uint16_t caid, char *buf, uint32_t buflen);
+char *get_servicename_or_null(struct s_client *cl, uint16_t srvid, uint32_t provid, uint16_t caid, char *buf, uint32_t buflen);
+char *get_picon_servicename_or_null(struct s_client *cl, uint16_t srvid, uint32_t provid, uint16_t caid, char *buf, uint32_t buflen);
+int32_t picon_servicename_remve_hd(char *buf, uint32_t buflen);
 char *get_tiername(uint16_t tierid, uint16_t caid, char *buf);
-char *get_provider(uint16_t caid, uint32_t provid, char *buf, uint32_t buflen);
+char *get_tiername_defaultid(uint16_t tierid, uint16_t caid, char *buf);
+char *get_provider(uint32_t provid, uint16_t caid, char *buf, uint32_t buflen);
+char *get_providername(uint32_t provid, uint16_t caid, char *buf, uint32_t buflen);
+char *get_providername_or_null(uint32_t provid, uint16_t caid, char *buf, uint32_t buflen);
 void add_provider(uint16_t caid, uint32_t provid, const char *name, const char *sat, const char *lang);
+const char *get_cl_lastprovidername(struct s_client *cl);
 bool boxtype_is(const char *boxtype);
 bool boxname_is(const char *boxname);
 const char *boxtype_get(void);
@@ -2059,6 +2310,7 @@ static inline bool caid_is_cryptoworks(uint16_t caid) { return caid >> 8 == 0x0D
 static inline bool caid_is_betacrypt(uint16_t caid) { return caid >> 8 == 0x17; }
 static inline bool caid_is_nagra(uint16_t caid) { return caid >> 8 == 0x18; }
 static inline bool caid_is_bulcrypt(uint16_t caid) { return caid == 0x5581 || caid == 0x4AEE; }
-char *get_cardsystem_desc_by_caid(uint16_t caid);
+static inline bool caid_is_dre(uint16_t caid) { return caid == 0x4AE0 || caid == 0x4AE1;}
+const char *get_cardsystem_desc_by_caid(uint16_t caid);
 
 #endif

@@ -320,6 +320,9 @@ static void mca_ecm_callback(int32_t stream_id, uint32_t UNUSED(seq), int32_t ci
 		return;
 	}
 
+	if(l < 0 || l > MAX_ECM_SIZE)
+		{ return; }
+
 	ECM_REQUEST *er;
 	if(!(er = get_ecmtask()))
 		{ return; }
@@ -353,6 +356,9 @@ static void mca_ex_callback(int32_t stream_id, uint32_t UNUSED(seq), int32_t idx
 	openxcas_ecm_pid = pid;
 	openxcas_cipher_idx = idx; // is this really cipher_idx?
 
+	if(l < 0 || l > MAX_ECM_SIZE)
+		{ return; }
+	
 	ECM_REQUEST *er;
 	if(!(er = get_ecmtask()))
 		{ return; }
@@ -392,7 +398,7 @@ static void *mca_main_thread(void *cli)
 {
 	struct s_client *client = (struct s_client *) cli;
 	client->thread = pthread_self();
-	pthread_setspecific(getclient, cli);
+	SAFE_SETSPECIFIC(getclient, cli);
 	dvbapi_client = cli;
 
 	struct s_auth *account;
@@ -448,7 +454,7 @@ static void *mca_main_thread(void *cli)
 				int new_len = mca_capmt_remove_duplicates(msg.buf + 2, msg.buf_len - 2);
 				if(new_len < msg.buf_len - 2)
 					{ cs_log_dump_dbg(D_DVBAPI, msg.buf + 2, new_len, "capmt (duplicates removed):"); }
-				int demux_id = dvbapi_parse_capmt(msg.buf + 2, new_len, -1, NULL);
+				int demux_id = dvbapi_parse_capmt(msg.buf + 2, new_len, -1, NULL, 0, 0, 0);
 
 
 				unsigned char mask[12];
@@ -523,36 +529,28 @@ static void *mca_main_thread(void *cli)
 
 void mca_send_dcw(struct s_client *client, ECM_REQUEST *er)
 {
+	struct s_dvbapi_priority *delayentry = dvbapi_check_prio_match(0, demux[0].pidindex, 'd');
+	uint32_t delay = 0;
+
 	cs_log_dbg(D_DVBAPI, "send_dcw");
-
-	delayer(er);
-
-	FILE *ecmtxt;
-	if((ecmtxt = fopen(ECMINFO_FILE, "w")))
+		
+	if(delayentry)
 	{
-		char tmp[25];
-		if(er->rc <= E_CACHEEX)
+		if(delayentry->delay < 1000)
 		{
-			fprintf(ecmtxt, "caid: 0x%04X\npid: 0x%04X\nprov: 0x%06X\n", er->caid, er->pid, (uint) er->prid);
-			fprintf(ecmtxt, "reader: %s\n", er->selected_reader->label);
-			if(is_cascading_reader(er->selected_reader))
-				{ fprintf(ecmtxt, "from: %s\n", er->selected_reader->device); }
-			else
-				{ fprintf(ecmtxt, "from: local\n"); }
-			fprintf(ecmtxt, "protocol: %s\n", reader_get_type_desc(er->selected_reader, 1));
-			fprintf(ecmtxt, "hops: %d\n", er->selected_reader->currenthops);
-			fprintf(ecmtxt, "ecm time: %.3f\n", (float) client->cwlastresptime / 1000);
-			fprintf(ecmtxt, "cw0: %s\n", cs_hexdump(1, demux[0].lastcw[0], 8, tmp, sizeof(tmp)));
-			fprintf(ecmtxt, "cw1: %s\n", cs_hexdump(1, demux[0].lastcw[1], 8, tmp, sizeof(tmp)));
-			fclose(ecmtxt);
-			ecmtxt = NULL;
-		}
-		else
-		{
-			fprintf(ecmtxt, "ECM information not found\n");
-			fclose(ecmtxt);
+			delay = delayentry->delay;
+			cs_log_dbg(D_DVBAPI, "specific delay: write cw %d ms after ecmrequest", delay);
 		}
 	}
+	else if (cfg.dvbapi_delayer > 0)
+	{
+		delay = cfg.dvbapi_delayer;
+		cs_log_dbg(D_DVBAPI, "generic delay: write cw %d ms after ecmrequest", delay);
+	}
+		
+	delayer(er, delay);
+
+	dvbapi_write_ecminfo_file(client, er, demux[0].lastcw[0], demux[0].lastcw[1]);
 
 	openxcas_busy = 0;
 

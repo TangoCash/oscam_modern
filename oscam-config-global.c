@@ -28,21 +28,21 @@ static void disablelog_fn(const char *token, char *value, void *UNUSED(setting),
 }
 
 #if defined(WEBIF) || defined(MODULE_MONITOR)
-static void loghistorysize_fn(const char *token, char *value, void *UNUSED(setting), FILE *f)
+static void loghistorylines_fn(const char *token, char *value, void *UNUSED(setting), FILE *f)
 {
 	if(value)
 	{
-		uint32_t newsize = strToUIntVal(value, 4096);
-		if(newsize < 1024 && newsize != 0)
+		uint32_t newsize = strToUIntVal(value, 256);
+		if(newsize < 64 && newsize != 0)
 		{
-			fprintf(stderr, "WARNING: loghistorysize is too small, adjusted to 1024\n");
-			newsize = 1024;
+			fprintf(stderr, "WARNING: loghistorylines is too small, adjusted to 64\n");
+			newsize = 64;
 		}
 		cs_reinit_loghist(newsize);
 		return;
 	}
-	if(cfg.loghistorysize != 4096 || cfg.http_full_cfg)
-		{ fprintf_conf(f, token, "%u\n", cfg.loghistorysize); }
+	if(cfg.loghistorylines != 256 || cfg.http_full_cfg)
+		{ fprintf_conf(f, token, "%u\n", cfg.loghistorylines); }
 }
 #endif
 
@@ -192,7 +192,7 @@ void cacheex_valuetab_fn(const char *token, char *value, void *setting, FILE *f)
 			{ chk_cacheex_valuetab(value, cacheex_value_table); }
 		return;
 	}
-	if(cacheex_value_table->n || cfg.http_full_cfg)
+	if(cacheex_value_table->cevnum || cfg.http_full_cfg)
 	{
 		value = mk_t_cacheex_valuetab(cacheex_value_table);
 		fprintf_conf(f, token, "%s\n", value);
@@ -207,8 +207,8 @@ void cacheex_cwcheck_tab_fn(const char *token, char *value, void *setting, FILE 
 	{
 		if(strlen(value) == 0)
 		{
-			memset(cacheex_value_table, -1, sizeof(CWCHECKTAB));
-			cacheex_value_table->n = 0;
+			cacheex_value_table->cwchecknum = 0;
+			NULLFREE(cacheex_value_table->cwcheckdata);
 		}
 		else
 		{
@@ -217,7 +217,7 @@ void cacheex_cwcheck_tab_fn(const char *token, char *value, void *setting, FILE 
 		return;
 	}
 
-	if(cacheex_value_table->n || cfg.http_full_cfg)
+	if(cacheex_value_table->cwchecknum || cfg.http_full_cfg)
 	{
 		value = mk_t_cacheex_cwcheck_valuetab(cacheex_value_table);
 		fprintf_conf(f, token, "%s\n", value);
@@ -236,7 +236,7 @@ void cacheex_hitvaluetab_fn(const char *token, char *value, void *setting, FILE 
 			{ chk_cacheex_hitvaluetab(value, cacheex_value_table); }
 		return;
 	}
-	if(cacheex_value_table->n || cfg.http_full_cfg)
+	if(cacheex_value_table->cevnum || cfg.http_full_cfg)
 	{
 		value = mk_t_cacheex_hitvaluetab(cacheex_value_table);
 		fprintf_conf(f, token, "%s\n", value);
@@ -255,7 +255,7 @@ void global_fixups_fn(void *UNUSED(var))
 {
 	if(!cfg.usrfile) { cfg.disableuserfile = 1; }
 	if(!cfg.mailfile) { cfg.disablemail = 1; }
-	if(cfg.ctimeout < 999) { cfg.ctimeout = CS_CLIENT_TIMEOUT; }
+	if(cfg.ctimeout < 10) { cfg.ctimeout = cfg.ctimeout * 1000; } // save always in ms
 
 	if(cfg.nice < -20 || cfg.nice > 20) { cfg.nice = 99; }
 	if(cfg.nice != 99)
@@ -302,10 +302,13 @@ static const struct config_list global_opts[] =
 #endif
 	DEF_OPT_FUNC("disablelog"               , OFS(disablelog),          disablelog_fn),
 #if defined(WEBIF) || defined(MODULE_MONITOR)
-	DEF_OPT_FUNC("loghistorysize"           , OFS(loghistorysize),      loghistorysize_fn),
+	DEF_OPT_FUNC("loghistorylines"           , OFS(loghistorylines),      loghistorylines_fn),
 #endif
 	DEF_OPT_FUNC("serverip"                 , OFS(srvip),               serverip_fn),
 	DEF_OPT_FUNC("logfile"                  , OFS(logfile),             logfile_fn),
+	DEF_OPT_INT32("initial_debuglevel"      , OFS(initial_debuglevel),  0), 
+	DEF_OPT_STR("sysloghost"                , OFS(sysloghost),          NULL),
+	DEF_OPT_INT32("syslogport"				, OFS(syslogport),			514),
 	DEF_OPT_INT8("logduplicatelines"        , OFS(logduplicatelines),   0),
 	DEF_OPT_STR("pidfile"                   , OFS(pidfile),             NULL),
 	DEF_OPT_INT8("disableuserfile"          , OFS(disableuserfile),     1),
@@ -362,6 +365,7 @@ static const struct config_list global_opts[] =
 	DEF_OPT_INT32("failbantime"             , OFS(failbantime),         0),
 	DEF_OPT_INT32("failbancount"            , OFS(failbancount),        0),
 	DEF_OPT_INT8("suppresscmd08"            , OFS(c35_suppresscmd08),   0),
+	DEF_OPT_INT8("getblockemmauprovid"      , OFS(getblockemmauprovid), 0),
 	DEF_OPT_INT8("double_check"             , OFS(double_check),        0),
 	DEF_LAST_OPT
 };
@@ -513,8 +517,8 @@ static const struct config_list webif_opts[] =
 	DEF_OPT_INT8("http_prepend_embedded_css"   , OFS(http_prepend_embedded_css), 0),
 	DEF_OPT_INT32("httprefresh"             , OFS(http_refresh),            0),
 	DEF_OPT_INT32("httppollrefresh"         , OFS(poll_refresh),            60),
-	DEF_OPT_INT8("httphideidleclients"      , OFS(http_hide_idle_clients),  0),
-	DEF_OPT_STR("httphidetype"              , OFS(http_hide_type),          "sh"),
+	DEF_OPT_INT8("httphideidleclients"      , OFS(http_hide_idle_clients),  1),
+	DEF_OPT_STR("httphidetype"              , OFS(http_hide_type),          NULL),
 	DEF_OPT_INT8("httpshowpicons"           , OFS(http_showpicons),         0),
 	DEF_OPT_INT8("httppiconsize"            , OFS(http_picon_size),         0),
 	DEF_OPT_INT8("httpshowmeminfo"          , OFS(http_showmeminfo),        0),
@@ -585,7 +589,7 @@ static bool cache_should_save_fn(void *UNUSED(var))
 {
 	return cfg.delay > 0 || cfg.max_cache_time != 15
 #ifdef CS_CACHEEX
-		   || cfg.cacheex_wait_timetab.n || cfg.cacheex_enable_stats > 0 || cfg.csp_port || cfg.csp.filter_caidtab.n || cfg.csp.allow_request == 0 || cfg.csp.allow_reforward > 0
+		   || cfg.cacheex_wait_timetab.cevnum || cfg.cacheex_enable_stats > 0 || cfg.csp_port || cfg.csp.filter_caidtab.cevnum || cfg.csp.allow_request == 0 || cfg.csp.allow_reforward > 0
 #endif
 #ifdef CW_CYCLE_CHECK
 		   || cfg.cwcycle_check_enable || cfg.cwcycle_check_caidtab.ctnum || cfg.maxcyclelist != 500 || cfg.keepcycletime || cfg.onbadcycle || cfg.cwcycle_dropold || cfg.cwcycle_sensitive || cfg.cwcycle_allowbadfromffb || cfg.cwcycle_usecwcfromce
@@ -611,6 +615,7 @@ static const struct config_list cache_opts[] =
 	DEF_OPT_UINT8("csp_allow_reforward"	, OFS(csp.allow_reforward),	0),
 	DEF_OPT_FUNC("cacheex_cw_check"		, OFS(cacheex_cwcheck_tab),	cacheex_cwcheck_tab_fn),
 	DEF_OPT_UINT8("wait_until_ctimeout"     , OFS(wait_until_ctimeout),	0),
+	DEF_OPT_UINT8("csp_block_fakecws"     , OFS(csp.block_fakecws),	0),
 #endif
 #ifdef CW_CYCLE_CHECK
 	DEF_OPT_INT8("cwcycle_check_enable"	, OFS(cwcycle_check_enable),	0),
@@ -999,7 +1004,11 @@ static const struct config_list dvbapi_opts[] =
 	DEF_OPT_INT8("request_mode"	, OFS(dvbapi_requestmode),	0),
 	DEF_OPT_INT32("listen_port"	, OFS(dvbapi_listenport),	0),
 	DEF_OPT_INT32("delayer"		, OFS(dvbapi_delayer),		0),
+	DEF_OPT_INT8("ecminfo_type"		, OFS(dvbapi_ecminfo_type),	0),
 	DEF_OPT_STR("user"		, OFS(dvbapi_usr),		NULL),
+	DEF_OPT_INT8("read_sdt"		, OFS(dvbapi_read_sdt),	0),
+	DEF_OPT_INT8("write_sdt_prov", OFS(dvbapi_write_sdt_prov),	0),
+	DEF_OPT_INT8("extended_cw_api", OFS(dvbapi_extended_cw_api),	0),
 	DEF_OPT_FUNC("boxtype"		, OFS(dvbapi_boxtype),		dvbapi_boxtype_fn),
 	DEF_OPT_FUNC("services"		, OFS(dvbapi_sidtabs.ok),	dvbapi_services_fn),
 	// OBSOLETE OPTIONS
@@ -1076,6 +1085,7 @@ void config_free(void)
 #endif
 #ifdef CS_CACHEEX
 	caidvaluetab_clear(&cfg.cacheex_mode1_delay_tab);
+	cecspvaluetab_clear(&cfg.cacheex_wait_timetab);
 #endif
 #ifdef CW_CYCLE_CHECK
 	caidtab_clear(&cfg.cwcycle_check_caidtab);
@@ -1097,7 +1107,7 @@ int32_t init_config(void)
 
 	const struct config_sections *cur_section = oscam_conf; // Global
 	char *token;
-
+	
 	config_sections_set_defaults(oscam_conf, &cfg);
 
 	if(!fp)
@@ -1157,6 +1167,7 @@ int32_t init_config(void)
 			}
 			continue;
 		}
+
 		if(!valid_section)
 			{ continue; }
 		char *value = strchr(token, '=');

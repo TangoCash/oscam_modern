@@ -36,7 +36,13 @@ void ratelimit_read(void);
 int32_t init_provid(void);
 int32_t init_srvid(void);
 int32_t init_tierid(void);
+int32_t init_fakecws(void);
 void    init_len4caid(void);
+
+#ifdef MODULE_SERIAL
+struct ecmtw get_twin(ECM_REQUEST *er); // get twin channel
+void twin_read(void);
+#endif
 
 /* Shared parser functions */
 void check_caidtab_fn(const char *token, char *value, void *setting, FILE *f);

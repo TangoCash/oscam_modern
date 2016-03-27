@@ -190,9 +190,9 @@ static int32_t ghttp_send_int(struct s_client *client, uchar *buf, int32_t l)
 static int32_t ghttp_send(struct s_client *client, uchar *buf, int32_t l)
 {
 	s_ghttp *context = (s_ghttp *)client->ghttp;
-	pthread_mutex_lock(&context->conn_mutex);
+	SAFE_MUTEX_LOCK(&context->conn_mutex);
 	int32_t ret = ghttp_send_int(client, buf, l);
-	pthread_mutex_unlock(&context->conn_mutex);
+	SAFE_MUTEX_UNLOCK(&context->conn_mutex);
 	return ret;
 }
 
@@ -213,7 +213,7 @@ static int32_t ghttp_recv_int(struct s_client *client, uchar *buf, int32_t l)
 		n = SSL_read(context->ssl_handle, buf, l);
 #endif
 	}
-	else { n = recv(client->pfd, buf, l, 0); }
+	else { n = cs_recv(client->pfd, buf, l, 0); }
 
 	if(n > 0)
 	{
@@ -238,9 +238,9 @@ static int32_t ghttp_recv_int(struct s_client *client, uchar *buf, int32_t l)
 static int32_t ghttp_recv(struct s_client *client, uchar *buf, int32_t l)
 {
 	s_ghttp *context = (s_ghttp *)client->ghttp;
-	pthread_mutex_lock(&context->conn_mutex);
+	SAFE_MUTEX_LOCK(&context->conn_mutex);
 	int32_t ret = ghttp_recv_int(client, buf, l);
-	pthread_mutex_unlock(&context->conn_mutex);
+	SAFE_MUTEX_UNLOCK(&context->conn_mutex);
 	return ret;
 }
 
@@ -632,7 +632,7 @@ static bool _is_pid_ignored(ECM_REQUEST *er)
 	return false;
 }
 
-static int32_t ghttp_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar *UNUSED(buf))
+static int32_t ghttp_send_ecm(struct s_client *client, ECM_REQUEST *er)
 {
 	uint32_t hash;
 	s_ghttp *context = (s_ghttp *)client->ghttp;

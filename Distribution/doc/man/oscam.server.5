@@ -164,6 +164,11 @@ set card init mode for AzBox internal reader, default:none
 1 = use GPIO to init the reader. This needs to be set on WRT54G router, default:0
 .RE
 .PP
+\fB ins2e06\fP = \fBpayload\fP
+.RS 3n
+add check control for pin payload (4 hex bytes) for NDS Videoguard 2 SCs, valid for physical readers only, default:none
+.RE
+.PP
 \fBins7e\fP = \fBpayload\fP
 .RS 3n
 add 26 hex-bytes payload for NDS Videoguard 2 SCs, valid for physical readers only, default:none
@@ -174,14 +179,9 @@ add 26 hex-bytes payload for NDS Videoguard 2 SCs, valid for physical readers on
 set TA1 byte for NDS Videoguard 2 SCs, valid for physical readers only, default:none
 .RE
 .PP
-\fBfix07\fP = \fBpayload\fP
+\fBfix07\fP = \fB0\fP|\fB1\fP
 .RS 3n
 1=enable 0x07 fix for NDS Videoguard 2 SCs, valid for physical readers only, default:1
-.RE
-.PP
-\fB\fP = \fBpayload\fP
-.RS 3n
-add check control for pin payload for NDS Videoguard 2 SCs, valid for physical readers only, default:none
 .RE
 .PP
 \fBforce_irdeto\fP = \fB0\fP|\fB1\fP
@@ -191,7 +191,7 @@ add check control for pin payload for NDS Videoguard 2 SCs, valid for physical r
 .PP
 \fBnagra_read\fP = \fB0\fP|\fB1\fP|\fB2\fP
 .RS 3n
-read Nagravison records (on NCMED cards only):
+read Nagravison records (on NCMED SCs only):
 
  \fB0\fP = disabled (default)
  \fB1\fP = read all records with expired rights
@@ -203,9 +203,9 @@ read Nagravison records (on NCMED cards only):
 RSA key for Nagravision/Tiger SCs, CAM key data for Irdeto SCs, Conax SCs, default:none
 .RE
 .PP
-\fBfix9993\fP = \fB0\fP|\fB1\fP
+\fBdeskey\fP = \fBDES key\fP
 .RS 3n
-1 = enable fix for 9993 error with CAID 0919 SCs, default:0
+DES key for Viaccess SCs post-processing, default:none
 .RE
 .PP
 \fBboxkey\fP = \fBbox key\fP
@@ -216,6 +216,20 @@ box key for Nagravision SCs / CAM key for Irdeto SCs
 \fBpincode\fP = \fBpincode\fP
 .RS 3n
 pincode for Conax, Cryptoworks and Viaccess SCs, default:none
+.RE
+.PP
+\fBfix9993\fP = \fB0\fP|\fB1\fP
+.RS 3n
+1 = enable fix for 9993 error with CAID 0919 Videoguard SCs, default:0
+.RE
+.PP
+\fBreadtiers\fP = \fB0\fP|\fB1\fP|\fB2\fP
+.RS 3n
+method to get tiers of NDS Videoguard SCs:
+
+ \fB0\fP = disabled (default)
+ \fB1\fP = ins70 method
+ \fB2\fP = ins76 method
 .RE
 .PP
 \fBboxid\fP = \fBNDS box ID\fP
@@ -431,6 +445,11 @@ cache exchange incoming ECM filter setting (mode 2 only) for Cardservproxy, defa
 1 = allow cache exchange filter (for cache exchange mode 2 only), default:1
 .RE
 .PP
+\fBcacheex_block_fakecws\fP = \fB0\fP|\fB1\fP
+.RS 3n
+1 = enable fake DCWs blocking (for cache exchange mode 2 only), get fake DCWs form \fBoscam.fakecws\fP, default:0
+.RE
+.PP
 \fBecmwhitelist\fP = [\fBCAID\fP[@\fBprovid\fP]:]\fBlength\fP[,\fBlength\fP]...[;[\fBCAID\fP[@\fBprovid\fP]:]\fBlength\fP[,\fBlength\fP]...]...
 .RS 3n
 set valid ECM length per CAID and provid in hex, default:none,provid=000000
@@ -525,15 +544,10 @@ block all types of EMMs by length, default:none
  example: blockemm-bylen = 1-10,11-
 .RE
 .PP
-\fBvia_emm_global\fP = \fB0\fP|\fB1\fP
-.RS 3n
-1 = enable global EMM filter for Viaccess SCs, default:0, \fIfor camd35/cs357x  protocol only\fR
-.RE
-.PP
 \fBread_old_classes\fP = \fB0\fP|\fB1\fP \fI(Viaccess SCs only)\fR
 .RS 3n
-0 = read only active entitlements (default)
-1 = read all entitlements
+0 = read only active entitlements
+1 = read all entitlements (default)
 .RE
 .PP
 \fBsaveemm-u\fP = \fB0\fP|\fB1\fP
@@ -875,4 +889,4 @@ gbox reader
  group    = 11
  caid     = 1100
 .SH "SEE ALSO"
-\fBlist_smargo\fR(1), \fBoscam\fR(1), \fBoscam.ac\fR(5), \fBoscam.cacheex\fR(5), \fBoscam.cert\fR(5), \fBoscam.conf\fR(5), \fBoscam.dvbapi\fR(5), \fBoscam.guess\fR(5), \fBoscam.ird\fR(5), \fBoscam.provid\fR(5), \fBoscam.ratelimit\fR(5), \fBoscam.services\fR(5), \fBoscam.srvid\fR(5), \fBoscam.tiers\fR(5), \fBoscam.user\fR(5), \fBoscam.whitelist\fR(5)
+\fBlist_smargo\fR(1), \fBoscam\fR(1), \fBoscam.ac\fR(5), \fBoscam.cacheex\fR(5), \fBoscam.cert\fR(5), \fBoscam.conf\fR(5), \fBoscam.dvbapi\fR(5), \fBoscam.fakecws\fR(5), \fBoscam.guess\fR(5), \fBoscam.ird\fR(5), \fBoscam.provid\fR(5), \fBoscam.ratelimit\fR(5), \fBoscam.services\fR(5), \fBoscam.srvid\fR(5), \fBoscam.srvid2\fR(5), \fBoscam.tiers\fR(5), \fBoscam.user\fR(5), \fBoscam.whitelist\fR(5)

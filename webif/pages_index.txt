@@ -8,6 +8,8 @@
 
 JSONCACHEEX                   api.json/cacheex.json                                       CS_CACHEEX
 JSONCACHEEXBIT                api.json/cacheexbit.json                                    CS_CACHEEX
+JSONENTITLEMENTS              api.json/entitlements.json
+JSONENTITLEMENTBIT            api.json/entitlementbit.json
 JSONFOOTER                    api.json/footer.json
 JSONHEADER                    api.json/header.json
 JSONREADER                    api.json/reader.json
@@ -58,6 +60,7 @@ CONFIGGLOBAL                  config/global.html
 ENABLELEDBIT                  config/global_enableledbit.html                             LEDSUPPORT
 LOCALCARDS                    config/global_localcards.html                               WITH_CARDREADER
 SUPPRESSCMD08                 config/global_suppresscmd08.html                            MODULE_CAMD35,MODULE_CAMD35_TCP
+GETBLOCKEMMAUPROVID           config/global_getblockemmauprovid.html                      MODULE_CAMD35,MODULE_CAMD35_TCP
 UNLOCKPARENTAL                config/global_unlockparental.html                           READER_SECA,READER_VIACCESS
 CONFIGLCD                     config/lcd.html                                             LCDSUPPORT
 CONFIGLOADBALANCER            config/loadbalancer.html                                    WITH_LB
@@ -105,12 +108,15 @@ FAILBAN                       failban/failban.html
 FAILBANBIT                    failban/failban_failbanrow.html
 
 FILE                          files/file.html
-FILEEDITCSS                   files/file_edit_css.html
+FILEMENUCSS                   files/file_edit_css.html
 FILTERFORM                    files/file_filterform.html
 WRITEPROTECTION               files/file_writeprotection.html
 FILEMENU                      files/menu.html
-FILEMENUDVBAPI                files/menu_dvbapi.html                                      HAVE_DVBAPI
 FILEMENUANTICASC              files/menu_anticasc.html                                    CS_ANTICASC
+FILEMENUCONSTCW               files/menu_constantcw.html                                  MODULE_CONSTCW
+FILEMENUDVBAPI                files/menu_dvbapi.html                                      HAVE_DVBAPI
+FILEMENUFAKECWS               files/menu_fakecws.html                                     CS_CACHEEX
+FILEMENUTWIN                  files/menu_twin.html                                        MODULE_SERIAL
 
 AUTOCONF                      ghttp/autoconf.html                                         MODULE_GHTTP
 PREAUTOCONF                   ghttp/pre_autoconf.html                                     MODULE_GHTTP
@@ -129,11 +135,12 @@ ICENT                         images/ICENT.svg
 ICHID                         images/ICHID.svg
 ICKIL                         images/ICKIL.svg
 LOGOBITSVG                    images/ICMLOGO.svg
-IC_LOGOW                      images/ICMLOGOW.svg
 ICREF                         images/ICREF.svg
 ICRES                         images/ICRES.svg
-ICSTA                         images/ICSTA.svg
 ICSPAC                        images/ICSPAC.gif
+ICSTA                         images/ICSTA.svg
+ICSTART                       images/ICSTART.svg
+ICSTOP                        images/ICSTOP.svg
 
 BODY                          include/body.html
 CCENTITLEMENTS                include/cccamentitlements.html                              MODULE_CCCAM
@@ -153,6 +160,7 @@ MESSAGE                       include/message.html
 MESSAGEBIT                    include/message_bit.html
 NOENTITLEMENTS                include/noentitlements.html
 POLL                          include/poll.html
+POLLINGSET                    include/pollingset.html
 PROTOCCCAMPIC                 include/protocccampic.html                                  MODULE_CCCAM
 PROTONEWCAMDPIC               include/protonewcamdpic.html                                MODULE_NEWCAMD
 PROTOOTHERPIC                 include/protootherpic.html
@@ -167,6 +175,7 @@ LOGMENUONOFF                  logmenu/log_logmenuonoff.html
 LOGPAGE                       logpage/logpage.html                                        WEBIF_LIVELOG
 LOGMENU                       logpage/logpage_menu.html                                   WEBIF_LIVELOG
 LOGDEBUGMENU                  logpage/logpage_debugmenu.html                              WEBIF_LIVELOG
+LOGSIZEMENU                   logpage/logpage_sizemenu.html                               WEBIF_LIVELOG
 
 READERCONFIG                  readerconfig/readerconfig.html
 READEREDITCACHEEXBIT          readerconfig/readerconfig_cacheexbit.html                   CS_CACHEEX
@@ -177,12 +186,13 @@ READERCONFIGGBOXBIT           readerconfig/readerconfig_gboxbit.html            
 READERCONFIGGHTTPBIT          readerconfig/readerconfig_ghttpbit.html                     MODULE_GHTTP
 READERCONFIGHOPBIT            readerconfig/readerconfig_hopbit.html                       MODULE_CCCAM
 READERCONFIGSTDHWREADERBIT    readerconfig/readerconfig_hwreader.html                     WITH_CARDREADER
-READERCONFIGBOXKEY            readerconfig/readerconfig_hwreader_boxkey.html              READER_NAGRA,READER_IRDETO,READER_SECA
+READERCONFIGBOXKEY            readerconfig/readerconfig_hwreader_boxkey.html              READER_NAGRA,READER_IRDETO,READER_SECA,READER_VIACCESS
 READERCONFIGIRDETO            readerconfig/readerconfig_hwreader_irdeto.html              READER_IRDETO
 READERCONFIGNAGRA             readerconfig/readerconfig_hwreader_nagra.html               READER_NAGRA
 READERCONFIGNANO              readerconfig/readerconfig_hwreader_nano.html                WITH_CARDREADER
 READERPINCODE                 readerconfig/readerconfig_hwreader_pincode.html             READER_CONAX,READER_CRYPTOWORKS,READER_VIACCESS,READER_SECA
 READERCONFIGRSAKEY            readerconfig/readerconfig_hwreader_rsakey.html              READER_NAGRA,READER_IRDETO,READER_CONAX
+READERCONFIGDESKEY            readerconfig/readerconfig_hwreader_deskey.html              READER_VIACCESS
 READERCONFIGSC8IN1            readerconfig/readerconfig_hwreader_sc8in1.html              CARDREADER_SC8IN1
 READERCONFIGSMARGO            readerconfig/readerconfig_hwreader_smargo.html              CARDREADER_SMARGO,CARDREADER_PHOENIX
 READERCONFIGVIACCESS          readerconfig/readerconfig_hwreader_viaccess.html            READER_VIACCESS

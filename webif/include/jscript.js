@@ -53,13 +53,51 @@ function cleaninsert(deleteinsert) {
 	var tmp_array = existing_inserts.slice();
 	existing_inserts.length = 0;
 	var i2 = 0;
- 	for (i = 0; i < tmp_array.length; i++) {
- 		if (tmp_array[i] != deleteinsert){
+	for (i = 0; i < tmp_array.length; i++) {
+		if (tmp_array[i] != deleteinsert){
 			existing_inserts[i2] = tmp_array[i];
 			i2++; 
 		}
 	}
 }
+
+var beep = (function () {
+	var contextClass = (window.AudioContext || 
+						window.webkitAudioContext || 
+						window.mozAudioContext || 
+						window.oAudioContext || 
+						window.msAudioContext);
+	if (contextClass) {
+		var ctx = new contextClass();
+		return function (duration, type, freq, vol, finishedCallback) {
+			duration = +duration;
+			// Only 0-4 are valid types.
+			type = (type % 5) || 0;
+
+			if (typeof finishedCallback != "function") {
+				finishedCallback = function () {};
+			}
+
+			var osc = ctx.createOscillator();
+			var gainNode = ctx.createGain();
+			osc.type = type;
+			osc.connect(gainNode);
+			gainNode.connect(ctx.destination);
+			gainNode.gain.value = vol;
+			osc.type = type;
+			osc.frequency.value = freq; // value in hertz
+			osc.detune.value = 100; // value in cents
+			osc.start(0);
+
+			setTimeout(function () {
+				osc.stop(0);
+				finishedCallback();
+			}, duration);
+		};
+	} else {
+		return function (duration, type, freq, vol, finishedCallback) {return;};
+	}
+})();
 
 String.prototype.toHHMMSS = function () {
 	if (this.length < 1) {
@@ -108,16 +146,35 @@ function runden(value) {
 $(function () {
 	// Pollinterval UP
 	$("#inc").click(function () {
-		if (pollintervall > 98000) return;
+		if (pollintervall > 98000 || polling) return;
 		$(":text[name='pintervall']").val(Number($(":text[name='pintervall']").val()) + 1);
 		pollintervall = $(":text[name='pintervall']").val() * 1000;
 		if (!nostorage) {
 			sessionStorage.pollintervall = pollintervall;
 		}
 	});
+	// Pollinterval PAUSE
+	$("#polling").click(function () {
+		if (polling < 1) {
+			polling = 1;
+			$(":text[name='pintervall']").val('--');
+			$('#polling').attr('class','pollingdisabled');
+			$('#inc, #dec').attr('disabled','disabled');
+		} else {
+			polling = 0;
+			$(":text[name='pintervall']").val(pollintervall/1000);
+			$('#polling').attr('class','pollingenabled');
+			$('#inc, #dec').removeAttr('disabled');
+			clearTimeout(timer_ID);
+			timer_ID = setTimeout("waitForMsg()", pollintervall);
+		}
+		if (!nostorage) {
+			sessionStorage.polling = polling;
+		}
+	});
 	// Pollinterval DOWN
 	$("#dec").click(function () {
-		if (pollintervall < 2000) return;
+		if (pollintervall < 2000 || polling) return;
 		$(":text[name='pintervall']").val(Number($(":text[name='pintervall']").val()) - 1);
 		pollintervall = $(":text[name='pintervall']").val() * 1000;
 		if (!nostorage) {
@@ -148,10 +205,42 @@ $(function () {
 	$('table.status').on('mouseout', 'tr > td.statuscol14', function () {
 		$("#chart").hide();
 	});
+	
+	$("#add1regex").click(function () {
+		if (MAX_SEARCH_PATTERN > 98) return;
+		MAX_SEARCH_PATTERN++;
+		localStorage.MAX_SEARCH_PATTERN = MAX_SEARCH_PATTERN;
+		var i = MAX_SEARCH_PATTERN;
+		var beep_disabled = ' disabled="disabled" title="Not supported by your browser"';
+		var contextClass = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.oAudioContext || window.msAudioContext);
+		if (contextClass) { beep_disabled = ''; }
+		var prefix = "0";
+		if ( i > 9 ) { prefix = ""; }
+		$('<LI class="regex" id="regexrow' + i + '">Search' + prefix + i + ': <input type="text" name="regex' + i + '" class="regexinput" ID="regex' + i + '" value=""> Found only: <input type="checkbox" id="whitelisted' + i + '"><label></label> Hide: <input type="checkbox" id="hidden' + i + '"><label></label> Back Color: <input size="7" maxlength="7" type="text" name="color' + i + '" class="colorinput" ID="color' + i + '" value=""> Color: <input size="7" maxlength="7" type="text" name="fcolor' + i + '" class="colorinput" ID="fcolor' + i + '" value=""> Beep: <input type="checkbox" id="beep' + i + '"' + beep_disabled +'><label></label></LI>').insertBefore(".regexdata_save");
+		$('#color' + i).val($('.colorPicker_def_color').css('color'));
+		$('#fcolor' + i).val($('.colorPicker_def_fcolor').css('color'));
+		$('#color' + i).colorPicker();
+		$('#fcolor' + i).colorPicker();
+	});
+
+	$("#del1regex").click(function () {
+		var i = MAX_SEARCH_PATTERN;
+		if (i < 2) return;
+		if ($('#regex' + i).val() != '') if (!confirm('Search' + i + ' is not empty! Delete?')) return;
+		$("#regexrow" + i).remove();
+		localStorage.removeItem('regex' + i);
+		localStorage.removeItem('color' + i);
+		localStorage.removeItem('fcolor' + i);
+		localStorage.removeItem('whitelisted' + i);
+		localStorage.removeItem('hidden' + i);
+		localStorage.removeItem('beep' + i);
+		MAX_SEARCH_PATTERN--;
+		localStorage.MAX_SEARCH_PATTERN = MAX_SEARCH_PATTERN;
+	});
 
 	$("#regexok").click(function () {
 
-		for (var i = 1; i < 6; i++) {
+		for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
 			var pattern = $('#regex' + i).val();
 			if (pattern) {
 				var color = $('#color' + i).val();
@@ -165,6 +254,7 @@ $(function () {
 			localStorage['fcolor' + i] = fcolor ? fcolor : '';
 			localStorage['whitelisted' + i] = $('#whitelisted' + i).prop('checked') ? '1' : '0';
 			localStorage['hidden' + i] = $('#hidden' + i).prop('checked') ? '1' : '0';
+			localStorage['beep' + i] = $('#beep' + i).prop('checked') ? '1' : '0';
 		}
 
 	});
@@ -172,24 +262,35 @@ $(function () {
 	$("#regexreset").click(function () {
 
 		if (confirm('Delete all Filters and Colors?')) {
-			for (var i = 1; i < 6; i++) {
+			for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
 				$('#regex' + i).val('');
 				$('#whitelisted' + i).prop('checked', false);
 				$('#hidden' + i).prop('checked', false);
 				$('#color' + i).val($('.colorPicker_def_color').css('color'));
 				$('#color' + i).change();
 				$('#fcolor' + i).val($('.colorPicker_def_fcolor').css('color'));   
-    			$('#fcolor' + i).change();
+				$('#fcolor' + i).change();
+				$('#beep' + i).prop('checked', false);
 				localStorage['regex' + i] = '';
 				localStorage['color' + i] = '';
 				localStorage['fcolor' + i] = '';
 				localStorage['whitelisted' + i] = '0';
 				localStorage['hidden' + i] = '0';
+				localStorage['beep' + i] = '0';
 			}
 		}
 
 	});
 
+	$(".sizemls a, .sizeml a").click(function () {
+		maxloglines = parseInt($(this).attr('sendval'));
+		$("#sizemfrom").text(' Switch displayed log lines from ' + maxloglines + ' to ');
+		for (var i = 32; i <= 512; i *= 2) {
+			$("#sizem" + i).attr('class', (maxloglines == i) ? 'sizemls' : 'sizeml');
+		}
+		return false;
+	});
+	
 	$(".debugls a, .debugl a").click(function () {
 		parameters = parameters + "&debug=" + $(this).attr('sendval');
 		return false;
@@ -777,17 +878,19 @@ function getLogColor(text) {
 		return null;
 	}
 
-	for (var i = 1; i < 6; i++) {
+	for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
 		var pattern = localStorage['regex' + i];
 		var color = localStorage['color' + i];
 		var fcolor = localStorage['fcolor' + i];
 		var hidden = localStorage['hidden' + i];
+		var beep = localStorage['beep' + i];
 		var regex = new RegExp(pattern);
 		if (pattern && (pattern != '') && (regex.exec(text))) {
 			return {
 				color: color,
 				fcolor: fcolor,
-				hidden: hidden
+				hidden: hidden,
+				beep: beep
 			}
 		}
 	}
@@ -804,11 +907,11 @@ function isWhitelisted(text) {
 	}
 
 	var numwhite = 0;
-	for (var i = 1; i < 6; i++) {
+	for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
 		numwhite += parseInt(localStorage['whitelisted' + i]);
 	}
 	if (numwhite > 0) {
-		for (var i = 1; i < 6; i++) {
+		for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
 			var whitelisted = localStorage['whitelisted' + i];
 			var pattern = localStorage['regex' + i];
 			var regex = new RegExp(pattern);
@@ -852,6 +955,9 @@ function updateLogpage(data) {
 						newline.css('color', newcolor.fcolor);
 					}
 					$("#livelogdata").append(newline);
+					if (newcolor.beep == 1) {
+						beep(50, 4, 1000, 0.2);
+					}
 				} else {
 					hiddenline = 1;
 				}
@@ -860,9 +966,6 @@ function updateLogpage(data) {
 			}
 
 			if (!hiddenline) {
-				if ($("#livelogdata li").length >= maxloglines) {
-					$("#livelogdata li").eq(0).remove();
-				}
 				if ($("#livelog:hover").length) {
 					$('#livelog').stop(true);
 				} else {
@@ -872,6 +975,11 @@ function updateLogpage(data) {
 		}
 		parameters = "?lastid=" + item.id;
 	});
+
+	var len = $("#livelogdata li").length;
+	if (len > maxloglines) {
+		$("#livelogdata li").slice(0, len - maxloglines).remove();
+	}
 
 	// update footer
 	updateFooter(data);
@@ -1112,7 +1220,7 @@ function updateStatuspage(data) {
 			}
 
 			if (!is_nopoll('statuscol13')) {
-				$(uid + " > td.statuscol13").append('<A HREF="files.html?file=oscam.srvid" TITLE="' + item.request + '"/>');
+				$(uid + " > td.statuscol13").append('<A HREF="files.html?file=' + data.oscam.srvidfile + '" TITLE="' + item.request + '"/>');
 			}
 
 			if (!is_nopoll('statuscol9')) {
@@ -1177,7 +1285,7 @@ function updateStatuspage(data) {
 			$(uid + " > td.statuscol9").attr('title', item.protocolext);
 		}
 		if (!is_nopoll('statuscol12')) {
-			$(uid + " > td.statuscol12").text(item.request.caid + ':' + item.request.srvid);
+			$(uid + " > td.statuscol12").text(item.request.srvid + ':' + item.request.caid + '@' + item.request.provid);
 		}
 
 		if (!is_nopoll('statuscol13')) {
@@ -1191,7 +1299,7 @@ function updateStatuspage(data) {
 					var image = $(uid + " > td.statuscol13 > a > img.statususericon");
 					if (image.attr('src') != 'image?i=IC_' + item.request.picon) {
 						// set title of link as tooltip
-						$(uid + " > td.statuscol13 > a").attr('title', item.request.chprovider + item.request.chname);
+						$(uid + " > td.statuscol13 > a").attr('title', item.request.chname + item.request.chprovider);
 						image.hide();
 						image.attr('src', 'image?i=IC_' + item.request.picon);
 						image.fadeIn('slow');
@@ -1204,10 +1312,10 @@ function updateStatuspage(data) {
 
 					// if we have no link we create one
 					if (!$(uid + " > td.statuscol13 > a").length) {
-						$(uid + " > td.statuscol13").append('<a href="files.html?file=oscam.srvid"/>');
+						$(uid + " > td.statuscol13").append('<a href="files.html?file=' + data.oscam.srvidfile + '"/>');
 					}
 					// set title of link as tooltip
-					$(uid + " > td.statuscol13 > a").attr('title', item.request.chprovider + item.request.chname);
+					$(uid + " > td.statuscol13 > a").attr('title', item.request.chname + item.request.chprovider);
 
 					// just to be sure that class of image is set
 					if ($(uid + " > td.statuscol13 > a > img").length) {
@@ -1223,7 +1331,9 @@ function updateStatuspage(data) {
 			} else {
 				// picon is not delivered in JSON - we set the text of column
 				if (item.request.chname && item.request.srvid != '0000') {
-					$(uid + " > td.statuscol13").html(item.request.chprovider + item.request.chname);
+					$(uid + " > td.statuscol13").html('<a href="files.html?file=' + data.oscam.srvidfile + '"/>');
+					$(uid + " > td.statuscol13 > a").html(item.request.chname + item.request.chprovider);
+					$(uid + " > td.statuscol13 > a").attr('title', item.request.chname + item.request.chprovider);
 				} else {
 					$(uid + " > td.statuscol13").html('');
 				}
@@ -1371,7 +1481,7 @@ function updateStatuspage(data) {
 		var rcon = (data.oscam.status.rca - data.oscam.status.rco);
 		if($("#rco").length) {
 			$("#rcc").text(data.oscam.status.rcc);
-			$("#rca").text(data.oscam.status.rca);	
+			$("#rca").text(data.oscam.status.rca);
 			$("#rco").text(rcon);
 		} else {
 			$("#rhead").html('Readers <span id="rcc">' + data.oscam.status.rcc + '</span>/' + data.oscam.status.rca + ' (<span id="rco">' + rcon + '</span> of ' + data.oscam.status.rca + ' CARDOK)');
@@ -1380,7 +1490,7 @@ function updateStatuspage(data) {
 		$("#rhead").html('Readers <span id="rcc">' + data.oscam.status.rcc + '</span>/' + data.oscam.status.rca);
 	} else {
 		$("#rcc").text(data.oscam.status.rcc);
-		$("#rca").text(data.oscam.status.rca);	
+		$("#rca").text(data.oscam.status.rca);
 	}
 
 	//update proxy-headline
@@ -1388,7 +1498,7 @@ function updateStatuspage(data) {
 		var pcon = (data.oscam.status.pca - data.oscam.status.pco);
 		if($("#pco").length) {
 			$("#pcc").text(data.oscam.status.pcc);
-			$("#pca").text(data.oscam.status.pca);	
+			$("#pca").text(data.oscam.status.pca);
 			$("#pco").text(pcon);
 		} else {
 			$("#phead").html('Proxies <span id="pcc">' + data.oscam.status.pcc + '</span>/' + data.oscam.status.pca + ' (<span id="pco">' + pcon + '</span> of ' + data.oscam.status.pca + ' online)');
@@ -1397,7 +1507,7 @@ function updateStatuspage(data) {
 		$("#phead").html('Proxies <span id="pcc">' + data.oscam.status.pcc + '</span>/' + data.oscam.status.pca);
 	} else {
 		$("#pcc").text(data.oscam.status.pcc);
-		$("#pca").text(data.oscam.status.pca);	
+		$("#pca").text(data.oscam.status.pca);
 	}
 
 	// update footer
@@ -1489,7 +1599,7 @@ function waitForMsg() {
 
 	if (lockpoll > 0) {
 		/* assumed that previous poll is not finnished yet we not
-	   call new data and just set the next intervall */
+		call new data and just set the next intervall */
 		clearTimeout(timer_ID);
 		timer_ID = setTimeout("waitForMsg()", pollintervall);
 		return;
@@ -1503,8 +1613,8 @@ function waitForMsg() {
 		cache: false,
 		success: function (data) {
 			setPollerr(0);
+			if ((!pollrefresh || polling ) && page != 'livelog') return;
 			updatePage(data);
-			if (!pollrefresh && page != 'livelog') return;
 			if (!stoppoll) {
 				clearTimeout(timer_ID);
 				timer_ID = setTimeout("waitForMsg()", pollintervall);
@@ -1529,6 +1639,7 @@ function setPollrefresh() {
 		if (!nostorage) {
 			if (sessionStorage.pollintervall) pollintervall = sessionStorage.pollintervall;
 			else sessionStorage.pollintervall = pollintervall;
+			if (sessionStorage.polling == 1) polling = 1;
 		}
 	}
 }
@@ -1577,8 +1688,24 @@ $(document).ready(function () {
 
 		case 'livelog':
 
+			var saved_regex = localStorage.MAX_SEARCH_PATTERN;
+			MAX_SEARCH_PATTERN = parseInt(saved_regex ? saved_regex : MAX_SEARCH_PATTERN);
+			$('<LI style="display:none;"><span class="colorPicker_def_color"></span><span class="colorPicker_def_fcolor"></span></LI>').insertBefore(".regexdata_save");
+			
+			var beep_disabled = ' disabled="disabled" title="Not supported by your browser"';
+			var contextClass = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.oAudioContext || window.msAudioContext);
+			if (contextClass) { beep_disabled = ''; }
+
+			for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
+
+				var prefix = "0";
+				if ( i > 9 ) { prefix = ""; }
+
+				$('<LI class="regex" id="regexrow' + i + '">Search' + prefix + i + ': <input type="text" name="regex' + i + '" class="regexinput" ID="regex' + i + '" value=""> Found only: <input type="checkbox" id="whitelisted' + i + '"><label></label> Hide: <input type="checkbox" id="hidden' + i + '"><label></label> Back Color: <input size="7" maxlength="7" type="text" name="color' + i + '" class="colorinput" ID="color' + i + '" value=""> Color: <input size="7" maxlength="7" type="text" name="fcolor' + i + '" class="colorinput" ID="fcolor' + i + '" value=""> Beep: <input type="checkbox" id="beep' + i + '"' + beep_disabled +'><label></label></LI>').insertBefore(".regexdata_save");
+			}
+
 			if (!nostorage) {
-				for (var i = 1; i < 6; i++) {
+				for (var i = 1; i < MAX_SEARCH_PATTERN + 1; i++) {
 					var pattern = localStorage['regex' + i];
 					var color = localStorage['color' + i];
 					var fcolor = localStorage['fcolor' + i];
@@ -1589,6 +1716,7 @@ $(document).ready(function () {
 					$('#fcolor' + i).colorPicker();
 					$('#whitelisted' + i).prop('checked', localStorage['whitelisted' + i] == '1' ? true : false);
 					$('#hidden' + i).prop('checked', localStorage['hidden' + i] == '1' ? true : false);
+					$('#beep' + i).prop('checked', localStorage['beep' + i] == '1' ? true : false);
 				}
 			}
 			waitForMsg();
@@ -1623,9 +1751,17 @@ $(document).ready(function () {
 		// if pollrefresh set to 0 hide pollselector
 		setPollrefresh();
 		if (pollrefresh) {
-			$(":text[name='pintervall']").val(pollintervall / 1000);
+			if (polling) {
+				$(":text[name='pintervall']").val('--');
+				$('#polling').attr('class','pollingdisabled');
+				$('#inc, #dec').attr('disabled','disabled');
+			} else {
+				$(":text[name='pintervall']").val(pollintervall / 1000);
+				$('#polling').attr('class','pollingenabled');
+				$('#inc, #dec').removeAttr('disabled');
+				waitForMsg();
+			}
 			$("#poll").show();
-			waitForMsg();
 		}
 	}
 });

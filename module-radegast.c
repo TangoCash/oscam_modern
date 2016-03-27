@@ -22,12 +22,12 @@ static int32_t radegast_recv(struct s_client *client, uchar *buf, int32_t l)
 	if(!client->pfd) { return (-1); }
 	if(client->typ == 'c')     // server code
 	{
-		if((n = recv(client->pfd, buf, l, 0)) > 0)
+		if((n = cs_recv(client->pfd, buf, l, 0)) > 0)
 			{ client->last = time((time_t *) 0); }
 	}
 	else      // client code
 	{
-		if((n = recv(client->pfd, buf, l, 0)) > 0)
+		if((n = cs_recv(client->pfd, buf, l, 0)) > 0)
 		{
 			cs_log_dump_dbg(D_CLIENT, buf, n, "radegast: received %d bytes from %s", n, remote_txt());
 			client->last = time((time_t *) 0);
@@ -108,23 +108,36 @@ static void radegast_process_ecm(uchar *buf, int32_t l)
 
 	if(!(er = get_ecmtask()))
 		{ return; }
-	for(i = 0; i < l; i += (sl + 2))
+	for(i = 0; i+1 < l; i += (sl + 2))
 	{
 		sl = buf[i + 1];
+		
 		switch(buf[i])
 		{
 		case  2:      // CAID (upper byte only, oldstyle)
+			if(i+2 >= l)
+				{ break; }
 			er->caid = buf[i + 2] << 8;
 			break;
 		case 10:      // CAID
+			if(i+3 >= l)
+				{ break; }
 			er->caid = b2i(2, buf + i + 2);
 			break;
 		case  3:      // ECM DATA
-			//er->ecmlen = sl;
+			if(i+4 >= l)
+				{ break; }
+				
 			er->ecmlen = (((buf[i + 1 + 2] & 0x0F) << 8) | buf[i + 2 + 2]) + 3;
+			
+			if(er->ecmlen < 3 || er->ecmlen > MAX_ECM_SIZE || i+2+er->ecmlen > l)
+				{ break; } 
+			
 			memcpy(er->ecm, buf + i + 2, er->ecmlen);
 			break;
 		case  6:      // PROVID (ASCII)
+			if(i+2+sl > l)
+				{ break; }
 			n = (sl > 6) ? 3 : (sl >> 1);
 			er->prid = cs_atoi((char *) buf + i + 2 + sl - (n << 1), n, 0);
 			break;
@@ -170,7 +183,7 @@ static void *radegast_server(struct s_client *client, uchar *mbuf, int32_t n)
 	return NULL;
 }
 
-static int32_t radegast_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar *UNUSED(buf))
+static int32_t radegast_send_ecm(struct s_client *client, ECM_REQUEST *er)
 {	
 	uchar provid_buf[8];
 	uchar header[22] = "\x02\x01\x00\x06\x08\x30\x30\x30\x30\x30\x30\x30\x30\x07\x04\x30\x30\x30\x38\x08\x01\x02";
@@ -225,7 +238,7 @@ static int32_t radegast_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar
 					}
 					else if ( (SubECMp[2]==0x90 || SubECMp[2]==0x40) && SubECMp[3]==0x07 )
 					{
-						if( SubECMp[0x0A] == 0x00 )
+						if( SubECMp[0x0A] == 0x00 || SubECMp[0x0A] == 0xFF )
 						{
 							memcpy(via_ecm_mod+pos, SubECMp, SubECMp[1]+2);
 							via_ecm_mod[2] += SubECMp[1]+2;

@@ -53,14 +53,19 @@ int32_t reader_cmd2icc(struct s_reader *reader, const uchar *buf, const int32_t 
 
 int32_t card_write(struct s_reader *reader, const uchar *cmd, const uchar *data, uchar *response, uint16_t *response_length)
 {
-	uchar buf[260];
+	int32_t datalen = MAX_ECM_SIZE; // default datalen is max ecm size defined
+	uchar buf[MAX_ECM_SIZE + CMD_LEN];
 	// always copy to be able to be able to use const buffer without changing all code
-	memcpy(buf, cmd, CMD_LEN);
+	memcpy(buf, cmd, CMD_LEN); // copy command
 
 	if(data)
 	{
-		if(cmd[4]) { memcpy(buf + CMD_LEN, data, cmd[4]); }
-		return (reader_cmd2icc(reader, buf, CMD_LEN + cmd[4], response, response_length));
+		if(cmd[4])
+		{
+			datalen = cmd[4];			
+		}
+		memcpy(buf + CMD_LEN, data, datalen);
+		return (reader_cmd2icc(reader, buf, CMD_LEN + datalen, response, response_length));
 	}
 	else
 		{ return (reader_cmd2icc(reader, buf, CMD_LEN, response, response_length)); }
@@ -416,6 +421,7 @@ int32_t cardreader_do_ecm(struct s_reader *reader, ECM_REQUEST *er, struct s_ecm
 		{
 			cl->last_srvid = er->srvid;
 			cl->last_caid = er->caid;
+			cl->last_provid = er->prid;
 			cl->last = time((time_t *)0);
 		}
 
@@ -474,9 +480,9 @@ void cardreader_process_ecm(struct s_reader *reader, struct s_client *cl, ECM_RE
 
 	if(rc == ERROR)
 	{
-		char buf[32];
-		rdr_log_dbg(reader, D_READER, "Error processing ecm for caid %04X, srvid %04X, servicename: %s",
-					   er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf));
+		char buf[CS_SERVICENAME_SIZE];
+		rdr_log_dbg(reader, D_READER, "Error processing ecm for caid %04X, provid %06X, srvid %04X, servicename: %s",
+					   er->caid, er->prid, er->srvid, get_servicename(cl, er->srvid, er->prid, er->caid, buf, sizeof(buf)));
 		ea.rc = E_NOTFOUND;
 		ea.rcEx = 0;
 		ICC_Async_DisplayMsg(reader, "Eer");
@@ -484,15 +490,15 @@ void cardreader_process_ecm(struct s_reader *reader, struct s_client *cl, ECM_RE
 
 	if(rc == E_CORRUPT)
 	{
-		char buf[32];
-		rdr_log_dbg(reader, D_READER, "Error processing ecm for caid %04X, srvid %04X, servicename: %s",
-					   er->caid, er->srvid, get_servicename(cl, er->srvid, er->caid, buf));
+		char buf[CS_SERVICENAME_SIZE];
+		rdr_log_dbg(reader, D_READER, "Error processing ecm for caid %04X, provid %06X, srvid %04X, servicename: %s",
+					   er->caid, er->prid, er->srvid, get_servicename(cl, er->srvid, er->prid, er->caid, buf, sizeof(buf)));
 		ea.rc = E_NOTFOUND;
 		ea.rcEx = E2_WRONG_CHKSUM; //flag it as wrong checksum
 		memcpy(ea.msglog, "Invalid ecm type for card", 25);
 	}
 
-	write_ecm_answer(reader, er, ea.rc, ea.rcEx, ea.cw, ea.msglog);
+	write_ecm_answer(reader, er, ea.rc, ea.rcEx, ea.cw, ea.msglog, ea.tier, &ea.cw_ex);
 	
 	cl->lastecm = time((time_t *)0);
 	char ecmd5[17 * 3];

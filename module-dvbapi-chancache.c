@@ -18,6 +18,9 @@ void dvbapi_save_channel_cache(void)
 {
 	if(boxtype_is("dbox2")) return; // dont save channelcache on these boxes, they lack resources and will crash!
 	
+	if (USE_OPENXCAS) // Why?
+		return;
+
 	char fname[256];
 	int32_t result = 0;
 	get_config_filename(fname, sizeof(fname), "oscam.ccache");
@@ -148,7 +151,7 @@ struct s_channel_cache *dvbapi_find_channel_cache(int32_t demux_id, int32_t pidi
 
 #ifdef WITH_DEBUG
 				char buf[ECM_FMT_LEN];
-				ecmfmt(c->caid, 0, c->prid, c->chid, c->pid, c->srvid, 0, 0, 0, 0, buf, ECM_FMT_LEN, 0, 0);
+				ecmfmt(buf, ECM_FMT_LEN, c->caid, 0, c->prid, c->chid, c->pid, c->srvid, 0, 0, 0, 0, 0, 0, NULL, NULL);
 				cs_log_dbg(D_DVBAPI, "Demuxer %d found in channel cache: %s", demux_id, buf);
 #endif
 				return c;
@@ -197,7 +200,7 @@ int32_t dvbapi_edit_channel_cache(int32_t demux_id, int32_t pidindex, uint8_t ad
 		ll_append(channel_cache, c);
 #ifdef WITH_DEBUG
 		char buf[ECM_FMT_LEN];
-		ecmfmt(c->caid, 0, c->prid, c->chid, c->pid, c->srvid, 0, 0, 0, 0, buf, ECM_FMT_LEN, 0, 0);
+		ecmfmt(buf, ECM_FMT_LEN, c->caid, 0, c->prid, c->chid, c->pid, c->srvid, 0, 0, 0, 0, 0, 0, NULL, NULL);
 		cs_log_dbg(D_DVBAPI, "Demuxer %d added to channel cache: %s", demux_id, buf);
 #endif
 		count++;

@@ -363,6 +363,7 @@ static const struct config_list account_opts[] =
 	DEF_OPT_FUNC_X("ident"              , OFS(ftab),                    ftab_fn, FTAB_ACCOUNT | FTAB_PROVID),
 	DEF_OPT_FUNC_X("chid"               , OFS(fchid),                   ftab_fn, FTAB_ACCOUNT | FTAB_CHID),
 	DEF_OPT_FUNC("class"                , OFS(cltab),                   class_fn),
+	DEF_OPT_UINT32("max_connections"    , OFS(max_connections),         1),
 #ifdef CS_CACHEEX
 	DEF_OPT_INT8("cacheex"              , OFS(cacheex.mode),            0),
 	DEF_OPT_INT8("cacheex_maxhop"       , OFS(cacheex.maxhop),          0),
@@ -371,6 +372,7 @@ static const struct config_list account_opts[] =
 	DEF_OPT_UINT8("cacheex_allow_request"   , OFS(cacheex.allow_request),   0),
 	DEF_OPT_UINT8("no_wait_time"        , OFS(no_wait_time),            0),
 	DEF_OPT_UINT8("cacheex_allow_filter", OFS(cacheex.allow_filter),    1),	
+	DEF_OPT_UINT8("cacheex_block_fakecws",OFS(cacheex.block_fakecws),   0),	
 #endif
 #ifdef MODULE_CCCAM
 	DEF_OPT_INT32("cccmaxhops"          , OFS(cccmaxhops),              DEFAULT_CC_MAXHOPS),
@@ -501,6 +503,11 @@ int32_t init_free_userdb(struct s_auth *ptr)
 		ftab_clear(&ptr->fchid);
 		tuntab_clear(&ptr->ttab);
 		caidtab_clear(&ptr->ctab);
+    	NULLFREE(ptr->cltab.aclass);
+ 		NULLFREE(ptr->cltab.bclass);
+#ifdef CS_CACHEEX
+		cecspvaluetab_clear(&ptr->cacheex.filter_caidtab);
+#endif
 #ifdef WITH_LB
 		caidvaluetab_clear(&ptr->lb_nbest_readers_tab);
 #endif
@@ -531,7 +538,7 @@ void cs_accounts_chk(void)
 {
 	struct s_auth *account1, *account2;
 	struct s_auth *new_accounts = init_userdb();
-	cs_writelock(&config_lock);
+	cs_writelock(__func__, &config_lock);
 	struct s_auth *old_accounts = cfg.account;
 	for(account1 = cfg.account; account1; account1 = account1->next)
 	{
@@ -556,5 +563,5 @@ void cs_accounts_chk(void)
 	cfg.account = new_accounts;
 	init_free_userdb(old_accounts);
 	ac_clear();
-	cs_writeunlock(&config_lock);
+	cs_writeunlock(__func__, &config_lock);
 }

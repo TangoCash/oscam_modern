@@ -15,6 +15,7 @@
 #include "module-dvbapi-azbox.h"
 #include "module-dvbapi-mca.h"
 #include "module-dvbapi-chancache.h"
+#include "module-gbox-sms.h"
 #include "module-ird-guess.h"
 #include "module-lcd.h"
 #include "module-led.h"
@@ -87,7 +88,11 @@ char  cs_confdir[128] = CS_CONFDIR;
 uint16_t cs_dblevel = 0; // Debug Level
 int32_t thread_pipe[2] = {0, 0};
 static int8_t cs_restart_mode = 1; //Restartmode: 0=off, no restart fork, 1=(default)restart fork, restart by webif, 2=like=1, but also restart on segfaults
+#ifdef WITH_UTF8
+uint8_t cs_http_use_utf8 = 1;
+#else
 uint8_t cs_http_use_utf8 = 0;
+#endif
 static int8_t cs_capture_SEGV;
 static int8_t cs_dump_stack;
 static uint16_t cs_waittime = 60;
@@ -123,6 +128,8 @@ static char *prog_name;
 static char *stb_boxtype;
 static char *stb_boxname;
 
+static uint32_t oscam_stacksize = 0;
+	
 /*****************************************************************************
         Statics
 *****************************************************************************/
@@ -154,7 +161,11 @@ static void show_usage(void)
 	printf("                         . Default: /tmp/.oscam\n");
 #endif
 	printf("\n Startup:\n");
+#if defined(WITH_STAPI) || defined(WITH_STAPI5)
+	printf(" -f, --foreground        | Start in the foreground mode.\n");
+#else
 	printf(" -b, --daemon            | Start in the background as daemon.\n");
+#endif
 	printf(" -B, --pidfile <pidfile> | Create pidfile when starting.\n");
 	if(config_enabled(WEBIF))
 	{
@@ -206,14 +217,22 @@ static void show_usage(void)
 }
 
 /* Keep the options sorted */
+#if defined(WITH_STAPI) || defined(WITH_STAPI5)
+static const char short_options[] = "aB:fc:d:g:hI:p:r:Sst:uVw:";
+#else
 static const char short_options[] = "aB:bc:d:g:hI:p:r:Sst:uVw:";
+#endif
 
 /* Keep the options sorted by short option */
 static const struct option long_options[] =
 {
 	{ "crash-dump",         no_argument,       NULL, 'a' },
 	{ "pidfile",            required_argument, NULL, 'B' },
+#if defined(WITH_STAPI) || defined(WITH_STAPI5)
+	{ "foreground",         no_argument,       NULL, 'f' },
+#else
 	{ "daemon",             no_argument,       NULL, 'b' },
+#endif
 	{ "config-dir",         required_argument, NULL, 'c' },
 	{ "debug",              required_argument, NULL, 'd' },
 	{ "gcollect",           required_argument, NULL, 'g' },
@@ -234,6 +253,10 @@ static void write_versionfile(bool use_stdout);
 
 static void parse_cmdline_params(int argc, char **argv)
 {
+#if defined(WITH_STAPI) || defined(WITH_STAPI5)	
+	bg = 1;
+#endif
+	
 	int i;
 	while((i = getopt_long(argc, argv, short_options, long_options, NULL)) != EOF)
 	{
@@ -247,9 +270,15 @@ static void parse_cmdline_params(int argc, char **argv)
 		case 'B': // --pidfile
 			oscam_pidfile = optarg;
 			break;
+#if defined(WITH_STAPI) || defined(WITH_STAPI5)
+		case 'f': // --foreground
+			bg = 0;
+			break;
+#else
 		case 'b': // --daemon
 			bg = 1;
 			break;
+#endif
 		case 'c': // --config-dir
 			cs_strncpy(cs_confdir, optarg, sizeof(cs_confdir));
 			break;
@@ -347,6 +376,8 @@ static void write_versionfile(bool use_stdout)
 	fprintf(fp, "Version:        oscam-%s-r%s\n", CS_VERSION, CS_SVN_VERSION);
 	fprintf(fp, "Compiler:       %s\n", CS_TARGET);
 	fprintf(fp, "Box type:       %s (%s)\n", boxtype_get(), boxname_get());
+	fprintf(fp, "PID:            %d\n", getppid());
+	fprintf(fp, "TempDir:        %s\n", cs_tmpdir);
 	fprintf(fp, "ConfigDir:      %s\n", cs_confdir);
 #ifdef WEBIF
 	fprintf(fp, "WebifPort:      %d\n", cfg.http_port);
@@ -363,7 +394,10 @@ static void write_versionfile(bool use_stdout)
 		write_conf(WITH_AZBOX, "DVB API with AZBOX support");
 		write_conf(WITH_MCA, "DVB API with MCA support");
 		write_conf(WITH_COOLAPI, "DVB API with COOLAPI support");
+		write_conf(WITH_COOLAPI2, "DVB API with COOLAPI2 support");
 		write_conf(WITH_STAPI, "DVB API with STAPI support");
+		write_conf(WITH_STAPI5, "DVB API with STAPI5 support");
+		write_conf(READ_SDT_CHARSETS, "DVB API read-sdt charsets");
 	}
 	write_conf(IRDETO_GUESSING, "Irdeto guessing");
 	write_conf(CS_ANTICASC, "Anti-cascading support");
@@ -417,6 +451,7 @@ static void write_versionfile(bool use_stdout)
 		write_cardreaderconf(CARDREADER_PHOENIX, "phoenix");
 		write_cardreaderconf(CARDREADER_INTERNAL_AZBOX, "internal_azbox");
 		write_cardreaderconf(CARDREADER_INTERNAL_COOLAPI, "internal_coolapi");
+		write_cardreaderconf(CARDREADER_INTERNAL_COOLAPI2, "internal_coolapi2");
 		write_cardreaderconf(CARDREADER_INTERNAL_SCI, "internal_sci");
 		write_cardreaderconf(CARDREADER_SC8IN1, "sc8in1");
 		write_cardreaderconf(CARDREADER_MP35, "mp35");
@@ -425,6 +460,7 @@ static void write_versionfile(bool use_stdout)
 		write_cardreaderconf(CARDREADER_SMART, "smartreader");
 		write_cardreaderconf(CARDREADER_DB2COM, "db2com");
 		write_cardreaderconf(CARDREADER_STAPI, "stapi");
+		write_cardreaderconf(CARDREADER_STAPI5, "stapi5");
 		write_cardreaderconf(CARDREADER_STINGER, "stinger");
 	}
 	else
@@ -613,12 +649,30 @@ static void cs_dumpstack(int32_t sig)
  **/
 static void cs_reload_config(void)
 {
+	static pthread_mutex_t mutex;
+	static int8_t mutex_init = 0;
+	
+	if(!mutex_init)
+	{
+		SAFE_MUTEX_INIT(&mutex, NULL);
+		mutex_init = 1;
+	}
+	
+	if(pthread_mutex_trylock(&mutex))
+	{
+		return;	
+	}
+	
 	cs_accounts_chk();
 	reload_readerdb();
+	init_provid();
 	init_srvid();
 	init_tierid();
+	init_fakecws();
 	ac_init_stat();
 	cs_reopen_log(); // FIXME: aclog.log, emm logs, cw logs (?)
+	
+	SAFE_MUTEX_UNLOCK(&mutex);
 }
 
 /* Sets signal handlers to ignore for early startup of OSCam because for example log
@@ -700,9 +754,13 @@ static char *read_line_from_file(char *fname, char *buf, int bufsz)
 	FILE *f = fopen(fname, "r");
 	if (!f)
 		return NULL;
-	if (fgets(buf, bufsz, f)) { // only the first line is needed
-		char *p = strchr(buf, '\n');
-		*p = '\0';
+	while (fgets(buf, bufsz, f))
+	{
+		if (strstr(buf,"\n")) //we need only the first line
+		{
+			buf[strlen(buf)-1] = '\0';
+			break;
+		}
 	}
 	fclose(f);
 	if (buf[0])
@@ -890,25 +948,86 @@ void set_thread_name(const char *thread_name)
 void set_thread_name(const char *UNUSED(thread_name)) { }
 #endif
 
+
+static void fix_stacksize(void)
+{
+// Changing the default stack size is generally a bad idea.
+// We are doing it anyway at the moment, because we are using several threads,
+// and are running on machnies with little RAM.
+// HOWEVER, as we do not know which minimal stack size is needed to run
+// oscam without SEQFAULT (stack overflow), this is risky business.
+// If after a code change SEQFAULTs related to stack overflow appear,
+// increase OSCAM_STACK_MIN or remove the calls to SAFE_ATTR_SETSTACKSIZE.
+
+#ifndef PTHREAD_STACK_MIN
+#define PTHREAD_STACK_MIN 64000
+#endif
+#define OSCAM_STACK_MIN PTHREAD_STACK_MIN+32768
+   
+	if(oscam_stacksize < OSCAM_STACK_MIN)
+	{
+		long pagesize = sysconf(_SC_PAGESIZE);
+		if(pagesize < 1)
+		{
+			oscam_stacksize = OSCAM_STACK_MIN;
+			return;
+		}
+		
+		oscam_stacksize = (((OSCAM_STACK_MIN) / pagesize) + 1) * pagesize;
+	}
+}
+
 /* Starts a thread named nameroutine with the start function startroutine. */
-void start_thread(void *startroutine, char *nameroutine)
+int32_t start_thread(char *nameroutine, void *startroutine, void *arg, pthread_t *pthread, int8_t detach, int8_t modify_stacksize)
 {
 	pthread_t temp;
 	pthread_attr_t attr;
-	pthread_attr_init(&attr);
+	
 	cs_log_dbg(D_TRACE, "starting thread %s", nameroutine);
-	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
-	cs_writelock(&system_lock);
-	int32_t ret = pthread_create(&temp, &attr, startroutine, NULL);
+
+	SAFE_ATTR_INIT(&attr);
+	
+	if(modify_stacksize)
+ 		{ SAFE_ATTR_SETSTACKSIZE(&attr, oscam_stacksize); }
+ 		
+	int32_t ret = pthread_create(pthread == NULL ? &temp : pthread, &attr, startroutine, arg);
 	if(ret)
 		{ cs_log("ERROR: can't create %s thread (errno=%d %s)", nameroutine, ret, strerror(ret)); }
 	else
 	{
 		cs_log_dbg(D_TRACE, "%s thread started", nameroutine);
-		pthread_detach(temp);
+		
+		if(detach)
+			{ pthread_detach(pthread == NULL ? temp : *pthread); }
 	}
+
 	pthread_attr_destroy(&attr);
-	cs_writeunlock(&system_lock);
+
+	return ret;
+}
+
+int32_t start_thread_nolog(char *nameroutine, void *startroutine, void *arg, pthread_t *pthread, int8_t detach, int8_t modify_stacksize)
+{
+	pthread_t temp;	
+	pthread_attr_t attr;
+	
+	SAFE_ATTR_INIT(&attr);
+	
+	if(modify_stacksize)
+ 		{ SAFE_ATTR_SETSTACKSIZE(&attr, oscam_stacksize); }
+ 		
+	int32_t ret = pthread_create(pthread == NULL ? &temp : pthread, &attr, startroutine, arg);
+	if(ret)
+		{ fprintf(stderr, "ERROR: can't create %s thread (errno=%d %s)", nameroutine, ret, strerror(ret)); }
+	else
+	{
+		if(detach)
+			{ pthread_detach(pthread == NULL ? temp : *pthread); }
+	}
+	
+	pthread_attr_destroy(&attr);
+
+	return ret;
 }
 
 /* Allows to kill another thread specified through the client cl with locking.
@@ -968,6 +1087,7 @@ static void cs_waitforcardinit(void)
 			//alarm(cfg.cmaxidle + cfg.ctimeout / 1000 + 1);
 		}
 		while(!card_init_done && !exit_oscam);
+		
 		if(cfg.waitforcards_extra_delay > 0 && !exit_oscam)
 			{ cs_sleepms(cfg.waitforcards_extra_delay); }
 		cs_log("init for all local cards done");
@@ -1204,7 +1324,7 @@ static void *reader_check(void)
 	struct s_client *cl;
 	struct s_reader *rdr;
 	set_thread_name(__func__);
-	cs_pthread_cond_init(&reader_check_sleep_cond_mutex, &reader_check_sleep_cond);
+	cs_pthread_cond_init(__func__, &reader_check_sleep_cond_mutex, &reader_check_sleep_cond);
 	while(!exit_oscam)
 	{
 		for(cl = first_client->next; cl ; cl = cl->next)
@@ -1212,7 +1332,7 @@ static void *reader_check(void)
 			if(!cl->thread_active)
 				{ client_check_status(cl); }
 		}
-		cs_readlock(&readerlist_lock);
+		cs_readlock(__func__, &readerlist_lock);
 		for(rdr = first_active_reader; rdr; rdr = rdr->next)
 		{
 			if(rdr->enable)
@@ -1224,8 +1344,8 @@ static void *reader_check(void)
 					{ client_check_status(cl); }
 			}
 		}
-		cs_readunlock(&readerlist_lock);
-		sleepms_on_cond(&reader_check_sleep_cond_mutex, &reader_check_sleep_cond, 1000);
+		cs_readunlock(__func__, &readerlist_lock);
+		sleepms_on_cond(__func__, &reader_check_sleep_cond_mutex, &reader_check_sleep_cond, 1000);
 	}
 	return NULL;
 }
@@ -1236,11 +1356,11 @@ static void * card_poll(void) {
 	struct s_client *cl;
 	struct s_reader *rdr;
 	pthread_mutex_t card_poll_sleep_cond_mutex;
-	pthread_mutex_init(&card_poll_sleep_cond_mutex, NULL);
-	pthread_cond_init(&card_poll_sleep_cond, NULL);
+	SAFE_MUTEX_INIT(&card_poll_sleep_cond_mutex, NULL);
+	SAFE_COND_INIT(&card_poll_sleep_cond, NULL);
 	set_thread_name(__func__);
 	while (!exit_oscam) {
-		cs_readlock(&readerlist_lock);
+		cs_readlock(__func__, &readerlist_lock);
 		for (rdr=first_active_reader; rdr; rdr=rdr->next) {
 			if (rdr->enable && rdr->card_status == CARD_INSERTED) {
 				cl = rdr->client;
@@ -1248,16 +1368,16 @@ static void * card_poll(void) {
 					{ add_job(cl, ACTION_READER_POLL_STATUS, 0, 0); }
 			}
 		}
-		cs_readunlock(&readerlist_lock);
+		cs_readunlock(__func__, &readerlist_lock);
 		struct timespec ts;
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		ts.tv_sec = tv.tv_sec;
 		ts.tv_nsec = tv.tv_usec * 1000;
 		ts.tv_sec += 1;
-		pthread_mutex_lock(&card_poll_sleep_cond_mutex);
-		pthread_cond_timedwait(&card_poll_sleep_cond, &card_poll_sleep_cond_mutex, &ts); // sleep on card_poll_sleep_cond
-		pthread_mutex_unlock(&card_poll_sleep_cond_mutex);
+		SAFE_MUTEX_LOCK(&card_poll_sleep_cond_mutex);
+		SAFE_COND_TIMEDWAIT(&card_poll_sleep_cond, &card_poll_sleep_cond_mutex, &ts); // sleep on card_poll_sleep_cond
+		SAFE_MUTEX_UNLOCK(&card_poll_sleep_cond_mutex);
 	}
 	return NULL;
 }
@@ -1439,6 +1559,8 @@ const struct s_cardreader *cardreaders[] =
 	&cardreader_internal_azbox,
 #elif defined(CARDREADER_INTERNAL_COOLAPI)
 	&cardreader_internal_cool,
+#elif defined(CARDREADER_INTERNAL_COOLAPI2)
+	&cardreader_internal_cool,
 #elif defined(CARDREADER_INTERNAL_SCI)
 	&cardreader_internal_sci,
 #endif
@@ -1460,7 +1582,7 @@ const struct s_cardreader *cardreaders[] =
 #ifdef CARDREADER_SMART
 	&cardreader_smartreader,
 #endif
-#ifdef CARDREADER_STAPI
+#if defined(CARDREADER_STAPI) || defined(CARDREADER_STAPI5)
 	&cardreader_stapi,
 #endif
 #ifdef CARDREADER_STINGER
@@ -1469,8 +1591,50 @@ const struct s_cardreader *cardreaders[] =
 	NULL
 };
 
+static void find_conf_dir(void) 
+ {
+	static const char* confdirs[] = 
+		{	"/etc/tuxbox/config/", 
+			"/etc/tuxbox/config/oscam/",
+			"/var/tuxbox/config/", 
+			"/usr/keys/", 
+			"/var/keys/",
+			"/var/etc/oscam/",
+			"/var/etc/",
+			"/var/oscam/",
+			"/config/oscam/",
+			NULL
+		};
+ 	
+	char conf_file[128+16];
+ 	int32_t i;
+ 	
+	if(cs_confdir[strlen(cs_confdir) - 1] != '/')
+		{ strcat(cs_confdir, "/"); }
+ 	
+	if(snprintf(conf_file, sizeof(conf_file), "%soscam.conf", cs_confdir) < 0)
+		{ return; }
+	
+	if(!access(conf_file, F_OK))
+		{ return; }
+	
+	for(i=0; confdirs[i] != NULL; i++)
+	{
+		if(snprintf(conf_file, sizeof(conf_file), "%soscam.conf", confdirs[i]) < 0)
+			{ return; }
+		
+		if (!access(conf_file, F_OK)) 
+		{
+			cs_strncpy(cs_confdir, confdirs[i], sizeof(cs_confdir));
+			return;
+		}
+	}
+}
+
 int32_t main(int32_t argc, char *argv[])
 {
+	fix_stacksize();
+		
 	run_tests();
 	int32_t i, j;
 	prog_name = argv[0];
@@ -1532,6 +1696,8 @@ int32_t main(int32_t argc, char *argv[])
 #endif
 		0
 	};
+	
+	find_conf_dir();
 
 	parse_cmdline_params(argc, argv);
 
@@ -1554,15 +1720,16 @@ int32_t main(int32_t argc, char *argv[])
 	if(cs_confdir[strlen(cs_confdir) - 1] != '/') { strcat(cs_confdir, "/"); }
 	init_signal_pre(); // because log could cause SIGPIPE errors, init a signal handler first
 	init_first_client();
-	cs_lock_create(&system_lock, "system_lock", 5000);
-	cs_lock_create(&config_lock, "config_lock", 10000);
-	cs_lock_create(&gethostbyname_lock, "gethostbyname_lock", 10000);
-	cs_lock_create(&clientlist_lock, "clientlist_lock", 5000);
-	cs_lock_create(&readerlist_lock, "readerlist_lock", 5000);
-	cs_lock_create(&fakeuser_lock, "fakeuser_lock", 5000);
-	cs_lock_create(&ecmcache_lock, "ecmcache_lock", 5000);
-	cs_lock_create(&readdir_lock, "readdir_lock", 5000);
-	cs_lock_create(&cwcycle_lock, "cwcycle_lock", 5000);
+	cs_lock_create(__func__, &system_lock, "system_lock", 5000);
+	cs_lock_create(__func__, &config_lock, "config_lock", 10000);
+	cs_lock_create(__func__, &gethostbyname_lock, "gethostbyname_lock", 10000);
+	cs_lock_create(__func__, &clientlist_lock, "clientlist_lock", 5000);
+	cs_lock_create(__func__, &readerlist_lock, "readerlist_lock", 5000);
+	cs_lock_create(__func__, &fakeuser_lock, "fakeuser_lock", 5000);
+	cs_lock_create(__func__, &ecmcache_lock, "ecmcache_lock", 5000);
+	cs_lock_create(__func__, &ecm_pushed_deleted_lock, "ecm_pushed_deleted_lock", 5000);
+	cs_lock_create(__func__, &readdir_lock, "readdir_lock", 5000);
+	cs_lock_create(__func__, &cwcycle_lock, "cwcycle_lock", 5000);
 	init_cache();
 	cacheex_init_hitcache();
 	init_config();
@@ -1594,9 +1761,10 @@ int32_t main(int32_t argc, char *argv[])
 	init_readerdb();
 	cfg.account = init_userdb();
 	init_signal();
+	init_provid();
 	init_srvid();
 	init_tierid();
-	init_provid();
+	init_fakecws();
 
 	start_garbage_collector(gbdb);
 
@@ -1616,6 +1784,10 @@ int32_t main(int32_t argc, char *argv[])
 
 	global_whitelist_read();
 	ratelimit_read();
+	
+#ifdef MODULE_SERIAL
+	twin_read();
+#endif
 
 	for(i = 0; i < CS_MAX_MOD; i++)
 	{
@@ -1634,7 +1806,7 @@ int32_t main(int32_t argc, char *argv[])
 
 	webif_init();
 
-	start_thread((void *) &reader_check, "reader check");
+	start_thread("reader check", (void *) &reader_check, NULL, NULL, 1, 1);
 	cw_process_thread_start();
 	checkcache_process_thread_start();
 
@@ -1653,7 +1825,7 @@ int32_t main(int32_t argc, char *argv[])
 
 	ac_init();
 
-	start_thread((void *) &card_poll, "card poll");
+	start_thread("card poll", (void *) &card_poll, NULL, NULL, 1, 1);
 
 	for(i = 0; i < CS_MAX_MOD; i++)
 	{
@@ -1665,11 +1837,14 @@ int32_t main(int32_t argc, char *argv[])
 	// main loop function
 	process_clients();
 
-	pthread_cond_signal(&card_poll_sleep_cond); // Stop card_poll thread
+	SAFE_COND_SIGNAL(&card_poll_sleep_cond); // Stop card_poll thread
 	cw_process_thread_wakeup(); // Stop cw_process thread
-	pthread_cond_signal(&reader_check_sleep_cond); // Stop reader_check thread
+	SAFE_COND_SIGNAL(&reader_check_sleep_cond); // Stop reader_check thread
 
 	// Cleanup
+#ifdef MODULE_GBOX	
+	stop_sms_sender();
+#endif
 	webif_close();
 	azbox_close();
 	coolapi_close_all();
@@ -1712,6 +1887,9 @@ int32_t main(int32_t argc, char *argv[])
 
 	if(oscam_pidfile)
 		{ unlink(oscam_pidfile); }
+
+	// sleep a bit, so hopefully all threads are stopped when we continue
+	cs_sleepms(200);
 
 	free_cache();
 	cacheex_free_hitcache();

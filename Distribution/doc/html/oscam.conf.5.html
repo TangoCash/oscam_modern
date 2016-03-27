@@ -46,6 +46,25 @@ additionally to log to stdout or syslog (you can also only log to stdout or sysl
 the filename).
 </DL>
 
+PP
+<B>initial_debuglevel</B> = <B>level</B>
+<DL COMPACT><DT><DD>
+set initial debug level for OSCam start, default:0
+</DL>
+
+PP
+<B>sysloghost</B> = <B>hostname</B>
+<DL COMPACT><DT><DD>
+set remote syslog host, default:none
+</DL>
+
+<P>
+
+<B>syslogport</B> = <B>port</B>
+<DL COMPACT><DT><DD>
+set TCP/IP port for remote syslog host, default:none
+</DL>
+
 <P>
 
 <B>ecmfmt</B> = <B>format</B>
@@ -59,13 +78,14 @@ possible variables:
 <BR>&nbsp;&nbsp;<B>e</B>&nbsp;=&nbsp;CSP&nbsp;hash
 <BR>&nbsp;&nbsp;<B>g</B>&nbsp;=&nbsp;ID&nbsp;of&nbsp;origin&nbsp;gbox&nbsp;peer
 <BR>&nbsp;&nbsp;<B>h</B>&nbsp;=&nbsp;checksum
-<BR>&nbsp;&nbsp;<B>i</B>&nbsp;=&nbsp;Channel&nbsp;ID
+<BR>&nbsp;&nbsp;<B>i</B>&nbsp;=&nbsp;channel&nbsp;ID
 <BR>&nbsp;&nbsp;<B>j</B>&nbsp;=&nbsp;distance&nbsp;of&nbsp;gbox&nbsp;hops
 <BR>&nbsp;&nbsp;<B>l</B>&nbsp;=&nbsp;length
 <BR>&nbsp;&nbsp;<B>o</B>&nbsp;=&nbsp;ONID
 <BR>&nbsp;&nbsp;<B>p</B>&nbsp;=&nbsp;provider&nbsp;ID
 <BR>&nbsp;&nbsp;<B>s</B>&nbsp;=&nbsp;service&nbsp;ID
 <BR>&nbsp;&nbsp;<B>w</B>&nbsp;=&nbsp;CW
+<BR>&nbsp;&nbsp;<B>y</B>&nbsp;=&nbsp;payload
 <P>
 use a value as prefix to hide variable with this value, control characters will be escaped by &quot;\&quot;
 <P>
@@ -75,9 +95,9 @@ use a value as prefix to hide variable with this value, control characters will 
 
 <P>
 
-<B>loghistorysize</B> = <B>bytes</B>
+<B>loghistorylines</B> = <B>lines</B>
 <DL COMPACT><DT><DD>
-size of log message history in web interface or monitor, 0 = disabled, default:4096
+size of log message history in web interface or monitor, 0 = disabled, default:256
 </DL>
 
 <P>
@@ -344,6 +364,11 @@ mode for duplicate client connections (requirement: uniq &gt; 0):
 <B>double_check_caid</B> = [CAID1|first two digits of CAID1],[CAID2|first two digits of CAID2]...
 <DL COMPACT><DT><DD>
 ECM will be send to two or more readers with the same SC and the CWs will be verified against each other for defined CAID or first two bytes of CAID, <B>lb_nbest_readers</B> must be set to 2 or higher, default:none
+</DL>
+
+<B>getblockemmauprovid</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+1 = server overrides EMM blocking defined on client site, default:0
 </DL>
 
 <P>
@@ -1494,6 +1519,20 @@ PMT mode:
 
 <P>
 
+<B>ecminfo_type</B> = <B>0</B>|<B>1</B>|<B>2</B>|<B>3</B>|<B>4</B>|<B>5</B>
+<DL COMPACT><DT><DD>
+ecm.info types:
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;OSCam&nbsp;syntax&nbsp;(default)
+<BR>&nbsp;<B>1</B>&nbsp;=&nbsp;OSCam&nbsp;syntax&nbsp;with&nbsp;ECM&nbsp;time&nbsp;in&nbsp;ms&nbsp;instead&nbsp;of&nbsp;seconds
+<BR>&nbsp;<B>2</B>&nbsp;=&nbsp;WiCardd
+<BR>&nbsp;<B>3</B>&nbsp;=&nbsp;mgcamd
+<BR>&nbsp;<B>4</B>&nbsp;=&nbsp;CCcam
+<BR>&nbsp;<B>5</B>&nbsp;=&nbsp;camd3
+</DL>
+
+<P>
+
 <B>request_mode</B> = <B>0</B>|<B>1</B>
 <DL COMPACT><DT><DD>
 CAID request mode:
@@ -1504,7 +1543,7 @@ CAID request mode:
 
 <P>
 
-<B>boxtype</B> = <B>dbox2</B>|<B>dreambox</B>|<B>dm7000</B>|<B>duckbox</B>|<B>ufs910</B>|<B>ipbox</B>|<B>ipbox-pmt</B>|<B>qboxhd</B>|<B>coolstream</B>|<B>neumo</B>|<B>pc</B>
+<B>boxtype</B> = <B>dbox2</B>|<B>dreambox</B>|<B>dm7000</B>|<B>duckbox</B>|<B>ufs910</B>|<B>ipbox</B>|<B>ipbox-pmt</B>|<B>qboxhd</B>|<B>coolstream</B>|<B>neumo</B>|<B>samygo</B>|<B>pc</B>
 <DL COMPACT><DT><DD>
 set boxtype, auto detection of DVB API will be aspired, default:dreambox
 <P>
@@ -1515,6 +1554,27 @@ ipbox-pmt can be used on any DGS based images (with or without camd.socket suppo
 verified on HD models only
 <P>
 pc is for generic pc support (currently supported on VDR with vdr-plugin-dvbapi)
+</DL>
+
+<P>
+
+<B>read_sdt</B> = <B>0</B>|<B>1</B>|<B>2</B>
+<DL COMPACT><DT><DD>
+mode of provider, channel name and service type auto detection via SDT:
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;disabled&nbsp;(default)
+<BR>&nbsp;<B>1</B>&nbsp;=&nbsp;enabled&nbsp;for&nbsp;non&nbsp;FTA&nbsp;channels&nbsp;only
+<BR>&nbsp;<B>2</B>&nbsp;=&nbsp;enabled&nbsp;for&nbsp;all&nbsp;channels
+</DL>
+
+<P>
+
+<B>write_sdt_prov</B> = <B>0</B>|<B>1</B>
+<DL COMPACT><DT><DD>
+mode writing provider name into <B>oscam.srvid2</B> file:
+<P>
+<BR>&nbsp;<B>0</B>&nbsp;=&nbsp;disabled&nbsp;(default)
+<BR>&nbsp;<B>1</B>&nbsp;=&nbsp;enabled
 </DL>
 
 <P>
@@ -1806,7 +1866,7 @@ ECM and checksum in cache already.
 <A NAME="lbAY">&nbsp;</A>
 <H2>SEE ALSO</H2>
 
-<B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cacheex">oscam.cacheex</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ratelimit">oscam.ratelimit</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.server">oscam.server</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
+<B><A HREF="/cgi-bin/man/man2html?1+list_smargo">list_smargo</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?1+oscam">oscam</A></B>(1), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ac">oscam.ac</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cacheex">oscam.cacheex</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.cert">oscam.cert</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.dvbapi">oscam.dvbapi</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.fakecws">oscam.fakecws</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.guess">oscam.guess</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ird">oscam.ird</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.provid">oscam.provid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.ratelimit">oscam.ratelimit</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.server">oscam.server</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.services">oscam.services</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid">oscam.srvid</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.srvid2">oscam.srvid2</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.tiers">oscam.tiers</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.user">oscam.user</A></B>(5), <B><A HREF="/cgi-bin/man/man2html?5+oscam.whitelist">oscam.whitelist</A></B>(5)
 <P>
 
 <HR>

@@ -1,9 +1,9 @@
 #!/bin/sh
 
-addons="WEBIF WEBIF_LIVELOG WEBIF_JQUERY TOUCH WITH_SSL HAVE_DVBAPI IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_LB CS_CACHEEX CW_CYCLE_CHECK LCDSUPPORT LEDSUPPORT CLOCKFIX IPV6SUPPORT"
+addons="WEBIF WEBIF_LIVELOG WEBIF_JQUERY TOUCH WITH_SSL HAVE_DVBAPI READ_SDT_CHARSETS IRDETO_GUESSING CS_ANTICASC WITH_DEBUG MODULE_MONITOR WITH_LB CS_CACHEEX CW_CYCLE_CHECK LCDSUPPORT LEDSUPPORT CLOCKFIX IPV6SUPPORT"
 protocols="MODULE_CAMD33 MODULE_CAMD35 MODULE_CAMD35_TCP MODULE_NEWCAMD MODULE_CCCAM MODULE_CCCSHARE MODULE_GBOX MODULE_RADEGAST MODULE_SCAM MODULE_SERIAL MODULE_CONSTCW MODULE_PANDORA MODULE_GHTTP"
 readers="READER_NAGRA READER_IRDETO READER_CONAX READER_CRYPTOWORKS READER_SECA READER_VIACCESS READER_VIDEOGUARD READER_DRE READER_TONGFANG READER_BULCRYPT READER_GRIFFIN READER_DGCRYPT"
-card_readers="CARDREADER_PHOENIX CARDREADER_INTERNAL CARDREADER_SC8IN1 CARDREADER_MP35 CARDREADER_SMARGO CARDREADER_DB2COM CARDREADER_STAPI CARDREADER_STINGER"
+card_readers="CARDREADER_PHOENIX CARDREADER_INTERNAL CARDREADER_SC8IN1 CARDREADER_MP35 CARDREADER_SMARGO CARDREADER_DB2COM CARDREADER_STAPI CARDREADER_STAPI5 CARDREADER_STINGER"
 
 defconfig="
 CONFIG_WEBIF=y
@@ -12,6 +12,7 @@ CONFIG_WEBIF_JQUERY=y
 CONFIG_TOUCH=y
 # CONFIG_WITH_SSL=n
 CONFIG_HAVE_DVBAPI=y
+CONFIG_READ_SDT_CHARSETS=y
 CONFIG_IRDETO_GUESSING=y
 CONFIG_CS_ANTICASC=y
 CONFIG_WITH_DEBUG=y
@@ -56,6 +57,7 @@ CARDREADER_MP35=y
 CARDREADER_SMARGO=y
 CARDREADER_DB2COM=y
 CARDREADER_STAPI=y
+# CARDREADER_STAPI5=n
 CARDREADER_STINGER=y
 "
 
@@ -131,7 +133,7 @@ USE_FLAGS=
 have_flag() {
 	for FLAG in $USE_FLAGS
 	do
-		[ $FLAG = "$1" ] && return 0
+		[ "$FLAG" = "$1" ] && return 0
 	done
 	return 1
 }
@@ -153,7 +155,7 @@ have_any_flags() {
 not_have_flag() {
 	for FLAG in $USE_FLAGS
 	do
-		[ $FLAG = "$1" ] && return 1
+		[ "$FLAG" = "$1" ] && return 1
 	done
 	return 0
 }
@@ -298,7 +300,9 @@ list_config() {
 	update_deps
 	# Handle use flags
 	have_flag USE_STAPI && echo "CONFIG_WITH_STAPI=y" || echo "# CONFIG_WITH_STAPI=n"
+	have_flag USE_STAPI5 && echo "CONFIG_WITH_STAPI5=y" || echo "# CONFIG_WITH_STAPI5=n"
 	have_flag USE_COOLAPI && echo "CONFIG_WITH_COOLAPI=y" || echo "# CONFIG_WITH_COOLAPI=n"
+	have_flag USE_COOLAPI2 && echo "CONFIG_WITH_COOLAPI2=y" || echo "# CONFIG_WITH_COOLAPI2=n"
 	have_flag USE_SU980 && echo "CONFIG_WITH_SU980=y" || echo "# CONFIG_WITH_SU980=n"
 	have_flag USE_AZBOX && echo "CONFIG_WITH_AZBOX=y" || echo "# CONFIG_WITH_AZBOX=n"
 	have_flag USE_MCA && echo "CONFIG_WITH_MCA=y" || echo "# CONFIG_WITH_MCA=n"
@@ -314,13 +318,20 @@ list_config() {
 			# Internal card reader is actually three different readers depending on USE flags
 			enabled $OPT && have_flag USE_AZBOX && echo "CONFIG_${OPT}_AZBOX=y" || echo "# CONFIG_${OPT}_AZBOX=n"
 			enabled $OPT && have_any_flags USE_COOLAPI USE_SU980 && echo "CONFIG_${OPT}_COOLAPI=y" || echo "# CONFIG_${OPT}_COOLAPI=n"
-			enabled $OPT && not_have_all_flags USE_AZBOX USE_COOLAPI USE_SU980 && echo "CONFIG_${OPT}_SCI=y" || echo "# CONFIG_${OPT}_SCI=n"
+			enabled $OPT && have_flag USE_COOLAPI2 && echo "CONFIG_${OPT}_COOLAPI2=y" || echo "# CONFIG_${OPT}_COOLAPI2=n"
+			enabled $OPT && not_have_all_flags USE_AZBOX USE_COOLAPI USE_COOLAPI2 USE_SU980 && echo "CONFIG_${OPT}_SCI=y" || echo "# CONFIG_${OPT}_SCI=n"
 			continue
 		fi
 		if [ $OPT = CARDREADER_STAPI ]
 		then
 			# Enable CARDREADER_STAPI only if USE_STAPI is set
 			enabled $OPT && have_flag USE_STAPI && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
+			continue
+		fi
+		if [ $OPT = CARDREADER_STAPI5 ]
+		then
+			# Enable CARDREADER_STAPI5 only if USE_STAPI5 is set
+			enabled $OPT && have_flag USE_STAPI5 && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
 			continue
 		fi
 		enabled $OPT && echo "CONFIG_$OPT=y" || echo "# CONFIG_$OPT=n"
@@ -332,7 +343,7 @@ list_config() {
 	not_have_flag USE_LIBCRYPTO && echo "CONFIG_LIB_AES=y" || echo "# CONFIG_LIB_AES=n"
 	enabled MODULE_CCCAM && echo "CONFIG_LIB_RC6=y" || echo "# CONFIG_LIB_RC6=n"
 	not_have_flag USE_LIBCRYPTO && enabled MODULE_CCCAM && echo "CONFIG_LIB_SHA1=y" || echo "# CONFIG_LIB_SHA1=n"
-	enabled_any MODULE_NEWCAMD READER_DRE MODULE_SCAM && echo "CONFIG_LIB_DES=y" || echo "# CONFIG_LIB_DES=n"
+	enabled_any READER_DRE MODULE_SCAM READER_VIACCESS && echo "CONFIG_LIB_DES=y" || echo "# CONFIG_LIB_DES=n"
 	enabled_any MODULE_CCCAM READER_NAGRA READER_SECA && echo "CONFIG_LIB_IDEA=y" || echo "# CONFIG_LIB_IDEA=n"
 	not_have_flag USE_LIBCRYPTO && enabled_any READER_CONAX READER_CRYPTOWORKS READER_NAGRA && echo "CONFIG_LIB_BIGNUM=y" || echo "# CONFIG_LIB_BIGNUM=n"
 }
@@ -433,6 +444,7 @@ menu_addons() {
 		TOUCH				"Touch Web Interface"					$(check_test "TOUCH") \
 		WITH_SSL			"OpenSSL support"						$(check_test "WITH_SSL") \
 		HAVE_DVBAPI			"DVB API"								$(check_test "HAVE_DVBAPI") \
+		READ_SDT_CHARSETS	"DVB API read-sdt charsets"				$(check_test "READ_SDT_CHARSETS") \
 		IRDETO_GUESSING		"Irdeto guessing"						$(check_test "IRDETO_GUESSING") \
 		CS_ANTICASC			"Anti cascading"						$(check_test "CS_ANTICASC") \
 		WITH_DEBUG			"Debug messages"						$(check_test "WITH_DEBUG") \
@@ -509,6 +521,7 @@ menu_card_readers() {
 		CARDREADER_SMARGO	"Argolis Smargo Smartreader"	$(check_test "CARDREADER_SMARGO") \
 		CARDREADER_DB2COM	"dbox2"							$(check_test "CARDREADER_DB2COM") \
 		CARDREADER_STAPI	"STAPI"							$(check_test "CARDREADER_STAPI") \
+		CARDREADER_STAPI5	"STAPI5"						$(check_test "CARDREADER_STAPI5") \
 		CARDREADER_STINGER	"STINGER"						$(check_test "CARDREADER_STINGER") \
 	2> ${tempfile}
 

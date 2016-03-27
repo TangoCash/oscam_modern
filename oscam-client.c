@@ -118,7 +118,8 @@ static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, IN_
 	 */
 	struct s_client *cl;
 	struct s_auth *account;
-	cs_writelock(&fakeuser_lock);
+	uint32_t con_count = 1;
+	cs_writelock(__func__, &fakeuser_lock);
 	for(cl = first_client->next; cl; cl = cl->next)
 	{
 		account = cl->account;
@@ -126,6 +127,12 @@ static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, IN_
 				&& uniq < 5 && ((uniq % 2) || !IP_EQUAL(cl->ip, ip)))
 		{
 			char buf[20];
+			
+			con_count++;
+			
+			if(con_count <= account->max_connections)
+				{ continue; }
+			
 			if(uniq  == 3 || uniq == 4)
 			{
 				cl->dup = 1;
@@ -139,10 +146,10 @@ static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, IN_
 				}
 				if(cfg.dropdups)
 				{
-					cs_writeunlock(&fakeuser_lock);
+					cs_writeunlock(__func__, &fakeuser_lock);
 					cs_sleepms(120); // sleep a bit to prevent against saturation from fast reconnecting clients
 					kill_thread(cl);
-					cs_writelock(&fakeuser_lock);
+					cs_writelock(__func__, &fakeuser_lock);
 				}
 			}
 			else
@@ -158,16 +165,16 @@ static void cs_fake_client(struct s_client *client, char *usr, int32_t uniq, IN_
 				}
 				if(cfg.dropdups)
 				{
-					cs_writeunlock(&fakeuser_lock);     // we need to unlock here as cs_disconnect_client kills the current thread!
+					cs_writeunlock(__func__, &fakeuser_lock);     // we need to unlock here as cs_disconnect_client kills the current thread!
 					cs_sleepms(120); // sleep a bit to prevent against saturation from fast reconnecting clients
 					cs_disconnect_client(client);
-					cs_writelock(&fakeuser_lock);
+					cs_writelock(__func__, &fakeuser_lock);
 				}
 				break;
 			}
 		}
 	}
-	cs_writeunlock(&fakeuser_lock);
+	cs_writeunlock(__func__, &fakeuser_lock);
 }
 
 /* Resolves the ip of the hostname of the specified account and saves it in account->dynip.
@@ -192,7 +199,7 @@ static void cs_user_resolve(struct s_auth *account)
 
 /* Returns the username from the client. You will always get a char reference back (no NULLs but it may be string containting "NULL")
    which you should never modify and not free()! */
-char *username(struct s_client *client)
+const char *username(struct s_client *client)
 {
 	if(!check_client(client))
 		{ return "NULL"; }
@@ -235,45 +242,32 @@ struct s_client *create_client(IN_ADDR_T ip)
 		cs_log("max connections reached (out of memory) -> reject client %s", IP_ISSET(ip) ? cs_inet_ntoa(ip) : "with null address");
 		return NULL;
 	}
+	
 	//client part
 	IP_ASSIGN(cl->ip, ip);
 	cl->account = first_client->account;
+	
 	//master part
-	pthread_mutex_init(&cl->thread_lock, NULL);
+	SAFE_MUTEX_INIT(&cl->thread_lock, NULL);
 	cl->login = cl->last = time(NULL);
-	cl->tid = (uint32_t)(uintptr_t)cl;  // Use pointer adress of client as threadid (for monitor and log)
+	cl->tid = (uint32_t)rand();
+	
 	//Now add new client to the list:
 	struct s_client *last;
-	cs_writelock(&clientlist_lock);
-	if(sizeof(uintptr_t) > 4)           // 64bit systems can have collisions because of the cast so lets check if there are some
-	{
-		int8_t found;
-		do
-		{
-			found = 0;
-			for(last = first_client; last; last = last->next)
-			{
-				if(last->tid == cl->tid)
-				{
-					found = 1;
-					break;
-				}
-			}
-			if(found || cl->tid == 0)
-			{
-				cl->tid = (uint32_t)rand();
-			}
-		}
-		while(found || cl->tid == 0);
-	}
+	cs_writelock(__func__, &clientlist_lock);
+	
 	for(last = first_client; last && last->next; last = last->next)
 		{ ; } //ends with cl on last client
+		
 	if (last)
 		last->next = cl;
+		
 	int32_t bucket = (uintptr_t)cl / 16 % CS_CLIENT_HASHBUCKETS;
 	cl->nexthashed = first_client_hashed[bucket];
 	first_client_hashed[bucket] = cl;
-	cs_writeunlock(&clientlist_lock);
+	
+	cs_writeunlock(__func__, &clientlist_lock);
+	
 	return cl;
 }
 
@@ -406,6 +400,7 @@ int32_t cs_auth_client(struct s_client *client, struct s_auth *account, const ch
 			if(client->typ == 'c')
 			{
 				client->last_caid = NO_CAID_VALUE;
+				client->last_provid = NO_PROVID_VALUE;
 				client->last_srvid = NO_SRVID_VALUE;
 				client->expirationdate = account->expirationdate;
 				client->disabled = account->disabled;
@@ -583,6 +578,11 @@ void client_check_status(struct s_client *cl)
 	case 'm':
 	case 'c':
 
+		if((get_module(cl)->listenertype & LIS_CCCAM) && cl->last && (time(NULL) - cl->last) > (time_t)12)
+		{
+			add_job(cl, ACTION_CLIENT_IDLE, NULL, 0);
+		}
+
 		//Check umaxidle to avoid client is killed for inactivity, it has priority than cmaxidle
 		if(!cl->account->umaxidle)
 			break;
@@ -616,7 +616,7 @@ void client_check_status(struct s_client *cl)
 		{
 			time_t now = time(NULL);
 			int32_t time_diff = llabs(now - rdr->last_check);
-			if(time_diff > 60 || (time_diff > 30 && (rdr->typ == R_CCCAM || rdr->typ == R_CAMD35 || rdr->typ == R_CS378X)) || ((time_diff > (rdr->tcp_rto?rdr->tcp_rto:60)) && rdr->typ == R_RADEGAST))     //check 1x per minute or every 30s for cccam/camd35 or reconnecttimeout radegast if 0 defaut 60s
+			if(time_diff > 60 || (time_diff > 12 && (rdr->typ == R_CCCAM || rdr->typ == R_CAMD35 || rdr->typ == R_CS378X)) || ((time_diff > (rdr->tcp_rto?rdr->tcp_rto:60)) && rdr->typ == R_RADEGAST))     //check 1x per minute or every 10s for cccam/camd35 or reconnecttimeout radegast if 0 defaut 60s
 			{
 				add_job(rdr->client, ACTION_READER_IDLE, NULL, 0);
 				rdr->last_check = now;
@@ -635,14 +635,14 @@ void free_client(struct s_client *cl)
 
 	// Remove client from client list. kill_thread also removes this client, so here just if client exits itself...
 	struct s_client *prev, *cl2;
-	cs_writelock(&clientlist_lock);
+	cs_writelock(__func__, &clientlist_lock);
 	if(!cl->kill_started)
 	{
 		cl->kill_started = 1;
 	}
 	else
 	{
-		cs_writeunlock(&clientlist_lock);
+		cs_writeunlock(__func__, &clientlist_lock);
 		cs_log("[free_client] ERROR: free already started!");
 		return;
 	}
@@ -674,7 +674,7 @@ void free_client(struct s_client *cl)
 		if(cl == cl2)
 			{ prev->nexthashed = cl2->nexthashed; }
 	}
-	cs_writeunlock(&clientlist_lock);
+	cs_writeunlock(__func__, &clientlist_lock);
 
 	cleanup_ecmtasks(cl);
 
@@ -700,6 +700,7 @@ void free_client(struct s_client *cl)
 	{
 		cs_statistics(cl);
 		cl->last_caid = NO_CAID_VALUE;
+		cl->last_provid = NO_PROVID_VALUE;
 		cl->last_srvid = NO_SRVID_VALUE;
 		cs_statistics(cl);
 
@@ -730,6 +731,9 @@ void free_client(struct s_client *cl)
 	ftab_clear(&cl->fchid);
 	tuntab_clear(&cl->ttab);
 	caidtab_clear(&cl->ctab);
+
+    NULLFREE(cl->cltab.aclass);
+ 	NULLFREE(cl->cltab.bclass);
 
 	NULLFREE(cl->cw_rass);
 	ll_destroy_data(&cl->ra_buf);

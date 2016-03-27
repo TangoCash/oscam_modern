@@ -37,7 +37,7 @@
 //used variable ncd_skey for storing remote node id: ncd_skey[0..7] : 8
 //bytes node id ncd_skey[8] : 1=valid node id received
 
-#define REQ_SIZE    584     // 512 + 20 + 0x34
+#define REQ_SIZE    MAX_ECM_SIZE + 20 + 0x34
 
 static int32_t __camd35_send(struct s_client *cl, uchar *buf, int32_t buflen, int answer_awaited)
 {
@@ -107,7 +107,7 @@ int32_t camd35_send_without_timeout(struct s_client *cl, uchar *buf, int32_t buf
 
 static int32_t camd35_auth_client(struct s_client *cl, uchar *ucrc)
 {
-	int32_t rc = 1;
+	int32_t rc = 1, no_delay = 1;
 	uint32_t crc;
 	struct s_auth *account;
 	unsigned char md5tmp[MD5_DIGEST_LENGTH];
@@ -128,6 +128,16 @@ static int32_t camd35_auth_client(struct s_client *cl, uchar *ucrc)
 				{
 					return 1;
 				}
+				
+				#ifdef CS_CACHEEX
+				if(cl->account->cacheex.mode < 2)
+				#endif
+				if(!cl->is_udp && cl->tcp_nodelay == 0)
+				{
+					setsockopt(cl->udp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&no_delay, sizeof(no_delay));
+					cl->tcp_nodelay = 1;
+				}
+				
 				return 0;
 			}
 		}
@@ -151,10 +161,10 @@ static int32_t camd35_recv(struct s_client *client, uchar *buf, int32_t l)
 			{
 				//read minimum packet size (4 byte ucrc + 32 byte data) to detect packet size (tcp only)
 
-				//rs = recv(client->udp_fd, buf, client->is_udp ? l : 36, 0);
+				//rs = cs_recv(client->udp_fd, buf, client->is_udp ? l : 36, 0);
 				if(client->is_udp){
 					while (1){
-					rs = recv(client->udp_fd, buf, l, 0);
+					rs = cs_recv(client->udp_fd, buf, l, 0);
 						if (rs < 0){
 							if(errno == EINTR) { continue; }  // try again in case of interrupt
 							if(errno == EAGAIN) { continue; }  //EAGAIN needs select procedure again
@@ -167,7 +177,7 @@ static int32_t camd35_recv(struct s_client *client, uchar *buf, int32_t l)
 					rs = 0;
 					do
 					{
-						readed = recv(client->udp_fd, buf+rs, tot, 0);
+						readed = cs_recv(client->udp_fd, buf+rs, tot, 0);
 						if (readed < 0){
 							if(errno == EINTR) { continue; }  // try again in case of interrupt
 							if(errno == EAGAIN) { continue; }  //EAGAIN needs select procedure again
@@ -228,11 +238,11 @@ static int32_t camd35_recv(struct s_client *client, uchar *buf, int32_t l)
 			if(!(client->is_udp && client->typ == 'c') && (rs < n) && ((n - 32) > 0))
 			{
 
-				//len = recv(client->udp_fd, buf+32, n-32, 0); // read the rest of the packet
+				//len = cs_recv(client->udp_fd, buf+32, n-32, 0); // read the rest of the packet
 				int32_t tot=n-32, readed=0;
 				len = 0;
 				do{
-					readed = recv(client->udp_fd, buf+32+len, tot, 0); // read the rest of the packet
+					readed = cs_recv(client->udp_fd, buf+32+len, tot, 0); // read the rest of the packet
 					if (readed < 0){
 						if(errno == EINTR) { continue; }  // try again in case of interrupt
 						if(errno == EAGAIN) { continue; }  //EAGAIN needs select procedure again
@@ -473,18 +483,23 @@ static void camd35_send_dcw(struct s_client *client, ECM_REQUEST *er)
 static void camd35_process_ecm(uchar *buf, int buflen)
 {
 	ECM_REQUEST *er;
+	
 	if(!buf || buflen < 23)
 		{ return; }
-	uint16_t ecmlen = (((buf[21] & 0x0f) << 8) | buf[22]) + 3;
-	if(ecmlen + 20 > buflen)
+		
+	uint16_t ecmlen = SCT_LEN((&buf[20]));
+	
+	if(ecmlen > MAX_ECM_SIZE || ecmlen + 20 > buflen)
 		{ return; }
+	
 	if(!(er = get_ecmtask()))
 		{ return; }
-	//  er->l = buf[1];
-	//fix ECM LEN issue
+
 	er->ecmlen = ecmlen;
+	
 	if(!cs_malloc(&er->src_data, 0x34 + 20 + er->ecmlen))
-		{ return; }
+		{ NULLFREE(er); return; }
+		
 	memcpy(er->src_data, buf, 0x34 + 20 + er->ecmlen);  // save request
 	er->srvid = b2i(2, buf + 8);
 	er->caid = b2i(2, buf + 10);
@@ -501,6 +516,8 @@ static void camd35_process_emm(uchar *buf, int buflen, int emmlen)
 		{ return; }
 	memset(&epg, 0, sizeof(epg));
 	epg.emmlen = emmlen;
+	if(epg.emmlen < 3 || epg.emmlen > MAX_EMM_SIZE)
+		{ return; }
 	memcpy(epg.caid, buf + 10, 2);
 	memcpy(epg.provid, buf + 12 , 4);
 	memcpy(epg.emm, buf + 20, epg.emmlen);
@@ -612,8 +629,9 @@ static void camd35_send_keepalive_answer(struct s_client *cl)
 
 static int32_t camd35_client_init(struct s_client *cl)
 {
-
 	unsigned char md5tmp[MD5_DIGEST_LENGTH];
+	int32_t no_delay = 1;
+			   
 	cs_strncpy((char *)cl->upwd, cl->reader->r_pwd, sizeof(cl->upwd));
 	i2b_buf(4, crc32(0L, MD5((unsigned char *)cl->reader->r_usr, strlen(cl->reader->r_usr), md5tmp), 16), cl->ucrc);
 	if (!aes_set_key_alloc(&cl->aes_keys, (char *)MD5(cl->upwd, strlen((char *)cl->upwd), md5tmp)))
@@ -623,6 +641,9 @@ static int32_t camd35_client_init(struct s_client *cl)
 	cl->crypted=1;
 
 	rdr_log(cl->reader, "proxy %s:%d", cl->reader->device, cl->reader->r_port);
+
+	if(!cl->is_udp && cacheex_get_rdr_mode(cl->reader) < 2)
+		setsockopt(cl->udp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&no_delay, sizeof(no_delay));
 
 	if(cl->reader->keepalive)
 		camd35_send_keepalive(cl);
@@ -705,7 +726,7 @@ static void *camd35_server(struct s_client *client, uchar *mbuf, int32_t n)
 	return NULL; //to prevent compiler message
 }
 
-static int32_t camd35_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar *buf)
+static int32_t camd35_send_ecm(struct s_client *client, ECM_REQUEST *er)
 {
 	static const char *typtext[] = {"ok", "invalid", "sleeping"};
 
@@ -727,11 +748,14 @@ static int32_t camd35_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar *
 	client->lastcaid = er->caid;
 	client->lastpid = er->pid;
 
-
 	if(!camd35_tcp_connect(client)) { return -1; }
 
 	client->reader->card_status = CARD_INSERTED; //for udp
 
+	uint8_t *buf;
+	if(!cs_malloc(&buf, er->ecmlen + 20 + 15))
+	{ return -1; }
+	
 	memset(buf, 0, 20);
 	memset(buf + 20, 0xff, er->ecmlen + 15);
 	buf[1] = er->ecmlen;
@@ -742,17 +766,22 @@ static int32_t camd35_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar *
 	buf[18] = 0xff;
 	buf[19] = 0xff;
 	memcpy(buf + 20, er->ecm, er->ecmlen);
-	return ((camd35_send(client, buf, 0) < 1) ? (-1) : 0);
+	int32_t rc = ((camd35_send(client, buf, 0) < 1) ? (-1) : 0);
+	
+	NULLFREE(buf);
+	return rc;
 }
 
 static int32_t camd35_send_emm(EMM_PACKET *ep)
 {
-	uchar buf[512];
+	uint8_t *buf;
 	struct s_client *cl = cur_client();
-
 
 	if(!camd35_tcp_connect(cl)) { return 0; }
 	cl->reader->card_status = CARD_INSERTED; //for udp
+
+	if(!cs_malloc(&buf, ep->emmlen + 20 + 15))
+	{ return -1; }
 	
 	memset(buf, 0, 20);
 	memset(buf + 20, 0xff, ep->emmlen + 15);
@@ -763,7 +792,10 @@ static int32_t camd35_send_emm(EMM_PACKET *ep)
 	memcpy(buf + 12, ep->provid, 4);
 	memcpy(buf + 20, ep->emm, ep->emmlen);
 
-	return ((camd35_send_without_timeout(cl, buf, 0) < 1) ? 0 : 1);
+	int32_t rc = ((camd35_send_without_timeout(cl, buf, 0) < 1) ? 0 : 1);
+	
+	NULLFREE(buf);
+	return rc;	
 }
 
 static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc, uchar *buf, int32_t rc2 __attribute__((unused)))
@@ -781,7 +813,6 @@ static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc,
 		rdr->nprov = 0; //reset if number changes on reader change
 		rdr->nprov = buf[47];
 		rdr->caid = b2i(2, buf + 20);
-		rdr->auprovid = b2i(4, buf + 12);
 
 		int32_t i;
 		for(i = 0; i < rdr->nprov; i++)
@@ -804,11 +835,15 @@ static int32_t camd35_recv_chk(struct s_client *client, uchar *dcw, int32_t *rc,
 		rdr->hexserial[6] = 0;
 		rdr->hexserial[7] = 0;
 
-		rdr->blockemm = 0;
-		rdr->blockemm |= (buf[128] == 1) ? 0 : EMM_GLOBAL;
-		rdr->blockemm |= (buf[129] == 1) ? 0 : EMM_SHARED;
-		rdr->blockemm |= (buf[130] == 1) ? 0 : EMM_UNIQUE;
-		rdr->blockemm |= (buf[127] == 1) ? 0 : EMM_UNKNOWN;
+		if(cfg.getblockemmauprovid)
+		{
+			rdr->blockemm = 0;
+			rdr->blockemm |= (buf[128] == 1) ? 0 : EMM_GLOBAL;
+			rdr->blockemm |= (buf[129] == 1) ? 0 : EMM_SHARED;
+			rdr->blockemm |= (buf[130] == 1) ? 0 : EMM_UNIQUE;
+			rdr->blockemm |= (buf[127] == 1) ? 0 : EMM_UNKNOWN;
+			rdr->auprovid = b2i(4, buf + 12);
+		}
 		cs_log("%s CMD05 AU request for caid: %04X auprovid: %06X",
 			   rdr->label,
 			   rdr->caid,

@@ -26,6 +26,21 @@ logging targets, default:/var/log/oscam.log. You can define a maximum of one fil
 additionally to log to stdout or syslog (you can also only log to stdout or syslog and omit 
 the filename).
 .RE
+PP
+\fBinitial_debuglevel\fP = \fBlevel\fP
+.RS 3n
+set initial debug level for OSCam start, default:0
+.RE
+PP
+\fBsysloghost\fP = \fBhostname\fP
+.RS 3n
+set remote syslog host, default:none
+.RE
+.PP
+\fBsyslogport\fP = \fBport\fP
+.RS 3n
+set TCP/IP port for remote syslog host, default:none
+.RE
 .PP
 \fBecmfmt\fP = \fBformat\fP
 .RS 3n
@@ -38,13 +53,14 @@ possible variables:
   \fBe\fP = CSP hash
   \fBg\fP = ID of origin gbox peer
   \fBh\fP = checksum
-  \fBi\fP = Channel ID
+  \fBi\fP = channel ID
   \fBj\fP = distance of gbox hops
   \fBl\fP = length
   \fBo\fP = ONID
   \fBp\fP = provider ID
   \fBs\fP = service ID
   \fBw\fP = CW
+  \fBy\fP = payload
 
 use a value as prefix to hide variable with this value, control characters will be escaped by "\\"
 
@@ -255,6 +271,10 @@ mode for duplicate client connections (requirement: uniq > 0):
 \fBdouble_check_caid\fP = [CAID1|first two digits of CAID1],[CAID2|first two digits of CAID2]...
 .RS 3n
 ECM will be send to two or more readers with the same SC and the CWs will be verified against each other for defined CAID or first two bytes of CAID, \fBlb_nbest_readers\fP must be set to 2 or higher, default:none
+.RE
+\fBgetblockemmauprovid\fP = \fB0\fP|\fB1\fP
+.RS 3n
+1 = server overrides EMM blocking defined on client site, default:0
 .RE
 .PP
 \fBlb_mode\fP = \fBmode\fP
@@ -1117,6 +1137,18 @@ PMT mode:
      disable camd.socket
 .RE
 .PP
+\fBecminfo_type\fP = \fB0\fP|\fB1\fP|\fB2\fP|\fB3\fP|\fB4\fP|\fB5\fP
+.RS 3n
+ecm.info types:
+
+ \fB0\fP = OSCam syntax (default)
+ \fB1\fP = OSCam syntax with ECM time in ms instead of seconds
+ \fB2\fP = WiCardd
+ \fB3\fP = mgcamd
+ \fB4\fP = CCcam
+ \fB5\fP = camd3
+.RE
+.PP
 \fBrequest_mode\fP = \fB0\fP|\fB1\fP
 .RS 3n
 CAID request mode:
@@ -1125,7 +1157,7 @@ CAID request mode:
  \fB1\fP = try all CAIDs simultaneously
 .RE
 .PP
-\fBboxtype\fP = \fBdbox2\fP|\fBdreambox\fP|\fBdm7000\fP|\fBduckbox\fP|\fBufs910\fP|\fBipbox\fP|\fBipbox-pmt\fP|\fBqboxhd\fP|\fBcoolstream\fP|\fBneumo\fP|\fBpc\fP
+\fBboxtype\fP = \fBdbox2\fP|\fBdreambox\fP|\fBdm7000\fP|\fBduckbox\fP|\fBufs910\fP|\fBipbox\fP|\fBipbox-pmt\fP|\fBqboxhd\fP|\fBcoolstream\fP|\fBneumo\fP|\fBsamygo\fP|\fBpc\fP
 .RS 3n
 set boxtype, auto detection of DVB API will be aspired, default:dreambox
 
@@ -1136,6 +1168,23 @@ ipbox-pmt can be used on any DGS based images (with or without camd.socket suppo
 verified on HD models only
 
 pc is for generic pc support (currently supported on VDR with vdr-plugin-dvbapi)
+.RE
+.PP
+\fBread_sdt\fP = \fB0\fP|\fB1\fP|\fB2\fP
+.RS 3n
+mode of provider, channel name and service type auto detection via SDT:
+
+ \fB0\fP = disabled (default)
+ \fB1\fP = enabled for non FTA channels only
+ \fB2\fP = enabled for all channels
+.RE
+.PP
+\fBwrite_sdt_prov\fP = \fB0\fP|\fB1\fP
+.RS 3n
+mode writing provider name into \fBoscam.srvid2\fR file:
+
+ \fB0\fP = disabled (default)
+ \fB1\fP = enabled
 .RE
 .PP
 \fBcw_delay\fP = \fBmilli-seconds\fP
@@ -1393,4 +1442,4 @@ ECM and CW in cache already.
 
 ECM and checksum in cache already.
 .SH "SEE ALSO"
-\fBlist_smargo\fR(1), \fBoscam\fR(1), \fBoscam.ac\fR(5), \fBoscam.cacheex\fR(5), \fBoscam.cert\fR(5), \fBoscam.dvbapi\fR(5), \fBoscam.guess\fR(5), \fBoscam.ird\fR(5), \fBoscam.provid\fR(5), \fBoscam.ratelimit\fR(5), \fBoscam.server\fR(5), \fBoscam.services\fR(5), \fBoscam.srvid\fR(5), \fBoscam.tiers\fR(5), \fBoscam.user\fR(5), \fBoscam.whitelist\fR(5)
+\fBlist_smargo\fR(1), \fBoscam\fR(1), \fBoscam.ac\fR(5), \fBoscam.cacheex\fR(5), \fBoscam.cert\fR(5), \fBoscam.dvbapi\fR(5), \fBoscam.fakecws\fR(5), \fBoscam.guess\fR(5), \fBoscam.ird\fR(5), \fBoscam.provid\fR(5), \fBoscam.ratelimit\fR(5), \fBoscam.server\fR(5), \fBoscam.services\fR(5), \fBoscam.srvid\fR(5), \fBoscam.srvid2\fR(5), \fBoscam.tiers\fR(5), \fBoscam.user\fR(5), \fBoscam.whitelist\fR(5)

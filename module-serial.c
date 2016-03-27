@@ -2,12 +2,15 @@
 
 #include "globals.h"
 #ifdef MODULE_SERIAL
+#include "oscam-config.h"
 #include "oscam-client.h"
 #include "oscam-ecm.h"
 #include "oscam-net.h"
 #include "oscam-string.h"
 #include "oscam-time.h"
 #include "oscam-reader.h"
+
+extern int32_t exit_oscam;
 
 #define HSIC_CRC 0xA5
 #define SSSP_MAX_PID 8
@@ -20,7 +23,8 @@
 #define P_ALPHA     6   // AlphaStar Receivers
 #define P_DSR95_OLD 7   // DSR9500 without SID
 #define P_GBOX      8   // Arion with gbox
-#define P_MAX       P_GBOX
+#define P_TWIN      9   // Twin Protocol
+#define P_MAX       P_TWIN
 #define P_AUTO      0xFF
 
 #define P_DSR_AUTO    0
@@ -39,7 +43,7 @@
 #define IS_BAD  0xFF    // incoming data is unknown
 
 static const char *const proto_txt[] = {"unknown", "hsic", "sssp", "bomba", "dsr9500", "gs",
-										"alpha", "dsr9500old", "gbox"
+										"alpha", "dsr9500old", "gbox", "twin"
 									   };
 static const char *const dsrproto_txt[] = {"unknown", "samsung", "openbox", "pioneer",
 		"extended", "unknown"
@@ -145,7 +149,7 @@ static int32_t chk_ser_srvid(struct s_client *cl, uint16_t caid, uint16_t sid, u
 
 static void oscam_wait_ser_fork(void)
 {
-	pthread_mutex_lock(&mutex);
+	SAFE_MUTEX_LOCK(&mutex);
 	do
 	{
 		if(bcopy_end)
@@ -154,10 +158,10 @@ static void oscam_wait_ser_fork(void)
 			break;
 		}
 		else
-			{ pthread_cond_wait(&cond, &mutex); }
+			{ SAFE_COND_WAIT(&cond, &mutex); }
 	}
 	while(1);
-	pthread_mutex_unlock(&mutex);
+	SAFE_MUTEX_UNLOCK(&mutex);
 }
 
 static int32_t oscam_ser_alpha_convert(uchar *buf, int32_t l)
@@ -500,6 +504,9 @@ static int32_t oscam_ser_recv(struct s_client *client, uchar *xbuf, int32_t l)
 						case P_ALPHA:
 							if(buf[0] == 0x88) { p = P_ALPHA; }
 							break;
+						case P_TWIN:
+							if((buf[0] == 0xF7) && (buf[1] == 0x00) && (buf[2] == 0x16)) { p = P_TWIN; }
+							break;
 						}
 					}
 					if((serialdata->oscam_ser_proto != p) && (serialdata->oscam_ser_proto != P_AUTO))
@@ -576,6 +583,9 @@ static int32_t oscam_ser_recv(struct s_client *client, uchar *xbuf, int32_t l)
 				case P_ALPHA  :
 					r = (buf[1] << 8) | buf[2];
 					break; // should be 16 always
+				case P_TWIN  :
+					r = 16;
+					break;
 				}
 			break;
 		case 3:       // STAGE 3: get the rest ...
@@ -915,6 +925,8 @@ static int32_t oscam_ser_check_ecm(ECM_REQUEST *er, uchar *buf, int32_t l)
 	{
 	case P_HSIC:
 		er->ecmlen = l - 12;
+		if(er->ecmlen < 0 || er->ecmlen > MAX_ECM_SIZE)
+			{ return (3); }
 		er->caid = b2i(2, buf + 1);
 		er->prid = b2i(3, buf + 3);
 		er->pid  = b2i(2, buf + 6);
@@ -930,6 +942,8 @@ static int32_t oscam_ser_check_ecm(ECM_REQUEST *er, uchar *buf, int32_t l)
 			return (2);
 		}
 		er->ecmlen = l - 5;
+		if(er->ecmlen < 0 || er->ecmlen > MAX_ECM_SIZE)
+			{ return (3); }
 		er->srvid = serialdata->sssp_srvid;
 		er->caid = serialdata->sssp_tab[i].caid;
 		er->prid = serialdata->sssp_tab[i].prid;
@@ -937,12 +951,16 @@ static int32_t oscam_ser_check_ecm(ECM_REQUEST *er, uchar *buf, int32_t l)
 		break;
 	case P_BOMBA:
 		er->ecmlen = l;
+		if(er->ecmlen < 0 || er->ecmlen > MAX_ECM_SIZE)
+			{ return (3); }
 		memcpy(er->ecm, buf, er->ecmlen);
 		break;
 	case P_DSR95:
 		buf[l] = '\0'; // prepare for trim
 		trim((char *)buf + 13); // strip spc, nl, cr ...
 		er->ecmlen = strlen((char *)buf + 13) >> 1;
+		if(er->ecmlen < 0 || er->ecmlen > MAX_ECM_SIZE)
+			{ return (3); }
 		er->prid = cs_atoi((char *)buf + 3, 3, 0); // ignore errors
 		er->caid = cs_atoi((char *)buf + 9, 2, 0); // ignore errors
 		if(cs_atob(er->ecm, (char *)buf + 13, er->ecmlen) < 0)
@@ -953,6 +971,8 @@ static int32_t oscam_ser_check_ecm(ECM_REQUEST *er, uchar *buf, int32_t l)
 		if(serialdata->dsr9500type == P_DSR_WITHSID)
 		{
 			er->ecmlen -= 2;
+			if(er->ecmlen < 0)
+				{ return (3); }
 			er->srvid = cs_atoi((char *)buf + 13 + (er->ecmlen << 1), 2, 0);
 		}
 		break;
@@ -961,14 +981,17 @@ static int32_t oscam_ser_check_ecm(ECM_REQUEST *er, uchar *buf, int32_t l)
 		er->srvid = (buf[5] << 8) | buf[4];  // sid
 		er->caid  = (buf[7] << 8) | buf[6];
 		er->prid  = 0;
-		if(er->ecmlen > 256) { er->ecmlen = 256; }
+
+		if(er->ecmlen < 0 || er->ecmlen > MAX_ECM_SIZE || (10 + er->ecmlen > l))
+			{ return (3); }
+		
 		memcpy(er->ecm, buf + 10, er->ecmlen);
 		break;
 	case P_ALPHA:
 		l = oscam_ser_alpha_convert(buf, l);
 		er->ecmlen = b2i(2, buf + 1) - 2;
 		er->caid  = b2i(2, buf + 3);
-		if((er->ecmlen != l - 5) || (er->ecmlen > 257))
+		if((er->ecmlen != l - 5) || (er->ecmlen > MAX_ECM_SIZE) || (er->ecmlen < 0))
 		{
 			cs_log("incomplete request (%d bytes)", l);
 			return (1);
@@ -976,8 +999,19 @@ static int32_t oscam_ser_check_ecm(ECM_REQUEST *er, uchar *buf, int32_t l)
 		memcpy(er->ecm, buf + 5, er->ecmlen);
 		break;
 	case P_GBOX:
+		if(((serialdata->gbox_lens.cat_len + 3 + 3 + 1) > l)
+			|| ((serialdata->gbox_lens.ecm_len + 3) > l))
+		{
+			return (3);
+		}
 		er->srvid = b2i(2, buf + serialdata->gbox_lens.cat_len + 3 + 3);
 		er->ecmlen = serialdata->gbox_lens.ecm_len + 3;
+		
+		if(er->ecmlen < 0 || er->ecmlen > MAX_ECM_SIZE)
+			{ return (3); }
+		if(serialdata->gbox_lens.cat_len + 3 + serialdata->gbox_lens.pmt_len + 3 + er->ecmlen > l)
+			{ return (3); }
+		
 		memcpy(er->ecm, buf + serialdata->gbox_lens.cat_len + 3 + serialdata->gbox_lens.pmt_len + 3, er->ecmlen);
 		break;
 	}
@@ -993,11 +1027,15 @@ static void oscam_ser_process_ecm(uchar *buf, int32_t l)
 
 	switch(oscam_ser_check_ecm(er, buf, l))
 	{
+	default:
+	case 3:
 	case 2:
-		er->rc = E_CORRUPT;
+		//er->rc = E_CORRUPT;
+		NULLFREE(er);
 		return; // error without log
 	case 1:
 		er->rc = E_CORRUPT;           // error with log
+		break;
 	}
 	get_cw(cur_client(), er);
 }
@@ -1116,7 +1154,7 @@ static void *oscam_ser_fork(void *pthreadparam)
 {
 	struct s_thread_param *pparam = (struct s_thread_param *) pthreadparam;
 	struct s_client *cl = create_client(get_null_ip());
-	pthread_setspecific(getclient, cl);
+	SAFE_SETSPECIFIC(getclient, cl);
 	cl->thread = pthread_self();
 	cl->typ = 'c';
 	cl->module_idx = pparam->module_idx;
@@ -1143,12 +1181,12 @@ static void *oscam_ser_fork(void *pthreadparam)
 	cs_log("serial: initialized (%s@%s)", cl->serialdata->oscam_ser_proto > P_MAX ?
 		   "auto" : proto_txt[cl->serialdata->oscam_ser_proto], cl->serialdata->oscam_ser_device);
 
-	pthread_mutex_lock(&mutex);
+	SAFE_MUTEX_LOCK(&mutex);
 	bcopy_end = 1;
-	pthread_mutex_unlock(&mutex);
-	pthread_cond_signal(&cond);
+	SAFE_MUTEX_UNLOCK(&mutex);
+	SAFE_COND_SIGNAL(&cond);
 
-	while(1)
+	while(!exit_oscam)
 	{
 		cl->login = time((time_t *)0);
 		cl->pfd = init_oscam_ser_device(cl);
@@ -1168,9 +1206,6 @@ void *init_oscam_ser(struct s_client *UNUSED(cl), uchar *UNUSED(mbuf), int32_t m
 	char sdevice[512];
 	int32_t ret;
 	struct s_thread_param param;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setstacksize(&attr, PTHREAD_STACK_SIZE);
 	oscam_init_serialdata(&param.serialdata);
 	if(cfg.ser_device)
 		{ cs_strncpy(sdevice, cfg.ser_device, sizeof(sdevice)); }
@@ -1178,11 +1213,10 @@ void *init_oscam_ser(struct s_client *UNUSED(cl), uchar *UNUSED(mbuf), int32_t m
 		{ memset(sdevice, 0, sizeof(sdevice)); }
 	param.module_idx = module_idx;
 	char *p;
-	pthread_t temp;
 	char cltype = 'c'; //now auto should work
 	if(bcopy_end == -1)  //mutex should be initialized only once
 	{
-		cs_pthread_cond_init(&mutex, &cond);
+		cs_pthread_cond_init(__func__, &mutex, &cond);
 		bcopy_end = 0;
 	}
 	while((p = strrchr(sdevice, ';')))
@@ -1190,35 +1224,28 @@ void *init_oscam_ser(struct s_client *UNUSED(cl), uchar *UNUSED(mbuf), int32_t m
 		*p = 0;
 		if(!(p + 1) || (!(p + 1)[0])) { return NULL; }
 		if(!oscam_ser_parse_url(p + 1, &param.serialdata, &cltype)) { return NULL; }
-		ret = pthread_create(&temp, &attr, oscam_ser_fork, (void *) &param);
+		ret = start_thread("oscam_ser_fork", oscam_ser_fork, (void *) &param, NULL, 1, 1);
 		if(ret)
 		{
-			cs_log("ERROR: can't create serial reader thread (errno=%d %s)", ret, strerror(ret));
-			pthread_attr_destroy(&attr);
 			return NULL;
 		}
 		else
 		{
 			oscam_wait_ser_fork();
-			pthread_detach(temp);
 		}
 	}
 
 	if(!sdevice[0]) { return NULL; }
 	if(!oscam_ser_parse_url(sdevice, &param.serialdata, &cltype)) { return NULL; }
-	ret = pthread_create(&temp, &attr, oscam_ser_fork, (void *) &param);
+	ret = start_thread("oscam_ser_fork", oscam_ser_fork, (void *) &param, NULL, 1, 1);
 	if(ret)
 	{
-		cs_log("ERROR: can't create serial reader thread (errno=%d %s)", ret, strerror(ret));
-		pthread_attr_destroy(&attr);
 		return NULL;
 	}
 	else
 	{
 		oscam_wait_ser_fork();
-		pthread_detach(temp);
 	}
-	pthread_attr_destroy(&attr);
 	return NULL;
 }
 
@@ -1236,12 +1263,47 @@ static int32_t oscam_ser_client_init(struct s_client *client)
 	if((!client->reader->device[0])) { cs_disconnect_client(client); }
 	if(!oscam_ser_parse_url(client->reader->device, client->serialdata, NULL)) { cs_disconnect_client(client); }
 	client->pfd = init_oscam_ser_device(client);
+
+	if(client->serialdata->oscam_ser_proto == P_TWIN)
+	{
+		if(client->pfd > 0)
+		{
+			client->reader->tcp_connected = 1;
+			client->reader->card_status = CARD_INSERTED;
+		}
+	}
+	
 	return ((client->pfd > 0) ? 0 : 1);
 }
 
-static int32_t oscam_ser_send_ecm(struct s_client *client, ECM_REQUEST *er, uchar *buf)
+static int32_t oscam_ser_twin_send(struct s_client *client, ECM_REQUEST *er)
+{
+	struct ecmtw tw;
+	tw = get_twin(er);
+	cs_debug_mask(D_CLIENT, "found channel: %04X:%06X:%04X:%04X:%04X", tw.caid, tw.provid, tw.deg, tw.freq, tw.srvid);
+	uint8_t wbuf[32];
+	wbuf[0] = 7;
+	wbuf[1] = 6;
+	wbuf[2] = tw.deg>>8;
+	wbuf[3] = tw.deg&0xff;
+	wbuf[4] = tw.freq>>8;
+	wbuf[5] = tw.freq&0xff;
+	wbuf[6] = tw.srvid>>8;
+	wbuf[7] = tw.srvid&0xff;
+	wbuf[8] = wbuf[0]^wbuf[1]^wbuf[2]^wbuf[3]^wbuf[4]^wbuf[5]^wbuf[6]^wbuf[7];
+	oscam_ser_send(client, wbuf, 9);
+	return(0);
+}
+
+static int32_t oscam_ser_send_ecm(struct s_client *client, ECM_REQUEST *er)
 {
 	char *tmp;
+	uchar *buf;
+	if(!cs_malloc(&buf, er->ecmlen + 12))
+	{
+		return(-1);
+	}
+	
 	switch(client->serialdata->oscam_ser_proto)
 	{
 	case P_HSIC:
@@ -1282,7 +1344,11 @@ static int32_t oscam_ser_send_ecm(struct s_client *client, ECM_REQUEST *er, ucha
 		memcpy(buf + 5, er->ecm, er->ecmlen);
 		oscam_ser_send(client, buf, oscam_ser_alpha_convert(buf, 5 + er->ecmlen));
 		break;
+	case P_TWIN:
+		oscam_ser_twin_send(client, er);
+		break;
 	}
+	NULLFREE(buf);
 	return (0);
 }
 
@@ -1325,6 +1391,12 @@ static void oscam_ser_process_dcw(uchar *dcw, int32_t *rc, uchar *buf, int32_t l
 			*rc = 1;
 		}
 		break;
+	case P_TWIN:
+		if ((l >= 19) && (buf[0] == 0xF7))
+		{
+			memcpy(dcw, buf + 3, 16);
+			*rc = 1;
+		}
 	}
 }
 

@@ -722,7 +722,7 @@ static int32_t nagra2_card_init(struct s_reader *reader, ATR *newatr)
 	else if((!memcmp(atr + 4, "IRDETO", 6)) && ((atr[14] == 0x03) && (atr[15] == 0x84) && (atr[16] == 0x55)))
 	{
 		rdr_log(reader, "detect irdeto tunneled nagra card");
-		if(check_filled(reader->rsa_mod, 64) == 0)
+		if(!array_has_nonzero_byte(reader->rsa_mod, 64))
 		{
 			rdr_log(reader, "no rsa key configured -> using irdeto mode");
 			return ERROR;
@@ -751,36 +751,38 @@ static int32_t nagra2_card_init(struct s_reader *reader, ATR *newatr)
 
 		if(!cs_malloc(&reader->csystem_data, sizeof(struct nagra_data)))
 			{ rdr_log(reader,"mem alloc error"); return ERROR; }
-		write_cmd(ins80, handshake); // try to init nagra layer
-		if(cta_res[0] == 0x61 && cta_res[1] == 0x10)
+		if(!card_write(reader, ins80, handshake, cta_res, &cta_lr)) // try to init nagra layer
 		{
-			reader->seca_nagra_card = 1;
-			if ((reader->typ == R_SMART || reader->typ == R_INTERNAL || is_smargo_reader(reader)) && !reader->ins7e11_fast_reset)
+			if(cta_res[0] == 0x61 && cta_res[1] == 0x10)
 			{
-				ins7e11_state = 1;
-				reader->ins7e11_fast_reset = 1;
+				reader->seca_nagra_card = 1;
+				if ((reader->typ == R_SMART || reader->typ == R_INTERNAL || is_smargo_reader(reader)) && !reader->ins7e11_fast_reset)
+				{
+					ins7e11_state = 1;
+					reader->ins7e11_fast_reset = 1;
+				}
+				reader->card_atr_length = 23;
+				const struct s_cardreader *crdr_ops = reader->crdr;
+				if (!crdr_ops) return ERROR;
+				call(crdr_ops->activate(reader, newatr)); //read nagra atr
+				get_atr2;
+				memcpy(reader->rom, atr2 + 8, 15);// get historical bytes containing romrev from nagra atr
+				rdr_log(reader,"Nagra layer found"); 
+				rdr_log(reader,"Rom revision: %.15s", reader->rom);
+				reader->card_atr_length = 14;
+				reader->seca_nagra_card = 2;
+				call(crdr_ops->activate(reader, newatr));// read seca atr to switch back
+				if ((reader->typ == R_SMART || reader->typ == R_INTERNAL || is_smargo_reader(reader)) && ins7e11_state == 1)
+				{
+					ins7e11_state = 0;
+					reader->ins7e11_fast_reset = 0;
+				}
 			}
-			reader->card_atr_length = 23;
-			const struct s_cardreader *crdr_ops = reader->crdr;
-			if (!crdr_ops) return ERROR;
-			call(crdr_ops->activate(reader, newatr)); //read nagra atr
-			get_atr2;
-			memcpy(reader->rom, atr2 + 8, 15);// get historical bytes containing romrev from nagra atr
-			rdr_log(reader,"Nagra layer found"); 
-			rdr_log(reader,"Rom revision: %.15s", reader->rom);
-			reader->card_atr_length = 14;
-			reader->seca_nagra_card = 2;
-			call(crdr_ops->activate(reader, newatr));// read seca atr to switch back
-			if ((reader->typ == R_SMART || reader->typ == R_INTERNAL || is_smargo_reader(reader)) && ins7e11_state == 1)
+			else
 			{
-				ins7e11_state = 0;
-				reader->ins7e11_fast_reset = 0;
+				rdr_log(reader," Nagra atr not ok");
+				return ERROR;
 			}
-		}
-		else
-		{
-			rdr_log(reader," Nagra atr not ok");
-			return ERROR;
 		}
 		NULLFREE(reader->csystem_data);
 		return ERROR; // quitting csystem still not having needed commands to run on nagra layer
@@ -1239,6 +1241,7 @@ int32_t nagra2_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)  //returns 1 i
 	switch(ep->emm[0])
 	{
 	case 0x83:
+	case 0x87:
 		memset(ep->hexserial, 0, 8);
 		ep->hexserial[0] = ep->emm[5];
 		ep->hexserial[1] = ep->emm[4];
@@ -1255,6 +1258,7 @@ int32_t nagra2_get_emm_type(EMM_PACKET *ep, struct s_reader *rdr)  //returns 1 i
 			return (!memcmp(rdr->hexserial + 2, ep->hexserial, 4));
 		}
 	case 0x82:
+	case 0x84:
 		ep->type = GLOBAL;
 		return 1;
 	default:
@@ -1278,30 +1282,32 @@ static int32_t nagra2_get_emm_filter(struct s_reader *rdr, struct s_csystem_emm_
 
 		filters[idx].type = EMM_GLOBAL;
 		filters[idx].enabled   = 1;
-		filters[idx].filter[0] = 0x82;
-		filters[idx].mask[0]   = 0xFF;
+		filters[idx].filter[0] = 0x86;
+		filters[idx].mask[0]   = 0xF9;   // 0x82, 0x84 and 0x86 
 		idx++;
 
 		filters[idx].type = EMM_SHARED;
 		filters[idx].enabled   = 1;
-		filters[idx].filter[0] = 0x83;
+		filters[idx].filter[0] = 0x87;
 		filters[idx].filter[1] = rdr->hexserial[4];
 		filters[idx].filter[2] = rdr->hexserial[3];
 		filters[idx].filter[3] = rdr->hexserial[2];
 		filters[idx].filter[4] = 0x00;
 		filters[idx].filter[5] = 0x10;
-		memset(&filters[idx].mask[0], 0xFF, 6);
+		filters[idx].mask[0]   = 0xFB;   // 0x83 and 0x87
+		memset(&filters[idx].mask[1], 0xFF, 5);
 		idx++;
 
 		filters[idx].type = EMM_UNIQUE;
 		filters[idx].enabled   = 1;
-		filters[idx].filter[0] = 0x83;
+		filters[idx].filter[0] = 0x87;
 		filters[idx].filter[1] = rdr->hexserial[4];
 		filters[idx].filter[2] = rdr->hexserial[3];
 		filters[idx].filter[3] = rdr->hexserial[2];
 		filters[idx].filter[4] = rdr->hexserial[5];
 		filters[idx].filter[5] = 0x00;
-		memset(&filters[idx].mask[0], 0xFF, 6);
+		filters[idx].mask[0]   = 0xFB;   // 0x83 and 0x87
+		memset(&filters[idx].mask[1], 0xFF, 5);
 		idx++;
 
 		*filter_count = idx;

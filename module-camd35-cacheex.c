@@ -1,6 +1,7 @@
 #define MODULE_LOG_PREFIX "camd35"
 
 #include "globals.h"
+#include "oscam-array.h"
 
 #if defined(CS_CACHEEX) && (defined(MODULE_CAMD35) || defined(MODULE_CAMD35_TCP))
 
@@ -43,42 +44,42 @@ void camd35_cacheex_send_push_filter(struct s_client *cl, uint8_t mode)
 		return;
 	}
 
-	i2b_buf(2, filter->n, buf + i);
+	i2b_buf(2, filter->cevnum, buf + i);
 	i += 2;
 
 	int32_t max_filters = 15;
 	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			i2b_buf(4, filter->caid[j], buf + i);
+		if(filter->cevnum > j){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			i2b_buf(4, d->caid, buf + i);
 		}
 		i += 4;
 	}
 
-	for(j=0; j<max_filters && j<CS_MAXCAIDTAB; j++)
+	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			i2b_buf(4, filter->cmask[j], buf + i);
+		if(filter->cevnum > j){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			i2b_buf(4, d->cmask, buf + i);
 		}
 		i += 4;
 	}
 
-	for(j=0; j<max_filters && j<CS_MAXCAIDTAB; j++)
+	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			i2b_buf(4, filter->prid[j], buf + i);
+		if(filter->cevnum > j){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			i2b_buf(4, d->prid, buf + i);
 		}
 		i += 4;
 	}
 
-	for(j=0; j<max_filters && j<CS_MAXCAIDTAB; j++)
+	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			i2b_buf(4, filter->srvid[j], buf + i);
+		if(filter->cevnum > j){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			i2b_buf(4, d->srvid, buf + i);
 		}
 		i += 4;
 	}
@@ -94,6 +95,7 @@ static void camd35_cacheex_push_filter(struct s_client *cl, uint8_t *buf, uint8_
 {
 	struct s_reader *rdr = cl->reader;
 	int i = 20, j;
+	int32_t caid, cmask, provid, srvid;
 	CECSPVALUETAB *filter;
 
 	//mode==2 write filters to acc
@@ -111,46 +113,48 @@ static void camd35_cacheex_push_filter(struct s_client *cl, uint8_t *buf, uint8_
 		return;
 	}
 
-	filter->n = b2i(2, buf + i);
+	cecspvaluetab_clear(filter);
 	i += 2;
-	if(filter->n > CS_MAXCAIDTAB)
-	{
-		filter->n = CS_MAXCAIDTAB;
-	}
 
 	int32_t max_filters = 15;
 	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->caid[j] = b2i(4, buf + i);
+		caid = b2i(4, buf + i);
+		if(caid > 0){
+			CECSPVALUETAB_DATA d;
+			memset(&d, 0, sizeof(d));
+			d.caid = b2i(4, buf + i);
+			cecspvaluetab_add(filter, &d);
 		}
 		i += 4;
 	}
 
-	for(j=0; j<max_filters && j<CS_MAXCAIDTAB; j++)
+	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->cmask[j] = b2i(4, buf + i);
+		cmask = b2i(4, buf + i);
+		if(j<filter->cevnum){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			d->cmask = cmask;
 		}
 		i += 4;
 	}
 
-	for(j=0; j<max_filters && j<CS_MAXCAIDTAB; j++)
+	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->prid[j] = b2i(4, buf + i);
+		provid = b2i(4, buf + i);
+		if(j<filter->cevnum){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			d->prid = provid;
 		}
 		i += 4;
 	}
 
-	for(j=0; j<max_filters && j<CS_MAXCAIDTAB; j++)
+	for(j=0; j<max_filters; j++)
 	{
-		if(j<CS_MAXCAIDTAB)
-		{
-			filter->srvid[j] = b2i(4, buf + i);
+		srvid = b2i(4, buf + i);
+		if(j<filter->cevnum){
+			CECSPVALUETAB_DATA *d = &filter->cevdata[j];
+			d->srvid = srvid;
 		}
 		i += 4;
 	}
@@ -258,7 +262,7 @@ static int32_t camd35_cacheex_push_out(struct s_client *cl, struct ecm_request_t
 		else if((cl->typ == 'p' || cl->typ == 'r') && (cl->reader && cl->reader->cacheex.mode))
 			{ cl->cwc_info++; }
 
-		cs_log_dbg(D_CWC, "CWC (CE) push to %s cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
+		cs_log_dbg(D_CWC, "CWC (CE) push to %s cycletime: %isek - nextcwcycle: CW%i for %04X@%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
 	}
 
 	buf[19] = er->ecm[0] != 0x80 && er->ecm[0] != 0x81 ? 0 : er->ecm[0];
@@ -346,7 +350,7 @@ static void camd35_cacheex_push_in(struct s_client *cl, uchar *buf)
 			{ cl->account->cwc_info++; }
 		else if((cl->typ == 'p' || cl->typ == 'r') && (cl->reader && cl->reader->cacheex.mode))
 			{ cl->cwc_info++; }
-		cs_log_dbg(D_CWC, "CWC (CE) received from %s cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
+		cs_log_dbg(D_CWC, "CWC (CE) received from %s cycletime: %isek - nextcwcycle: CW%i for %04X@%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
 	}
 
 	uint8_t *ofs = buf + 20;
@@ -472,7 +476,7 @@ void camd35_cacheex_recv_ce1_cwc_info(struct s_client *cl, uchar *buf, int32_t i
 	else if((cl->typ == 'p' || cl->typ == 'r') && (cl->reader && cl->reader->cacheex.mode))
 		{ cl->cwc_info++; }
 
-	cs_log_dbg(D_CWC, "CWC (CE1) received from %s cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
+	cs_log_dbg(D_CWC, "CWC (CE1) received from %s cycletime: %isek - nextcwcycle: CW%i for %04X@%06X:%04X", username(cl), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
 
 }
 
@@ -515,7 +519,7 @@ void camd35_cacheex_init_dcw(struct s_client *client, ECM_REQUEST *er)
 			{ client->account->cwc_info++; }
 		else if((client->typ == 'p' || client->typ == 'r') && (client->reader && client->reader->cacheex.mode))
 			{ client->cwc_info++; }
-		cs_log_dbg(D_CWC, "CWC (CE1) push to %s cycletime: %isek - nextcwcycle: CW%i for %04X:%06X:%04X", username(client), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
+		cs_log_dbg(D_CWC, "CWC (CE1) push to %s cycletime: %isek - nextcwcycle: CW%i for %04X@%06X:%04X", username(client), er->cwc_cycletime, er->cwc_next_cw_cycle, er->caid, er->prid, er->srvid);
 		buf[19] = er->ecm[0];
 	}
 }

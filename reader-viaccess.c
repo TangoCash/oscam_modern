@@ -4,6 +4,8 @@
 #include "oscam-time.h"
 #include "oscam-emm.h"
 #include "reader-common.h"
+#include "cscrypt/des.h"
+#include "oscam-work.h"
 
 struct geo_cache
 {
@@ -154,9 +156,9 @@ static void show_class(struct s_reader *reader, const char *p, uint32_t provid, 
 			}
 }
 
-static int8_t find_class(struct s_reader *reader, uint32_t provid, const uchar *b, int32_t l)
+static int8_t add_find_class(struct s_reader *reader, uint32_t provid, const uchar *b, int32_t l, int8_t add)
 {
-	int32_t i, j;
+	int32_t i, j, freshdate = 0;
 
 	// b -> via date (4 uint8_ts)
 	b += 4;
@@ -169,17 +171,48 @@ static int8_t find_class(struct s_reader *reader, uint32_t provid, const uchar *
 			{
 				uchar cls;
 				cls = (l - (j + 1)) * 8 + i;
-				if(cs_add_entitlement(reader, reader->caid, provid, cls, cls, 0, 0, 5, 0) == NULL)
+				if(cs_add_entitlement(reader, reader->caid, provid, cls, cls, 0, 0, 5, 0) == NULL && !add)
 				{
-					rdr_log(reader, "provid %06X class %02X not found!", provid, cls);
-					return 0; // class not found!
+					rdr_log(reader, "provid %06X class %02X not found", provid, cls);
+					freshdate = 1;
 				}
 				else
 				{
-					rdr_log(reader, "provid %06X has matching class %02X", provid, cls);
+					if(!add)
+					{
+						rdr_log(reader, "provid %06X has matching class %02X", provid, cls);
+					}
+					struct via_date vd;
+					parse_via_date(b - 4, &vd, 1);
+					time_t start_t, end_t;
+					struct tm tm;
+					//convert time:
+					memset(&tm, 0, sizeof(tm));
+					tm.tm_year = vd.year_s + 80; //via year starts in 1980, tm_year starts in 1900
+					tm.tm_mon = vd.month_s - 1; // january is 0 in tm_mon
+					tm.tm_mday = vd.day_s;
+					start_t = cs_timegm(&tm);
+					
+					tm.tm_year = vd.year_e + 80; //via year starts in 1980, tm_year starts in 1900
+					tm.tm_mon = vd.month_e - 1; // january is 0 in tm_mon
+					tm.tm_mday = vd.day_e;
+					end_t = cs_timegm(&tm);
+					
+					if(cs_add_entitlement(reader, reader->caid, provid, cls, cls, start_t, end_t, 5, add) != NULL)
+					{
+						if(!add)
+						{
+							rdr_log(reader, "class %02X provid %06X has already this daterange or newer entitled", cls, provid);
+						}
+					}
+					else
+					{
+						freshdate = 1;
+					}
 				}
 			}
-	return 1; // all classes found!
+	if(freshdate == 0) return -2;
+	return 1; // emmdate is fresh!
 }
 
 static void show_subs(struct s_reader *reader, const uchar *emm)
@@ -887,7 +920,7 @@ static int32_t viaccess_card_init(struct s_reader *reader, ATR *newatr)
 	static unsigned char ins8706[] = { 0x87, 0x06, 0x00, 0x00, 0x04 };
 
 
-	if((atr[1] != 0x77) || ((atr[2] != 0x18) && (atr[2] != 0x11) && (atr[2] != 0x19)) || ((atr[9] != 0x68) && (atr[9] != 0x6C)))
+	if((atr[1] != 0x77) || ((atr[2] != 0x18) && (atr[2] != 0x11) && (atr[2] != 0x19)) || ((atr[9] != 0x68) && (atr[9] != 0x6C) && (atr[9] != 0x64)))
 		{ return ERROR; }
 
 	write_cmd(insFAC, FacDat);
@@ -1010,10 +1043,11 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 	uint32_t provid = 0;
 	int32_t rc = 0;
 	int32_t hasD2 = 0;
+	uchar hasE0 = 0;
 	int32_t curEcm88len = 0;
 	int32_t nanoLen = 0;
 	uchar *nextEcm;
-	uchar DE04[256];
+	uchar DE04[MAX_ECM_SIZE];
 	int32_t D2KeyID = 0;
 	int32_t curnumber_ecm = 0;
 	//nanoD2 d2 02 0d 02 -> D2 nano, len 2
@@ -1026,8 +1060,6 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 
 	nextEcm = ecm88Data;
 	
-	int8_t nanoE0 = 0;
-
 	while(ecm88Len > 0 && !rc)
 	{
 
@@ -1177,9 +1209,10 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 			}
 			
 			// E0 (seen so far in logs: E0020002 or E0022002, but not in all cases delivers invalid cw so just detect!)
-			if(ecm88Data[0] == 0xE0 && ecm88Data[1] == 0x02 && (ecm88Data[2] == 0x00 || ecm88Data[2] == 0x20) && ecm88Data[3] == 0x02)
+			if(ecm88Data[0] == 0xE0 && ecm88Data[1] == 0x02)
 			{
-				nanoE0 = 1; // flag possible nanoe0 in use
+				rdr_log_dbg(reader, D_READER,"[viaccess-reader] nano E0 ECM detected!");
+				hasE0=1;
 			}
 			
 
@@ -1257,7 +1290,7 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 			}
 			ins88[2] = ecmf8Len ? 1 : 0;
 			ins88[3] = keynr;
-			ins88[4] = curEcm88len;
+			ins88[4] = (curEcm88len > 0xFF) ? 0x00 : curEcm88len;
 			//
 			// we should check the nano to make sure the ecm is valid
 			// we should look for at least 1 E3 nano, 1 EA nano and the F0 signature nano
@@ -1266,7 +1299,7 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 			if(DE04[0] == 0xDE)
 			{
 				uint32_t l = curEcm88len - 6;
-				if(l > 256 || curEcm88len <= 6)    //don't known if this is ok...
+				if(l > MAX_ECM_SIZE || curEcm88len <= 6)    //don't known if this is ok...
 				{
 					rdr_log(reader, "ecm invalid/too long! len=%d", curEcm88len);
 					return ERROR;
@@ -1303,17 +1336,6 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 					rc = 1;
 				}
 				break;
-				
-			case 0xff: // nanoe0 responds FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF
-				if(cta_res[1] == 0xff && nanoE0)
-				{
-					rdr_log(reader, "This ECM is using nano E0 and the controlword we received was invalid!");
-					ecm88Data = nextEcm;
-					ecm88Len -= curEcm88len;
-					nanoE0 = 0; // reset detection for next ecm
-				}
-				break;
-					
 					
 			default :
 				ecm88Data = nextEcm;
@@ -1358,7 +1380,32 @@ static int32_t viaccess_do_ecm(struct s_reader *reader, const ECM_REQUEST *er, s
 			hdSurEncPhase2_D2_13_15(ea->cw);
 		}
 	}
-
+	
+	if ( hasE0 )
+	{	
+		if ( reader->initCA28 )
+		{
+			rdr_log_dbg(reader, D_READER, "Decrypting nano E0 encrypted cw.");
+			uint8_t returnedcw[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; 
+			memcpy(returnedcw,ea->cw,16);
+			// Processing 3DES
+			// Processing even cw
+			des(returnedcw, reader->key_schedule1, 0);  //decrypt
+			des(returnedcw, reader->key_schedule2, 1);  //crypt
+			des(returnedcw, reader->key_schedule1, 0);  //decrypt
+			// Processing odd cw
+			des(returnedcw+8, reader->key_schedule1, 0);  //decrypt
+			des(returnedcw+8, reader->key_schedule2, 1);  //crypt
+			des(returnedcw+8, reader->key_schedule1, 0);  //decrypt
+		
+			// returning value
+			memcpy(ea->cw,returnedcw, 16);      
+		}
+		else
+		{
+			snprintf(ea->msglog, MSGLOGSIZE, "Viaccess nano E0 detected, no valid boxkey and deskey defined: no decoding");			
+		}
+	}
 	return (rc ? OK : ERROR);
 }
 
@@ -1587,6 +1634,7 @@ static int32_t viaccess_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 	uchar *nano92Data = 0;
 	uchar *nano9EData = 0;
 	uchar *nanoF0Data = 0;
+	uchar *nanoA9Data = 0;
 
 	for(emmUpToEnd = emmLen; (emmParsed[1] != 0) && (emmUpToEnd > 0); emmUpToEnd -= (2 + emmParsed[1]), emmParsed += (2 + emmParsed[1]))
 	{
@@ -1678,22 +1726,47 @@ static int32_t viaccess_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 		{
 			nanoF0Data = emmParsed;
 		}
+		else if(emmParsed[0] == 0xD8 && emmParsed[2] == 0x45)
+		{
+			uint8_t pos = 4 + emmParsed[3];
+			char *tmpbuf;
+			if(emmParsed[pos] == 0x46 && ((emmParsed[pos+1] - emmParsed[1]) == pos))
+			{
+				if(cs_malloc(&tmpbuf, emmParsed[pos+1]))
+				{
+					cs_strncpy(tmpbuf, (char *) emmParsed+pos+2, emmParsed[pos+1]);
+					rdr_log(reader, "Viaccess EMM-text: %s", tmpbuf);
+					NULLFREE(tmpbuf);
+				}
+			}
+		}	
 		else
 		{
 			/* other nanos */
 			show_subs(reader, emmParsed);
-			if(emmParsed[0] == 0xA9 && ep->type == SHARED) // check on shared (reassembled) emm if all nanos are present on card: if not and written error 90 40 
+			if(emmParsed[0] == 0xA9 && ep->type == SHARED) // check on shared (reassembled) emm if all classes are present and up to date on card: error 90 40 
 			{	
 				if(!emm_provid)
 				{
 					rdr_log(reader, "no provid in shared emm -> skipped!");
 					return SKIPPED;
 				}
-				if(!find_class(reader, emm_provid, emmParsed + 2, emmParsed[1]))
+				
+				int8_t match = add_find_class(reader, emm_provid, emmParsed + 2, emmParsed[1], 0);
+				
+				// seems not all classes have to be present on card to accept the emm
+				/*if(match == -1)
 				{
-					rdr_log(reader, "shared emm provid %06X class mismatch -> skipped!", emm_provid);
+					rdr_log(reader, "shared emm provid %06X one or more classes of this emm do not match with your card -> skipped!", emm_provid);
+					return SKIPPED;
+				}*/
+				
+				if(match == -2)
+				{
+					rdr_log(reader, "shared emm provid %06X all classes have entitlementdate already same or newer -> skipped!", emm_provid);
 					return SKIPPED;
 				}
+				nanoA9Data = emmParsed;
 			}
 
 			memcpy(ins18Data + ins18Len, emmParsed, emmParsed[1] + 2);
@@ -1760,14 +1833,25 @@ static int32_t viaccess_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 		write_cmd(ins18, insData);
 		if((cta_res[cta_lr - 2] == 0x90 || cta_res[cta_lr - 2] == 0x91) && cta_res[cta_lr - 1] == 0x00)
 		{
-			rdr_log_dbg(reader, D_READER, "update successfully written");
+			if(nanoA9Data)
+			{
+				add_find_class(reader, emm_provid, nanoA9Data + 2, nanoA9Data[1], 1);
+				rdr_log(reader, "Your subscription data was updated.");
+			} 
 			rc = 1; // written
 		}
 		else
 		{
 			rdr_log_dump(reader, ins18, 5, "set subscription cmd:");
 			rdr_log_dump(reader, insData, ins18[4], "set subscription data:");
-			rdr_log(reader, "update error: %02X %02X", cta_res[cta_lr - 2], cta_res[cta_lr - 1]);
+			if(!(cta_res[cta_lr -2] == 0x90 && cta_res[cta_lr - 1] == 0x40))  // dont throw softerror 9040 in log!
+			{
+				rdr_log(reader, "update error: %02X %02X", cta_res[cta_lr - 2], cta_res[cta_lr - 1]);
+			}
+			else
+			{
+				rc = 2; // skipped
+			}
 		}
 
 	}
@@ -1947,6 +2031,31 @@ static int32_t viaccess_card_info(struct s_reader *reader)
 		write_cmd(insa4, NULL); // select next provider
 	}
 	//return ERROR;
+	// Start process init CA 28
+	reader->initCA28=0;
+	int32_t lenboxkey = reader->boxkey_length;
+	int32_t lendeskey = reader->des_key_length;
+	if ((lenboxkey >= 4) && (lendeskey > 0))
+	{
+		uchar ins28[] = { 0xCA, 0x28, 0x00, 0x00, 0x04 }; //Init for nanoE0 ca28
+		ins28[4] = (uchar) lenboxkey;
+		uchar ins28_data[4];
+		memcpy(ins28_data, reader->boxkey, 4);
+		write_cmd(ins28, ins28_data); // unlock card to reply on E002xxyy
+		if((cta_res[cta_lr - 2] == 0x90) && (cta_res[cta_lr - 1] == 0))
+		{
+			rdr_log(reader, "CA 28 initialisation successful!");
+			// init 3DES key
+			des_set_key(reader->des_key, reader->key_schedule1);
+			des_set_key(reader->des_key+8, reader->key_schedule2);
+			reader->initCA28=1;
+		}
+		else
+		{
+			rdr_log(reader, "CA 28 initialisation failed! CA 28 refused");
+		}
+	}
+	//end process init CA 28
 	return OK;
 }
 
@@ -1979,6 +2088,7 @@ static int32_t viaccess_reassemble_emm(struct s_reader *rdr, struct s_client *cl
 			{
 				return 0;
 			}
+			memset(&r_emm->emm[0], 0, sizeof(r_emm->emm)); // zero it!  
 			memcpy(&r_emm->emm[0], &buffer[0], *len); // put the fresh new shared emm
 			r_emm->emmlen = *len; // put the emmlen indicating that this shared emm isnt being reassembled
 			rdr_log_dump_dbg(rdr, D_EMM, r_emm->emm, r_emm->emmlen, "%s: received fresh emm-gh for provid %06X", __func__, provid);

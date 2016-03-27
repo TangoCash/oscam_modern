@@ -11,15 +11,15 @@
 #include "oscam-client.h"
 #include "oscam-time.h"
 
-static uint32_t poll_gsms_data (uint16_t *boxid, uint8_t *num, char *text)
+static int32_t poll_gsms_data (uint16_t *boxid, uint8_t *num, char *text)
 {
 	char *fext= FILE_GSMS_TXT; 
 	char *fname = get_gbox_tmp_fname(fext); 
 	FILE *fhandle = fopen(fname, "r");
 	if(!fhandle)
 		{
-		cs_log("Couldn't open %s: %s", fname, strerror(errno));
-		return -1;
+		//cs_log("Couldn't open %s: %s", fname, strerror(errno));
+		return -2;
 		}
 	uint32_t length1;
 	uint8_t length;
@@ -204,6 +204,7 @@ void gbox_init_send_gsms(void)
 	uint8_t num = 0;
 	uint8_t gsms_prot = 0;
 	uint8_t msg_type = 0;
+	int32_t poll_result = 0;
 	char text[150];
 	memset(text, 0, sizeof(text));
 	char *fext= FILE_GSMS_TXT; 
@@ -214,9 +215,11 @@ void gbox_init_send_gsms(void)
 	gsms_unavail();
 	return;
 	}
-	if (poll_gsms_data( &boxid, &num, text))
+	poll_result = poll_gsms_data( &boxid, &num, text);
+	if(poll_result)
 	{
-	cs_log("ERROR polling file %s", fname);
+	if(poll_result != -2) 
+		{ cs_log("ERROR polling file %s", fname); }
 	return;
 	}
 	int8_t gsms_len = strlen(text);
@@ -288,4 +291,85 @@ void gbox_send_gsms_ack(struct s_client *cli, uint8_t gsms_prot)
 		gbox_send(cli, outbuf, 16);
 		}
 }
+
+static pthread_t sms_sender_thread;
+static int32_t sms_sender_active = 0;
+static pthread_cond_t sleep_cond;
+static pthread_mutex_t sleep_cond_mutex;
+static pthread_mutex_t sms_mutex;
+
+static void sms_mutex_init(void)
+{
+	static int8_t mutex_init = 0;
+	
+	if(!mutex_init)
+	{
+		SAFE_MUTEX_INIT(&sms_mutex, NULL);
+		cs_pthread_cond_init(__func__, &sleep_cond_mutex, &sleep_cond);
+		mutex_init = 1;
+	}	
+}
+
+static void sms_sender(void)
+{
+ 	char *fext= FILE_GSMS_TXT;
+	char *fname = get_gbox_tmp_fname(fext);
+			
+	while(sms_sender_active)
+	{
+    	if (file_exists(fname))
+        {
+			gbox_init_send_gsms();
+        } 		
+		
+		sleepms_on_cond(__func__, &sleep_cond_mutex, &sleep_cond, 1000);
+	}
+	pthread_exit(NULL);
+}
+
+void start_sms_sender(void)
+{
+	int32_t is_active;
+	
+	sms_mutex_init();
+	
+	SAFE_MUTEX_LOCK(&sms_mutex);
+	is_active = sms_sender_active;
+	if(!sms_sender_active)
+	{
+		sms_sender_active = 1;
+	}
+	
+	if(is_active)
+	{
+		SAFE_MUTEX_UNLOCK(&sms_mutex);
+		return;	
+	}
+	
+	int32_t ret = start_thread("sms sender", (void *)&sms_sender, NULL, &sms_sender_thread, 0, 1);
+	if(ret)
+	{
+		sms_sender_active = 0;
+	}
+	
+	SAFE_MUTEX_UNLOCK(&sms_mutex);
+}
+
+void stop_sms_sender(void)
+{
+	sms_mutex_init();
+	
+	SAFE_MUTEX_LOCK(&sms_mutex);
+	
+	if(sms_sender_active)
+	{
+		sms_sender_active = 0;
+		SAFE_COND_SIGNAL(&sleep_cond);
+		SAFE_THREAD_JOIN(sms_sender_thread, NULL);
+	}
+	
+	SAFE_MUTEX_UNLOCK(&sms_mutex);
+}
+
+
 #endif

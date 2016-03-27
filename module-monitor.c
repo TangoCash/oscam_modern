@@ -9,14 +9,13 @@
 #include "oscam-client.h"
 #include "oscam-config.h"
 #include "oscam-conf-chk.h"
+#include "oscam-lock.h"
 #include "oscam-net.h"
 #include "oscam-reader.h"
 #include "oscam-string.h"
 #include "oscam-work.h"
 
 extern char *entitlement_type[];
-extern char *loghist;
-extern char *loghistptr;
 
 struct monitor_data
 {
@@ -247,12 +246,13 @@ static void monitor_send_info(char *txt, int32_t last)
 
 static char *monitor_client_info(char id, struct s_client *cl, char *sbuf)
 {
-	char channame[32];
+	char channame[CS_SERVICENAME_SIZE];
 	sbuf[0] = '\0';
 
 	if(cl)
 	{
-		char ldate[16], ltime[16], *usr;
+		char ldate[16], ltime[16];
+		const char *usr;
 		int32_t lsec, isec, con, cau, lrt = - 1;
 		time_t now;
 		struct tm lt;
@@ -310,11 +310,11 @@ static char *monitor_client_info(char id, struct s_client *cl, char *sbuf)
 			snprintf(ldate, sizeof(ldate), "%02d.%02d.%02d", lt.tm_mday, lt.tm_mon + 1, lt.tm_year % 100);
 			int32_t cnr = get_threadnum(cl);
 			snprintf(ltime, sizeof(ldate), "%02d:%02d:%02d", lt.tm_hour, lt.tm_min, lt.tm_sec);
-			snprintf(sbuf, 256, "[%c--CCC]%8X|%c|%d|%s|%d|%d|%s|%d|%s|%s|%s|%d|%04X:%04X|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d\n",
+			snprintf(sbuf, 256, "[%c--CCC]%8X|%c|%d|%s|%d|%d|%s|%d|%s|%s|%s|%d|%04X@%06X:%04X|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d\n",
 					 id, cl->tid, cl->typ, cnr, usr, cau, cl->crypted,
 					 cs_inet_ntoa(cl->ip), cl->port, client_get_proto(cl),
-					 ldate, ltime, lsec, cl->last_caid, cl->last_srvid,
-					 get_servicename_or_null(cl, cl->last_srvid, cl->last_caid, channame), isec, con,
+					 ldate, ltime, lsec, cl->last_caid, cl->last_provid, cl->last_srvid,
+					 get_servicename_or_null(cl, cl->last_srvid, cl->last_provid, cl->last_caid, channame, sizeof(channame)), isec, con,
 					 cl->cwfound, cl->cwnot, cl->cwcache, cl->cwignored,
 					 cl->cwtout, cl->emmok, cl->emmnok, lrt);
 		}
@@ -491,7 +491,7 @@ static void monitor_process_details_reader(struct s_client *cl)
 
 		char *entresname = get_tiername(item->id & 0xFFFF, item->caid, buf);
 		if(!entresname[0])
-			{ entresname = get_provider(item->caid, item->provid, buf, sizeof(buf)); }
+			{ entresname = get_provider(item->provid, item->caid, buf, sizeof(buf)); }
 
 		snprintf(tmpbuf, sizeof(tmpbuf) - 1, "%s Type: %s CAID: %04X Provid: %06X ID: %08X%08X Class: %08X StartDate: %s ExpireDate: %s Name: %s",
 				 item->end > now ? "active " : "expired",
@@ -603,40 +603,28 @@ static void monitor_logsend(char *flag)
 
 	if(cur_cl->log)     // already on
 		{ return; }
-
-	int32_t i, d = 0;
-	if(!strcmp(flag, "on") && cfg.loghistorysize)
-	{
-		char *t_loghistptr = loghistptr, *ptr1 = NULL;
-		if(loghistptr >= loghist + (cfg.loghistorysize) - 1)
-			{ t_loghistptr = loghist; }
-		int32_t l1 = strlen(t_loghistptr + 1) + 2;
-		char *lastpos = loghist + (cfg.loghistorysize) - 1;
-
-		for(ptr1 = t_loghistptr + l1, i = 0; i < 200; i++, ptr1 = ptr1 + l1)
+	
+	if(!strcmp(flag, "on") && cfg.loghistorylines)
+	{	
+		if(cfg.loghistorylines && log_history)
 		{
-			l1 = strlen(ptr1) + 1;
-			if(!d && ((ptr1 >= lastpos) || (l1 < 2)))
+			LL_ITER it = ll_iter_create(log_history);
+			struct s_log_history *hist;
+		
+			while((hist = (struct s_log_history*)ll_iter_next(&it)))
 			{
-				ptr1 = loghist;
-				l1 = strlen(ptr1) + 1;
-				d++;
-			}
-
-			if(d && ((ptr1 >= t_loghistptr) || (l1 < 2)))
-				{ break; }
-
-			char p_usr[32], p_txt[512];
-			size_t pos1 = strcspn(ptr1, "\t") + 1;
-
-			cs_strncpy(p_usr, ptr1 , pos1 > sizeof(p_usr) ? sizeof(p_usr) : pos1);
-
-			if((p_usr[0]) && ((cur_cl->monlvl > 1) || (cur_cl->account && !strcmp(p_usr, cur_cl->account->usr))))
-			{
-				snprintf(p_txt, sizeof(p_txt), "[LOG%03d]%s", cur_cl->logcounter, ptr1 + pos1);
-				cur_cl->logcounter = (cur_cl->logcounter + 1) % 1000;
-				monitor_send(p_txt);
-			}
+				char p_usr[32], p_txt[512];
+				size_t pos1 = strcspn(hist->txt, "\t") + 1;
+				
+				cs_strncpy(p_usr, hist->txt , pos1 > sizeof(p_usr) ? sizeof(p_usr) : pos1);
+				
+				if((p_usr[0]) && ((cur_cl->monlvl > 1) || (cur_cl->account && !strcmp(p_usr, cur_cl->account->usr))))
+				{
+					snprintf(p_txt, sizeof(p_txt), "[LOG%03d]%s", cur_cl->logcounter, hist->txt + pos1);
+					cur_cl->logcounter = (cur_cl->logcounter + 1) % 1000;
+					monitor_send(p_txt);
+				}
+			}   
 		}
 	}
 

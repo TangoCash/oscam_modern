@@ -397,17 +397,17 @@ bool IO_Serial_Read(struct s_reader *reader, uint32_t delay, uint32_t timeout, u
 	if(timeout == 0)   // General fix for readers not communicating timeout and delay
 	{
 		if(reader->read_timeout != 0) { timeout = reader->read_timeout; }
-		else { timeout = 9990000; }   // hope 99990000 is long enough!
+		else { timeout = 9999000; }   // hope 9999000 is long enough!
 		rdr_log_dbg(reader, D_DEVICE, "Warning: read timeout 0 changed to %d us", timeout);
 	}
 
 	rdr_log_dbg(reader, D_DEVICE, "Read timeout %d us, read delay %d us, to read %d char(s), chunksize %d char(s)", timeout, delay, size, size);
 
-#if defined(WITH_STAPI) || defined(__SH4__) //internal stapi and sh4 readers need special treatment as they don't respond correctly to poll and some sh4 boxes only can read 1 byte at once
+#if defined(WITH_STAPI) || defined(WITH_STAPI5) || defined(__SH4__) //internal stapi and sh4 readers need special treatment as they don't respond correctly to poll and some sh4 boxes only can read 1 byte at once
 	if(reader->typ == R_INTERNAL)
 	{
 		int32_t readed;
-#if defined(WITH_STAPI)
+#if defined(WITH_STAPI) || defined(WITH_STAPI5)
 		const uint32_t chunksize = INT_MAX;
 #elif defined(__SH4__)
 		const uint32_t chunksize = 1;
@@ -498,7 +498,7 @@ bool IO_Serial_Write(struct s_reader *reader, uint32_t delay, uint32_t timeout, 
 		rdr_log_dbg(reader, D_DEVICE, "Warning: write timeout 0 changed to %d us", timeout);
 	}
 	uint32_t count, to_send, i_w;
-	unsigned char data_w[512];
+	unsigned char data_w[MAX_ECM_SIZE];
 
 	to_send = (delay ? 1 : size); // calculate chars to send at one
 	rdr_log_dbg(reader, D_DEVICE, "Write timeout %d us, write delay %d us, to send %d char(s), chunksize %d char(s)", timeout, delay, size, to_send);
@@ -744,7 +744,7 @@ static bool IO_Serial_WaitToWrite(struct s_reader *reader, uint32_t delay_us, ui
 	int32_t out_fd;
 	int64_t polltimeout = timeout_us / 1000;
 
-#if !defined(WITH_COOLAPI)
+#if !defined(WITH_COOLAPI) && !defined(WITH_COOLAPI2)
 	if(reader->typ == R_INTERNAL) { return OK; }  // needed for internal readers, otherwise error!
 #endif
 	if(delay_us > 0)

@@ -52,12 +52,12 @@ static inline void xxor(uint8_t *data, int32_t len, const uint8_t *v1, const uin
 
 static void scam_generate_deskey(char *keyString, uint8_t *desKey)
 {
-	uint8_t iv[8], key[8], *tmpKey;
+	uint8_t iv[8], *tmpKey;
 	int32_t i, passLen, alignedPassLen;
+	uint32_t key_schedule[32];
 	
 	memset(iv, 0, 8);
 	memset(desKey, 0, 8);
-	memset(key, 0, 8);
 	
 	passLen = keyString == NULL ? 0 : strlen(keyString);
 	if(passLen > 1024) {
@@ -86,9 +86,8 @@ static void scam_generate_deskey(char *keyString, uint8_t *desKey)
 	xxor(desKey,8,tmpKey,iv);	
 	
 	for(i=0; i<alignedPassLen; i+=8) {
-		memcpy(key, &tmpKey[i], 8);
-		doPC1(key);	
-		des(key,DES_ECS2_CRYPT,&tmpKey[i]);
+		des_set_key(&tmpKey[i], key_schedule);
+		des(&tmpKey[i], key_schedule, 1);
 		xxor(desKey,8,desKey,&tmpKey[i]);
 	}
 	
@@ -271,7 +270,7 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 	if(handle <= 0 || maxlen < 3)
 		{ cs_log("scam_msg_recv: fd is 0"); return -1; }
 
-	len = recv(handle, buf, 2, MSG_WAITALL);
+	len = cs_recv(handle, buf, 2, MSG_WAITALL);
 	if(len != 2)		// invalid header length read
 	{
 		if(len <= 0)
@@ -290,7 +289,7 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 	int32_t headerSize = buf[1]&0x80 ? (2 + (buf[1]&~0x80)) : 2;
 	if(headerSize > 2) {
 		if(maxlen < headerSize+1) { return -1; }
-		len = recv(handle, buf+2, headerSize-2, MSG_WAITALL);
+		len = cs_recv(handle, buf+2, headerSize-2, MSG_WAITALL);
 		if(len != headerSize-2)		// invalid header length read
 		{
 			if(len <= 0)
@@ -318,7 +317,7 @@ static int32_t scam_msg_recv(struct s_client *cl, uint8_t *buf, int32_t maxlen)
 			return 0;
 		}
 
-		len = recv(handle, buf + dataOffset, dataLength, MSG_WAITALL);
+		len = cs_recv(handle, buf + dataOffset, dataLength, MSG_WAITALL);
 		if((uint32_t)len != dataLength)
 		{
 			if(len <= 0) {
@@ -528,7 +527,7 @@ static void scam_client_send_hello(struct s_client *cl)
 	scam->dec_xor_offset = 0;
 }
 
-static int32_t scam_client_send_ecm(struct s_client *cl, ECM_REQUEST *er, uchar *UNUSED(buf))
+static int32_t scam_client_send_ecm(struct s_client *cl, ECM_REQUEST *er)
 {				
 	// 2481A5	310A 
 	//				00C00000	enimga namespace
@@ -766,7 +765,7 @@ static void scam_server_recv_ecm(struct s_client *cl, uchar *buf, int32_t len)
 			case 0x34: // ecm
 				usedLen = dataLength;
 				if(usedLen > MAX_ECM_SIZE) {
-					usedLen = MAX_ECM_SIZE;
+					break;
 				}
 				er->ecmlen = usedLen;
 				memcpy(er->ecm, buf+pos+dataOffset, usedLen);
@@ -830,7 +829,7 @@ static void scam_server_send_caidlist(struct s_client *cl)
 	uint32_t cardcount = 0;
 	struct s_reader *rdr = NULL;
 	
-	cs_readlock(&readerlist_lock);
+	cs_readlock(__func__, &readerlist_lock);
 	for(rdr = first_active_reader; rdr; rdr = rdr->next)
 	{
 		if(rdr->caid && chk_ctab(rdr->caid, &cl->ctab)) {
@@ -844,7 +843,7 @@ static void scam_server_send_caidlist(struct s_client *cl)
 			}
 		}
 	}
-	cs_readunlock(&readerlist_lock);
+	cs_readunlock(__func__, &readerlist_lock);
 
 	for(j=0; j < (int32_t)cardcount; j++) {
 		i = 0;

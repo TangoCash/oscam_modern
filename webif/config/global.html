@@ -49,11 +49,14 @@
 				</TD>
 			</TR>
 			<TR><TD><A>Log duplicated lines:</A></TD><TD><input name="logduplicatelines" value="0" type="hidden"><input name="logduplicatelines" value="1" type="checkbox" ##LOGDUPSCHECKED##><label></label></TD></TR>
+			<TR><TD><A>Initial debug level:</A></TD><TD><input name="initial_debuglevel" type="text" maxlength="10" value="##INITIALDEBUGLEVEL##"></TD></TR>
 			<TR><TD><A>Pid file:</A></TD><TD><input name="pidfile" type="text" maxlength="128" value="##PIDFILE##"></TD></TR>
 			<TR><TD><A>CW log dir:</A></TD><TD><input name="cwlogdir" type="text" maxlength="128" value="##CWLOGDIR##"></TD></TR>
 			<TR><TD><A>EMM log dir:</A></TD><TD><input name="emmlogdir" type="text" maxlength="128" value="##EMMLOGDIR##"></TD></TR>
 			<TR><TD><A>ECM log format:</A></TD><TD><input name="ecmfmt" type="text" maxlength="128" value="##ECMFMT##"></TD></TR>
-			<TR><TD><A>Loghistory Size:</A></TD><TD><input name="loghistorysize" class="short" type="text" maxlength="4" value="##LOGHISTORYSIZE##"></TD></TR>
+			<TR><TD><A>Loghistory Lines:</A></TD><TD><input name="loghistorylines" class="short" type="text" maxlength="4" value="##LOGHISTORYLINES##"></TD></TR>
+			<TR><TD><A>Syslog server:</A></TD><TD><input name="sysloghost" type="text" maxlength="128" value="##SYSLOGHOST##"></TD></TR>
+			<TR><TD><A>Syslog port:</A></TD><TD><input name="syslogport" class="short" type="text" maxlength="5" value="##SYSLOGPORT##"></TD></TR>
 			<TR><TH COLSPAN="2">Failban</TH></TR>
 			<TR><TD><A>Failban time:</A></TD><TD><input name="failbantime" class="withunit short" type="text" maxlength="6" value="##FAILBANTIME##"> min blocking IP based</TD></TR>
 			<TR><TD><A>Failban count:</A></TD><TD><input name="failbancount" class="withunit short" type="text" maxlength="2" value="##FAILBANCOUNT##"> chances with wrong credentials</TD></TR>
@@ -68,4 +71,5 @@
 			<TR><TD><A>ECM Doublecheck:</A></TD><TD><input name="double_check" value="0" type="hidden"><input name="double_check" value="1" type="checkbox" ##DCHECKCSELECTED##><label></label></TD></TR>
 			<TR><TD><A>Doublecheck caids:</A></TD><TD><input name="double_check_caid" type="text" maxlength="160" value="##DOUBLECHECKCAID##"></TD></TR>
 ##TPLSUPPRESSCMD08##
+##TPLGETBLOCKEMMAUPROVID##
 ##TPLENABLELEDBIT##

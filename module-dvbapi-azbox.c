@@ -37,6 +37,9 @@ static void azbox_openxcas_ecm_callback(int32_t stream_id, uint32_t UNUSED(seq),
 	openxcas_ecm_pid = pid;
 	openxcas_busy = 1;
 
+	if(l < 0 || l > MAX_ECM_SIZE)
+		{ return; }
+
 	ECM_REQUEST *er;
 	if(!(er = get_ecmtask()))
 		{ return; }
@@ -70,7 +73,10 @@ static void azbox_openxcas_ex_callback(int32_t stream_id, uint32_t seq, int32_t 
 	openxcas_ecm_pid = pid;
 	openxcas_cipher_idx = idx; // is this really cipher_idx?
 
-	ECM_REQUEST *er;
+	if(l < 0 || l > MAX_ECM_SIZE)
+		{ return; }
+
+	ECM_REQUEST *er;	
 	if(!(er = get_ecmtask()))
 		{ return; }
 
@@ -109,7 +115,7 @@ static void *azbox_main_thread(void *cli)
 {
 	struct s_client *client = (struct s_client *) cli;
 	client->thread = pthread_self();
-	pthread_setspecific(getclient, cli);
+	SAFE_SETSPECIFIC(getclient, cli);
 	dvbapi_client = cli;
 
 	struct s_auth *account;
@@ -158,7 +164,7 @@ static void *azbox_main_thread(void *cli)
 				if(!cs_malloc(&dest, msg.buf_len + 7 - 12 - 4))
 					{ break; }
 
-				memcpy(dest, "\x00\xFF\xFF\x00\x00\x13\x00", 7);
+				memcpy(dest, "\x03\xFF\xFF\x00\x00\x13\x00", 7);
 
 				dest[1] = msg.buf[3];
 				dest[2] = msg.buf[4];
@@ -166,7 +172,7 @@ static void *azbox_main_thread(void *cli)
 
 				memcpy(dest + 7, msg.buf + 12, msg.buf_len - 12 - 4);
 
-				dvbapi_parse_capmt(dest, 7 + msg.buf_len - 12 - 4, -1, NULL);
+				dvbapi_parse_capmt(dest, 7 + msg.buf_len - 12 - 4, -1, NULL, 0, 0, 0);
 				NULLFREE(dest);
 
 				unsigned char mask[12];
@@ -231,36 +237,28 @@ static void *azbox_main_thread(void *cli)
 
 void azbox_send_dcw(struct s_client *client, ECM_REQUEST *er)
 {
+	struct s_dvbapi_priority *delayentry = dvbapi_check_prio_match(0, demux[0].pidindex, 'd');
+	uint32_t delay = 0;
+
 	cs_log_dbg(D_DVBAPI, "send_dcw");
-
-	delayer(er);
-
-	FILE *ecmtxt;
-	if((ecmtxt = fopen(ECMINFO_FILE, "w")))
+		
+	if(delayentry)
 	{
-		char tmp[25];
-		if(er->rc <= E_CACHEEX)
+		if(delayentry->delay < 1000)
 		{
-			fprintf(ecmtxt, "caid: 0x%04X\npid: 0x%04X\nprov: 0x%06X\n", er->caid, er->pid, (uint) er->prid);
-			fprintf(ecmtxt, "reader: %s\n", er->selected_reader->label);
-			if(is_cascading_reader(er->selected_reader))
-				{ fprintf(ecmtxt, "from: %s\n", er->selected_reader->device); }
-			else
-				{ fprintf(ecmtxt, "from: local\n"); }
-			fprintf(ecmtxt, "protocol: %s\n", reader_get_type_desc(er->selected_reader, 1));
-			fprintf(ecmtxt, "hops: %d\n", er->selected_reader->currenthops);
-			fprintf(ecmtxt, "ecm time: %.3f\n", (float) client->cwlastresptime / 1000);
-			fprintf(ecmtxt, "cw0: %s\n", cs_hexdump(1, demux[0].lastcw[0], 8, tmp, sizeof(tmp)));
-			fprintf(ecmtxt, "cw1: %s\n", cs_hexdump(1, demux[0].lastcw[1], 8, tmp, sizeof(tmp)));
-			fclose(ecmtxt);
-			ecmtxt = NULL;
-		}
-		else
-		{
-			fprintf(ecmtxt, "ECM information not found\n");
-			fclose(ecmtxt);
+			delay = delayentry->delay;
+			cs_log_dbg(D_DVBAPI, "specific delay: write cw %d ms after ecmrequest", delay);
 		}
 	}
+	else if (cfg.dvbapi_delayer > 0)
+	{
+		delay = cfg.dvbapi_delayer;
+		cs_log_dbg(D_DVBAPI, "generic delay: write cw %d ms after ecmrequest", delay);
+	}
+		
+	delayer(er, delay);
+
+	dvbapi_write_ecminfo_file(client, er, demux[0].lastcw[0], demux[0].lastcw[1]);
 
 	openxcas_busy = 0;
 
