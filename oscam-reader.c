@@ -508,6 +508,10 @@ const char *reader_get_type_desc(struct s_reader *rdr, int32_t extended)
 	{
 		desc = "cccam_ext";
 	}
+	else if(!extended && rdr->typ == R_CCCAM && cccam_client_extended_mode(rdr->client) && !cccam_client_multics_mode(rdr->client))
+	{
+		desc = "cccam_ext";
+	}
 	else if(rdr->typ == R_CCCAM && cccam_client_multics_mode(rdr->client))
 	{
 		desc = "cccam_mcs";
@@ -959,7 +963,7 @@ int32_t casc_process_ecm(struct s_reader *reader, ECM_REQUEST *er)
 
 	if(!cl || !cl->ecmtask)
 	{
-		rdr_log(reader, "WARNING: ecmtask not a available");
+		rdr_log(reader, "WARNING: ecmtask not available");
 		return -1;
 	}
 

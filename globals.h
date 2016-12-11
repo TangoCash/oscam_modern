@@ -359,12 +359,12 @@ typedef unsigned char uchar;
 /* ===========================
  *         constants
  * =========================== */
-#define CS_VERSION    "1.20-unstable_svn"
+#define CS_VERSION    "1.20-modern_svn"
 #ifndef CS_SVN_VERSION
-#   define CS_SVN_VERSION "test"
+#   define CS_SVN_VERSION "stable"
 #endif
 #ifndef CS_TARGET
-#   define CS_TARGET "unknown"
+#   define CS_TARGET "modern"
 #endif
 #ifndef CS_CONFDIR
 #define CS_CONFDIR    "/usr/local/etc"
@@ -389,8 +389,13 @@ typedef unsigned char uchar;
 // Support for multiple CWs per channel and other encryption algos
 //#define WITH_EXTENDED_CW 1
 
+#if defined(READER_DRE) || defined(READER_DRECAS) || defined(READER_VIACCESS)
+#define MAX_ECM_SIZE 1024
+#define MAX_EMM_SIZE 1024
+#else
 #define MAX_ECM_SIZE 596
 #define MAX_EMM_SIZE 512
+#endif
 
 #define CS_EMMCACHESIZE  512 //nr of EMMs that each reader will cache
 #define MSGLOGSIZE 64   //size of string buffer for a ecm to return messages
@@ -423,6 +428,7 @@ typedef unsigned char uchar;
 /////////////////// readers that do not reed baudrate setting and timings are guarded by reader itself (large buffer built in): AFTER R_SMART
 #define R_SMART     0x7 // Smartreader+
 #define R_PCSC      0x8 // PCSC
+#define R_DRECAS    0x9 // Reader DRECAS
 /////////////////// proxy readers after R_CS378X
 #define R_CAMD35    0x20  // Reader cascading camd 3.5x
 #define R_CAMD33    0x21  // Reader cascading camd 3.3x
@@ -1044,7 +1050,7 @@ typedef struct ecm_request_t
 #endif
 
 	void            *src_data;
-	int32_t         csp_hash; 					// csp has its own hash
+	uint32_t        csp_hash; 					// csp has its own hash
 
 	struct s_client *cacheex_src;               // Cacheex origin
 #ifdef CS_CACHEEX
@@ -1485,12 +1491,13 @@ struct s_reader                                     //contains device info, read
 	CAIDTAB         ctab;
 	uint32_t        boxid;
 	int8_t          nagra_read;                     // read nagra ncmed records: 0 Disabled (default), 1 read all records, 2 read valid records only
+	int8_t          detect_seca_nagra_tunneled_card;
 	int8_t          force_irdeto;
 	uint8_t         boxkey[16];                     // n3 boxkey 8 bytes, seca sessionkey 16 bytes, viaccess camid 4 bytes
 	uint8_t         boxkey_length;
 	uint8_t         rsa_mod[120];                   // rsa modulus for nagra cards.
 	uint8_t         rsa_mod_length;
-	uint8_t         des_key[32];                    // 3des key for Viaccess 16 bytes
+	uint8_t         des_key[128];                   // 3des key for Viaccess 16 bytes, des key for Dre 128 bytes
 	uint8_t         des_key_length;
 	uchar           atr[64];
 	uchar           card_atr[64];                   // ATR readed from card
@@ -1660,17 +1667,28 @@ struct s_reader                                     //contains device info, read
 	struct ecmrl    rlecmh[MAXECMRATELIMIT];
 	int8_t          fix_07;
 	int8_t          fix_9993;
-	int8_t			readtiers;							// method to get videoguard tiers
+	int8_t          readtiers; // method to get videoguard tiers
 	uint8_t         ins7E[0x1A + 1];
 	uint8_t         ins7E11[0x01 + 1];
 	uint8_t         ins2e06[0x04 + 1];
 	int8_t          ins7e11_fast_reset;
 	uint8_t         sc8in1_dtrrts_patch; // fix for kernel commit 6a1a82df91fa0eb1cc76069a9efe5714d087eccd
+
 #ifdef READER_VIACCESS	
-	unsigned char	initCA28; 							// To set when CA28 succeed
-	uint32_t 		key_schedule1[32];
-	uint32_t 		key_schedule2[32];
+	unsigned char   initCA28; // To set when CA28 succeed
+	uint32_t        key_schedule1[32];
+	uint32_t        key_schedule2[32];
 #endif
+
+#if defined(READER_DRE) || defined(READER_DRECAS)
+	char            *userscript;
+	uint32_t        force_ua;
+#endif
+
+#ifdef READER_DRECAS
+	char            *stmkeys;
+#endif
+
 #ifdef MODULE_GBOX
 	uint8_t		gbox_maxdist;
 	uint8_t		gbox_maxecmsend;
@@ -1979,7 +1997,7 @@ struct s_config
 	IN_ADDR_T       http_dynip[MAX_HTTP_DYNDNS];
 	uchar           http_dyndns[MAX_HTTP_DYNDNS][64];
 	int8_t          http_use_ssl;
-	int8_t          http_force_sslv3;
+	int8_t          https_force_secure_mode;
 	char            *http_cert;
 	char            *http_help_lang;
 	char            *http_locale;
@@ -2050,8 +2068,10 @@ struct s_config
 	int8_t		gbox_proxy_cards_num;  
 	char            gbox_my_vers[3];
 	char		gbox_my_cpu_api[3];
-	uint8_t		gsms_dis;
-	char            *gbox_tmp_dir;      
+	uint8_t					gsms_dis;
+	uint8_t					log_hello;
+	char						*gbox_tmp_dir; 
+	uint8_t					ccc_reshare;    	     
 #endif
 #ifdef MODULE_SERIAL
 	char            *ser_device;
@@ -2155,6 +2175,15 @@ struct s_config
 #endif
 	int32_t    max_cache_time;  //seconds ecms are stored in ecmcwcache
 	int32_t    max_hitcache_time;  //seconds hits are stored in cspec_hitcache (to detect dyn wait_time)
+
+	int8_t      reload_useraccounts;
+	int8_t      reload_readers;
+	int8_t      reload_provid;
+	int8_t      reload_services_ids;
+	int8_t      reload_tier_ids;
+	int8_t      reload_fakecws;
+	int8_t      reload_ac_stat;
+	int8_t      reload_log;
 
 	int8_t      block_same_ip;   //0=allow all, 1=block client requests to reader with same ip   (default=1)
 	int8_t      block_same_name; //0=allow all, 1=block client requests to reader with same name (default=1)
@@ -2322,7 +2351,7 @@ static inline bool caid_is_cryptoworks(uint16_t caid) { return caid >> 8 == 0x0D
 static inline bool caid_is_betacrypt(uint16_t caid) { return caid >> 8 == 0x17; }
 static inline bool caid_is_nagra(uint16_t caid) { return caid >> 8 == 0x18; }
 static inline bool caid_is_bulcrypt(uint16_t caid) { return caid == 0x5581 || caid == 0x4AEE; }
-static inline bool caid_is_dre(uint16_t caid) { return caid == 0x4AE0 || caid == 0x4AE1;}
+static inline bool caid_is_dre(uint16_t caid) { return caid == 0x4AE0 || caid == 0x4AE1 || caid == 0x2710;}
 const char *get_cardsystem_desc_by_caid(uint16_t caid);
 
 #endif

@@ -120,7 +120,7 @@ static bool use_srvid2 = false;
 #define MNU_CFG_FTWIN		17
 #define MNU_CFG_FKEYCW 18
 
-#define MNU_CFG_TOTAL_ITEMS 19 // sum of config or files submenuactivating above. Use it for "All inactive" in function calls too.
+#define MNU_CFG_TOTAL_ITEMS 19 // sum of items above. Use it for "All inactive" in function calls too.
 
 static void set_status_info_var(struct templatevars *vars, char *varname, int no_data, char *fmt, double value) {
 	if (no_data)
@@ -651,6 +651,14 @@ static char *send_oscam_config_global(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "SLEEP", "%d", cfg.tosleep);
 	tpl_addVar(vars, TPLADD, "UNLOCKPARENTALCHECKED", (cfg.ulparent == 1) ? "checked" : "");
 
+	if(cfg.reload_useraccounts) { tpl_addVar(vars, TPLADD, "RELOADUSERACCOUNTSCHECKED", "checked"); }
+	if(cfg.reload_readers)      { tpl_addVar(vars, TPLADD, "RELOADREADERSCHECKED", "checked"); }
+	if(cfg.reload_provid)       { tpl_addVar(vars, TPLADD, "RELOADPROVIDCHECKED", "checked"); }
+	if(cfg.reload_services_ids) { tpl_addVar(vars, TPLADD, "RELOADSERVICESIDSCHECKED", "checked"); }
+	if(cfg.reload_tier_ids)     { tpl_addVar(vars, TPLADD, "RELOADTIERUDSCHECKED", "checked"); }
+	if(cfg.reload_fakecws)      { tpl_addVar(vars, TPLADD, "RELOADFAKECWSCHECKED", "checked"); }
+	if(cfg.reload_ac_stat)      { tpl_addVar(vars, TPLADD, "RELOADACSTATCHECKED", "checked"); }
+	if(cfg.reload_log)          { tpl_addVar(vars, TPLADD, "RELOADLOGCHECKED", "checked"); }
 
 	if(cfg.block_same_ip)   { tpl_addVar(vars, TPLADD, "BLOCKSAMEIPCHECKED", "checked"); }
 	if(cfg.block_same_name) { tpl_addVar(vars, TPLADD, "BLOCKSAMENAMECHECKED", "checked"); }
@@ -1252,7 +1260,7 @@ static char *send_oscam_config_webif(struct templatevars *vars, struct uriparams
 
 #ifdef WITH_SSL
 	if(cfg.http_cert != NULL) { tpl_addVar(vars, TPLADD, "HTTPCERT", cfg.http_cert); }
-	tpl_addVar(vars, TPLADD, "HTTPFORCESSLV3SELECT", (cfg.http_force_sslv3 == 1) ? "checked" : "");
+	tpl_addVar(vars, TPLADD, "HTTPFORCESECUREMODESELECT", (cfg.https_force_secure_mode == 1) ? "checked" : "");
 #endif
 
 #ifndef WEBIF_JQUERY
@@ -2469,6 +2477,9 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "TMP", "NAGRAREAD%d", rdr->nagra_read);
 	tpl_addVar(vars, TPLADD, tpl_getVar(vars, "TMP"), "selected");
 
+	if(rdr->detect_seca_nagra_tunneled_card)
+		{ tpl_addVar(vars, TPLADD, "NAGRADETECTSECACARDCHECKED", "checked"); }
+		
 #ifdef MODULE_CCCAM
 	tpl_printf(vars, TPLADD, "CCCMAXHOPS",   "%d", rdr->cc_maxhops);
 	tpl_printf(vars, TPLADD, "CCCMINDOWN",   "%d", rdr->cc_mindown);
@@ -2488,6 +2499,14 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	tpl_printf(vars, TPLADD, "GBOXRESHARE",   "%d", rdr->gbox_reshare);
 #endif
 
+#ifdef READER_DRECAS
+	tpl_addVar(vars, TPLADD, "STMKEYS", rdr->stmkeys);
+#endif
+
+#if defined(READER_DRE) || defined(READER_DRECAS)
+	tpl_addVar(vars, TPLADD, "USERSCRIPT", rdr->userscript);
+#endif
+
 	tpl_addVar(vars, TPLADD, "PROTOCOL", reader_get_type_desc(rdr, 0));
 
 	// Show only parameters which needed for the reader
@@ -2497,6 +2516,7 @@ static char *send_oscam_reader_config(struct templatevars *vars, struct uriparam
 	case R_DB2COM1:
 	case R_DB2COM2:
 	case R_MOUSE :
+	case R_DRECAS :
 	case R_MP35:
 	case R_SC8in1 :
 	case R_SMART :
@@ -3331,26 +3351,57 @@ static void webif_add_client_proto(struct templatevars *vars, struct s_client *c
 			{
 				tpl_addVar(vars, TPLADD, "CLIENTPROTOTITLE", cc->extended_mode ? cc->remote_oscam : "");
 			}
-			if(cfg.http_showpicons )
+
+			if(cfg.http_showpicons)
 			{
 				char picon_name[32];
-				snprintf(picon_name, sizeof(picon_name) / sizeof(char) - 1, "%s_%s_%s", proto, cc->remote_version, cc->remote_build);
-				if(picon_exists(picon_name))
+
+				int8_t is_other_proto = 0;
+				if(cccam_client_multics_mode(cl)) { is_other_proto = 1; }
+
+				switch(is_other_proto)
 				{
-					if (!apicall) {
-						tpl_addVar(vars, TPLADD, "CCA", (char *)proto);
-						tpl_addVar(vars, TPLADD, "CCB", cc->remote_version);
-						tpl_addVar(vars, TPLADD, "CCC", cc->remote_build);
-						tpl_addVar(vars, TPLADD, "CCD", cc->extended_mode ? cc->remote_oscam : "");
-						tpl_addVar(vars, TPLADD, "CLIENTPROTO", tpl_getTpl(vars, "PROTOCCCAMPIC"));
-					} else {
-						tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s_%s_%s",(char *)proto, cc->remote_version, cc->remote_build);
-					}
-				}
-				else
-				{
-					tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE", "%s missing icon: IC_%s_%s_%s.tpl",
-					cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
+					case 1:
+						snprintf(picon_name, sizeof(picon_name) / sizeof(char) - 1, "%s_r_%d", proto, cc->multics_version[0] | (cc->multics_version[1] << 8));
+						if(picon_exists(picon_name))
+						{
+							if (!apicall) {
+								tpl_addVar(vars, TPLADD, "CCA", (char *)proto);
+								tpl_addVar(vars, TPLADD, "CCB", "r");
+								tpl_printf(vars, TPLADD, "CCC", "%d", cc->multics_version[0] | (cc->multics_version[1] << 8));
+								tpl_addVar(vars, TPLADD, "CCD", "");
+								tpl_addVar(vars, TPLADD, "CLIENTPROTO", tpl_getTpl(vars, "PROTOCCCAMPIC"));
+							} else {
+								tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s_r_%d",(char *)proto, cc->multics_version[0] | (cc->multics_version[1] << 8));
+							}
+						}
+						else
+						{
+							tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE", "Multics, revision r%d missing icon: IC_%s_r_%d.tpl",
+								 cc->multics_version[0] | (cc->multics_version[1] << 8), proto, cc->multics_version[0] | (cc->multics_version[1] << 8));
+						}
+						break;
+
+					default:
+						snprintf(picon_name, sizeof(picon_name) / sizeof(char) - 1, "%s_%s_%s", proto, cc->remote_version, cc->remote_build);
+						if(picon_exists(picon_name))
+						{
+							if (!apicall) {
+								tpl_addVar(vars, TPLADD, "CCA", (char *)proto);
+								tpl_addVar(vars, TPLADD, "CCB", cc->remote_version);
+								tpl_addVar(vars, TPLADD, "CCC", cc->remote_build);
+								tpl_addVar(vars, TPLADD, "CCD", cc->extended_mode ? cc->remote_oscam : "");
+								tpl_addVar(vars, TPLADD, "CLIENTPROTO", tpl_getTpl(vars, "PROTOCCCAMPIC"));
+							} else {
+								tpl_printf(vars, TPLADDONCE, "PROTOICON", "%s_%s_%s",(char *)proto, cc->remote_version, cc->remote_build);
+							}
+						}
+						else
+						{
+							tpl_printf(vars, TPLADD, "CLIENTPROTOTITLE", "%s missing icon: IC_%s_%s_%s.tpl",
+								 cc->extended_mode ? cc->remote_oscam : "", proto, cc->remote_version, cc->remote_build);
+						}
+						break;
 				}
 			}
 		}
@@ -5725,6 +5776,7 @@ static char *send_oscam_services(struct templatevars * vars, struct uriparams * 
 					{
 						delete_from_SIDTABBITS(&rdr->sidtabs.ok, position, sidtablength);
 						delete_from_SIDTABBITS(&rdr->sidtabs.no, position, sidtablength);
+						delete_from_SIDTABBITS(&rdr->lb_sidtabs.ok, position, sidtablength);
 					}
 					free_sidtab(sidtab);
 					++counter;

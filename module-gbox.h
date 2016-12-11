@@ -7,7 +7,7 @@
  * may execute code on your machine. do not enable this unless you know what you are
  * doing and accept the posssible *BAD* consequences
 */
-//#define GBOX_ENABLE_UNSAFE_OSD 1
+//#define GBOX_ENABLE_UNSAFE_EXTENDED_OSD 1
 
 #ifdef MODULE_GBOX
 
@@ -54,8 +54,15 @@
 #define FILE_ATTACK_INFO        "attack.txt"
 #define FILE_GBOX_PEER_ONL      "share.onl"
 #define FILE_STATS              "stats.info"
-#define FILE_GOODNIGHT_OSD      "goodnight.osd"
+#define FILE_MSG_OSD            "msg.osd"
 #define FILE_LOCAL_CARDS_INFO   "sc.info"
+
+#define	MSGID_GOODNIGHT         0
+#define	MSGID_GSMS              1
+#define	MSGID_GONEOFFLINE       2
+#define	MSGID_COMEONLINE        3
+#define	MSGID_GOODBYE           4
+#define	MSGID_LOSTCONNECT       5
 
 #define GBOX_STAT_HELLOL        0
 #define GBOX_STAT_HELLOS        1
@@ -135,6 +142,8 @@ struct gbox_peer
     uchar *hostname;
     uchar checkcode[7];
     int8_t online;
+    uint8_t onlinestat;
+    uint8_t authstat;
     uint8_t next_hello;
     uchar ecm_idx;
     CS_MUTEX_LOCK lock;
@@ -165,6 +174,7 @@ void gbox_send(struct s_client *cli, uchar *buf, int32_t l);
 int8_t gbox_message_header(uchar *buf, uint16_t cmd, uint32_t peer_password, uint32_t local_password);
 void gbox_free_cards_pending(ECM_REQUEST *er);
 void gbox_send_good_night(void);
+void gbox_send_goodbye(struct s_client *cli);
 #else
 static inline void gbox_free_cards_pending(ECM_REQUEST *UNUSED(er)) { }
 static inline void gbox_send_good_night(void) { }

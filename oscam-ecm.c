@@ -674,7 +674,7 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 								};
 	static const char *stxtEx[16] = {"", "group", "caid", "ident", "class", "chid", "queue", "peer", "sid", "", "", "", "", "", "", ""};
 	static const char *stxtWh[16] = {"", "user ", "reader ", "server ", "lserver ", "", "", "", "", "", "", "", "" , "" , "", ""};
-	char sby[100] = "", sreason[32] = "", scwcinfo[32] = "", schaninfo[32] = "", srealecmtime[50]="";
+	char sby[100] = "", sreason[32] = "", scwcinfo[32] = "", schaninfo[CS_SERVICENAME_SIZE] = "", srealecmtime[50]="";
 	char erEx[32] = "";
 	char usrname[38] = "";
 	char channame[CS_SERVICENAME_SIZE];
@@ -1215,7 +1215,7 @@ void request_cw_from_readers(ECM_REQUEST *er, uint8_t stop_stage)
 }
 
 
-void add_cache_from_reader(ECM_REQUEST *er, struct s_reader *rdr, int32_t csp_hash, uchar *ecmd5, uchar *cw, int16_t caid, int32_t prid, int16_t srvid ){
+void add_cache_from_reader(ECM_REQUEST *er, struct s_reader *rdr, uint32_t csp_hash, uchar *ecmd5, uchar *cw, int16_t caid, int32_t prid, int16_t srvid ){
 	ECM_REQUEST *ecm;
 	if (cs_malloc(&ecm, sizeof(ECM_REQUEST))){
 		cs_ftime(&ecm->tps);
@@ -1823,7 +1823,7 @@ uint32_t get_subid(ECM_REQUEST *er)
 		id = b2i(2, er->ecm + 11);
 		break; // videoguard
 	case 0x4A: // DRE-Crypt, Bulcrypt, Tongfang and others?
-		if(!caid_is_bulcrypt(er->caid))
+		if(!caid_is_bulcrypt(er->caid) && !caid_is_dre(er->caid))
 			{ id = b2i(2, er->ecm + 6); }
 		break;
 	}
@@ -2470,15 +2470,15 @@ int32_t ecmfmt(char *result, size_t size, uint16_t caid, uint16_t onid, uint32_t
 	{
 		if(tier && payload)
 		{
-			return snprintf(result, size, "%04X@%06X/%04X/%04X/%02X:%s:0F06%.06s:%s", caid, prid, chid, srvid, l, ecmd5hex, payload, tier);				
+			return snprintf(result, size, "%04X@%06X/%04X/%04X/%02X:%s:0F06%s:%s", caid, prid, chid, srvid, l, ecmd5hex, payload, tier);
 		}
 		else if(tier)
 		{
-			return snprintf(result, size, "%04X@%06X/%04X/%04X/%02X:%s:%s", caid, prid, chid, srvid, l, ecmd5hex, tier);				
+			return snprintf(result, size, "%04X@%06X/%04X/%04X/%02X:%s:%s", caid, prid, chid, srvid, l, ecmd5hex, tier);
 		}
 		else if(payload)
 		{
-			return snprintf(result, size, "%04X@%06X/%04X/%04X/%02X:%s:0F06%.06s", caid, prid, chid, srvid, l, ecmd5hex, payload);	
+			return snprintf(result, size, "%04X@%06X/%04X/%04X/%02X:%s:0F06%s", caid, prid, chid, srvid, l, ecmd5hex, payload);
 		}
 		else
 		{ 
@@ -2704,6 +2704,7 @@ int32_t format_ecm(ECM_REQUEST *ecm, char *result, size_t size)
 		{ return ecmfmt(result, size, ecm->caid, ecm->onid, ecm->prid, ecm->chid, ecm->pid, ecm->srvid, ecm->ecmlen, ecmd5hex, csphash, cwhex, ecm->gbox_ecm_id, 0, payload, tier); }
 	else
 #endif
-		return ecmfmt(result, size, ecm->caid, ecm->onid, ecm->prid, ecm->chid, ecm->pid, ecm->srvid, ecm->ecmlen, ecmd5hex, csphash, cwhex, 0, 0, payload, tier);
+		return ecmfmt(result, size, ecm->caid, ecm->onid, ecm->prid, ecm->chid, ecm->pid, ecm->srvid, ecm->ecmlen, ecmd5hex, csphash, cwhex, 0,
+		((ecm->selected_reader && ecm->selected_reader->currenthops) ? ecm->selected_reader->currenthops : 0), payload, tier);
 }
 
