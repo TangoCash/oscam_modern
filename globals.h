@@ -341,7 +341,7 @@ typedef unsigned char uchar;
 	{ \
 		cs_log("WARNING: pthread_attr_setstacksize() failed in %s with error %d %s\n", __func__, pter, strerror(pter)); \
 	} }
-	
+
 #define SAFE_ATTR_SETSTACKSIZE_NOLOG(a,b) { \
 	int32_t pter = pthread_attr_setstacksize(a, b); \
 	if(pter != 0) \
@@ -355,6 +355,8 @@ typedef unsigned char uchar;
 #define SAFE_ATTR_SETSTACKSIZE(a,b)
 #define SAFE_ATTR_SETSTACKSIZE_NOLOG(a,b)
 #endif
+
+#define CHECK_BIT(var,pos) (((var) & (1<<(pos)))? 1 : 0)
 
 /* ===========================
  *         constants
@@ -602,6 +604,11 @@ enum {E2_GLOBAL = 0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E
 #define CW_ALGO_MODE_ECB 0
 #define CW_ALGO_MODE_CBC 1
 
+#define SIZE_SHORTDAY 8
+#define MAXALLOWEDTF 1001 // 10 allowed time frame slots for everyday + all [(3 + 1 + 10*(12) + 1)*8]
+extern const char *shortDay[SIZE_SHORTDAY];
+extern const char *weekdstr;
+
 /* ===========================
  *      Default Values
  * =========================== */
@@ -616,8 +623,6 @@ enum {E2_GLOBAL = 0, E2_GROUP, E2_CAID, E2_IDENT, E2_CLASS, E2_CHID, E2_QUEUE, E
 #define DEFAULT_CC_KEEPALIVE 0
 #define DEFAULT_CC_RECONNECT 12000
 #define DEFAULT_CC_RECV_TIMEOUT 2000
-
-#define CS_GBOX_MAX_PROXY_CARDS	32
 
 #define DEFAULT_AC_USERS   -1 // Use global cfg
 #define DEFAULT_AC_PENALTY -1 // Use global cfg
@@ -887,6 +892,7 @@ struct s_module
 	// int32_t checktype (0=return connected, 1=return loadbalance-avail) return int
 	void (*c_idle)(void);               // Schlocke: called when reader is idle
 	void (*s_idle)(struct s_client *);
+	void (*s_peer_idle)(struct s_client *);
 	void (*c_card_info)(void);              // Schlocke: request card infos
 
 	int32_t (*c_capmt)(struct s_client *, struct demux_s *);
@@ -1046,7 +1052,7 @@ typedef struct ecm_request_t
 	uint32_t        gbox_crc;       // rcrc for gbox, used to identify ECM task in peer responses
 	uint16_t        gbox_ecm_id;
 	uint8_t         gbox_ecm_status;
-	LLIST		*gbox_cards_pending; //type gbox_card_pending
+	LLIST			*gbox_cards_pending; //type gbox_card_pending
 #endif
 
 	void            *src_data;
@@ -1078,6 +1084,9 @@ typedef struct ecm_request_t
 #endif
 	struct ecm_request_t    *parent;
 	struct ecm_request_t    *next;
+#ifdef HAVE_DVBAPI
+	uint8_t		adapter_index;
+#endif
 } ECM_REQUEST;
 
 
@@ -1175,7 +1184,8 @@ struct s_client
 	time_t          lastemm;
 	time_t          lastecm;
 	time_t          expirationdate;
-	int32_t         allowedtimeframe[2];
+	uint32_t        allowedtimeframe[SIZE_SHORTDAY][24][2]; //day[0-sun to 6-sat, 7-ALL],hours,minutes use as binary flags to reduce mem usage
+	uint8_t         allowedtimeframe_set; //flag for internal use to mention if allowed time frame is used
 	int8_t          c35_suppresscmd08;
 	uint8_t         c35_sleepsend;
 	int8_t          ncd_keepalive;
@@ -1259,7 +1269,7 @@ struct s_client
 
 #ifdef MODULE_GBOX
 	void            *gbox;
-	uint16_t	gbox_peer_id;
+	uint16_t		gbox_peer_id;
 #endif
 
 #ifdef MODULE_GHTTP
@@ -1467,6 +1477,7 @@ struct s_reader                                     //contains device info, read
 	int8_t          fallback;
 	FTAB            fallback_percaid;
 	FTAB            localcards;
+	FTAB            disablecrccws_only_for;         // ignore checksum for selected caid provid
 #ifdef CS_CACHEEX
 	CECSP           cacheex; //CacheEx Settings
 #endif
@@ -1502,7 +1513,7 @@ struct s_reader                                     //contains device info, read
 	uchar           atr[64];
 	uchar           card_atr[64];                   // ATR readed from card
 	int8_t          card_atr_length;                // length of ATR
-	int8_t          seca_nagra_card;                // seca nagra card 
+	int8_t          seca_nagra_card;                // seca nagra card
 	int32_t         atrlen;
 	SIDTABS         sidtabs;
 	SIDTABS         lb_sidtabs;
@@ -1674,7 +1685,7 @@ struct s_reader                                     //contains device info, read
 	int8_t          ins7e11_fast_reset;
 	uint8_t         sc8in1_dtrrts_patch; // fix for kernel commit 6a1a82df91fa0eb1cc76069a9efe5714d087eccd
 
-#ifdef READER_VIACCESS	
+#ifdef READER_VIACCESS
 	unsigned char   initCA28; // To set when CA28 succeed
 	uint32_t        key_schedule1[32];
 	uint32_t        key_schedule2[32];
@@ -1730,6 +1741,8 @@ struct s_auth
 #ifdef CS_CACHEEX
 	CECSP           cacheex; //CacheEx Settings
 	uint8_t         no_wait_time;
+	uint8_t			disablecrccacheex;
+	FTAB 			disablecrccacheex_only_for;
 #endif
 	int16_t         allowedprotocols;
 	LLIST           *aureader_list;
@@ -1771,7 +1784,8 @@ struct s_auth
 	char            *dyndns;
 	time_t          expirationdate;
 	time_t          firstlogin;
-	int32_t         allowedtimeframe[2];
+	uint32_t        allowedtimeframe[SIZE_SHORTDAY][24][2]; //day[0-sun to 6-sat, 7-ALL],hours,minutes use as binary flags to reduce mem usage
+	uint8_t         allowedtimeframe_set; //flag for internal use to mention if allowed time frame is used
 	int8_t          c35_suppresscmd08;
 	uint8_t         c35_sleepsend;
 	int8_t          ncd_keepalive;
@@ -1845,7 +1859,7 @@ struct s_cw
 struct s_fakecws
 {
 	uint32_t count;
-	struct s_cw *data;	
+	struct s_cw *data;
 };
 
 #ifdef MODULE_SERIAL
@@ -1939,6 +1953,8 @@ struct s_config
 	char            *emmlogdir;
 	char            *logfile;
 	char            *mailfile;
+	int8_t          disablecrccws;                  // 1=disable cw checksum test. 0=enable checksum check
+	FTAB            disablecrccws_only_for;         // ignore checksum for selected caid provid
 	uint8_t         logtostdout;
 	uint8_t         logtosyslog;
 	int8_t          logduplicatelines;
@@ -2060,18 +2076,36 @@ struct s_config
 	uint32_t        cc_recv_timeout;                // The poll() timeout parameter in ms. Default: DEFAULT_CC_RECV_TIMEOUT (2000 ms).
 #endif
 #ifdef MODULE_GBOX
-	uint32_t        gbx_port[CS_MAXPORTS];
+    #define         GBOX_MY_VERS_DEF       0x2A
+    #define         GBOX_MY_CPU_API_DEF    0x40
+    #define        	GBOX_MAX_PROXY_CARDS   32
+    #define        	GBOX_MAX_IGNORED_PEERS 16
+    #define        	GBOX_MAX_BLOCKED_ECM   16
+    #define        	GBOX_MAX_DEST_PEERS    16
+    #define        	GBOX_MAX_MSG_TXT       127
+
+	uint16_t        gbox_port[CS_MAXPORTS];
 	char            *gbox_hostname;
-	int32_t         gbox_reconnect;
-	char            gbox_my_password[9];
-	unsigned long	gbox_proxy_card[CS_GBOX_MAX_PROXY_CARDS];
-	int8_t		gbox_proxy_cards_num;  
-	char            gbox_my_vers[3];
-	char		gbox_my_cpu_api[3];
-	uint8_t					gsms_dis;
-	uint8_t					log_hello;
-	char						*gbox_tmp_dir; 
-	uint8_t					ccc_reshare;    	     
+	uint32_t        gbox_reconnect;
+	uint32_t        gbox_password;
+	unsigned long   gbox_proxy_card[GBOX_MAX_PROXY_CARDS];
+	int8_t          gbox_proxy_cards_num;
+	uint32_t        gbox_my_vers;
+	uint8_t         gbox_my_cpu_api;
+	uint8_t         gsms_dis;
+	uint8_t         log_hello;
+	uint8_t         dis_attack_txt;
+	char            *gbox_tmp_dir;
+	uint8_t         ccc_reshare;
+	uint16_t        gbox_ignored_peer[GBOX_MAX_IGNORED_PEERS];
+	uint8_t         gbox_ignored_peer_num;
+	uint16_t        gbox_block_ecm[GBOX_MAX_BLOCKED_ECM];
+	uint8_t         gbox_block_ecm_num;
+	uint8_t			gbox_save_gsms;
+	uint8_t			gbox_msg_type;
+	uint16_t		gbox_dest_peers[GBOX_MAX_DEST_PEERS];
+	uint8_t			gbox_dest_peers_num;
+	char			gbox_msg_txt[GBOX_MAX_MSG_TXT+1];
 #endif
 #ifdef MODULE_SERIAL
 	char            *ser_device;
@@ -2139,12 +2173,12 @@ struct s_config
 	int32_t     ac_denysamples;
 	char        *ac_logfile;
 	struct      s_cpmap *cpmap;
-	int8_t		acosc_enabled;
-	int8_t		acosc_max_active_sids;	// global value 0 - unlimited
-	int8_t		acosc_zap_limit;	// global value 0 - unlimited
-	int32_t		acosc_penalty_duration;	// global value how long is penalty activ in sek.
-	int8_t		acosc_penalty;	//global value
-	int32_t		acosc_delay;	//global value
+	int8_t      acosc_enabled;
+	int8_t      acosc_max_active_sids;// global value 0 - unlimited
+	int8_t      acosc_zap_limit;// global value 0 - unlimited
+	int32_t     acosc_penalty_duration;// global value how long is penalty activ in sek.
+	int8_t      acosc_penalty;//global value
+	int32_t     acosc_delay;//global value
 #endif
 
 #ifdef LEDSUPPORT
@@ -2209,7 +2243,7 @@ struct s_config
 	int8_t          cwcycle_dropold;        // what to do on old ecmd5/cw
 	int8_t          cwcycle_sensitive;
 	int8_t          cwcycle_allowbadfromffb;        //allow Bad cycles from Fixed Fallbackreader
-	int8_t			cwcycle_usecwcfromce;		//Use CWC Info from Cacheex Sources for CWC Checking
+	int8_t          cwcycle_usecwcfromce; //Use CWC Info from Cacheex Sources for CWC Checking
 #endif
 
 	//Global whitelist:
@@ -2224,7 +2258,7 @@ struct s_config
 
 	//Ratelimit list
 	struct s_rlimit *ratelimit_list;
-	
+
 	// fake cws
 	struct s_fakecws fakecws[0x100];
 

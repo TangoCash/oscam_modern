@@ -232,7 +232,7 @@ static int32_t NegotiateSessionKey_Tiger(struct s_reader *reader)
 	Signature(sign1, idea_key, tmp, 104);
 	rdr_log_dbg(reader, D_READER, "sign1: %s", cs_hexdump(0, sign1, 8, tmp2, sizeof(tmp2)));
 	rdr_log_dbg(reader, D_READER, "sign2: %s", cs_hexdump(0, parte_fija + 111, 8, tmp2, sizeof(tmp2)));
-	if(!memcmp(parte_fija + 111, sign1, 8) == 0)
+	if((!memcmp(parte_fija + 111, sign1, 8)) == 0)
 	{
 		rdr_log_dbg(reader, D_READER, "signature check nok");
 		rdr_log_dbg(reader, D_READER, "------------------------------------------");
@@ -622,7 +622,7 @@ static int32_t ParseDataType(struct s_reader *reader, unsigned char dt, unsigned
 		{
 			int32_t id = (cta_res[7] * 256) | cta_res[8];
 			int32_t offset = ((reader->caid == 0x1830 || reader->caid == 0x1843)
-							&& chid == 0x0BEA) ? -21 : 0;
+							&& chid == 0x0BEA) ? -35 : 0;
             
 			// todo: add entitlements to list
 			cs_add_entitlement(reader,
@@ -1081,7 +1081,7 @@ static int32_t nagra2_card_info(struct s_reader *reader)
 		rdr_log_dbg(reader, D_READER, "IRDINFO DONE");
 		CamStateRequest(reader);
 
-		if(!memcmp(reader->rom + 5, "181", 3) == 0)  //dt05 is not supported by rom181
+		if((!memcmp(reader->rom + 5, "181", 3)) == 0)  //dt05 is not supported by rom181
 		{
 			rdr_log(reader, "-----------------------------------------");
 			rdr_log(reader, "|id  |tier    |valid from  |valid to    |");

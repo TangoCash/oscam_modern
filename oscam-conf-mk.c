@@ -5,6 +5,9 @@
 #include "oscam-net.h"
 #include "oscam-string.h"
 
+const char *shortDay[8] = {"SUN","MON","TUE","WED","THU","FRI","SAT","ALL"};
+const char *weekdstr = "SUNMONTUEWEDTHUFRISATALL";
+
 /*
  * Creates a string ready to write as a token into config or WebIf for CAIDs. You must free the returned value through free_mk_t().
  */
@@ -139,9 +142,9 @@ char *mk_t_camd35tcp_port(void)
 	/* Precheck to determine how long the resulting string will maximally be (might be a little bit smaller but that shouldn't hurt) */
 	for(i = 0; i < cfg.c35_tcp_ptab.nports; ++i)
 	{
-		/* Port is maximally 5 chars long, plus the @caid, plus the ";" between ports */
-		needed += 11;
-		if(cfg.c35_tcp_ptab.ports[i].ncd && cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].nprids > 1)
+		/* Port is maximally 5 chars long, plus comma, plus the @caid, plus the :provid plus the ";" between ports */
+		needed += 18;
+		if(cfg.c35_tcp_ptab.ports[i].ncd && cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].nprids > 0)
 		{
 			needed += cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].nprids * 7;
 		}
@@ -159,12 +162,12 @@ char *mk_t_camd35tcp_port(void)
 							cfg.c35_tcp_ptab.ports[i].s_port,
 							cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].caid);
 
-			if(cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].nprids > 1)
+			if(cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].nprids > 0)
 			{
 				dot2 = ":";
 				for(j = 0; j < cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].nprids; ++j)
 				{
-					pos += snprintf(value + pos, needed - (value - saveptr), "%s%X", dot2, cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].prids[j]);
+					pos += snprintf(value + pos, needed - (value - saveptr), "%s%06X", dot2, cfg.c35_tcp_ptab.ports[i].ncd->ncd_ftab.filts[0].prids[j]);
 					dot2 = ",";
 				}
 			}
@@ -172,7 +175,8 @@ char *mk_t_camd35tcp_port(void)
 		}
 		else
 		{
-			pos += snprintf(value + pos, needed - (value - saveptr), "%d", cfg.c35_tcp_ptab.ports[i].s_port);
+			pos += snprintf(value + pos, needed - (value - saveptr), "%s%d", dot1, cfg.c35_tcp_ptab.ports[i].s_port);
+			dot1 = ";";
 		}
 	}
 	return value;
@@ -216,9 +220,84 @@ char *mk_t_gbox_port(void)
 	char *dot = "";
 	for(i = 0; i < CS_MAXPORTS; i++)
 	{
-		if(!cfg.gbx_port[i]) { break; }
+		if(!cfg.gbox_port[i]) { break; }
 
-		pos += snprintf(value + pos, needed - pos, "%s%d", dot, cfg.gbx_port[i]);
+		pos += snprintf(value + pos, needed - pos, "%s%d", dot, cfg.gbox_port[i]);
+		dot = ",";
+	}
+	return value;
+}
+/*
+ * Creates a string ready to write as a token into config or WebIf for the gbox proxy card. You must free the returned value through free_mk_t().
+ */
+char *mk_t_gbox_proxy_card(void)
+{
+	int32_t i, pos = 0, needed = GBOX_MAX_PROXY_CARDS * 9 + 8;
+
+	char *value;
+	if(!cs_malloc(&value, needed)) { return ""; }
+	char *dot = "";
+	for(i = 0; i < GBOX_MAX_PROXY_CARDS; i++)
+	{
+		if(!cfg.gbox_proxy_card[i]) { break; }
+
+		pos += snprintf(value + pos, needed - pos, "%s%08lX", dot, cfg.gbox_proxy_card[i]);
+		dot = ",";
+	}
+	return value;
+}
+/*
+ * Creates a string ready to write as a token into config or WebIf for the gbox ignore peer. You must free the returned value through free_mk_t().
+ */
+char *mk_t_gbox_ignored_peer(void)
+{
+	int32_t i, pos = 0, needed = GBOX_MAX_IGNORED_PEERS * 5 + 8;
+
+	char *value;
+	if(!cs_malloc(&value, needed)) { return ""; }
+	char *dot = "";
+	for(i = 0; i < GBOX_MAX_IGNORED_PEERS; i++)
+	{
+		if(!cfg.gbox_ignored_peer[i]) { break; }
+
+		pos += snprintf(value + pos, needed - pos, "%s%04hX", dot, cfg.gbox_ignored_peer[i]);
+		dot = ",";
+	}
+	return value;
+}
+/*
+ * Creates a string ready to write as a token into config or WebIf for the gbox block ecm. You must free the returned value through free_mk_t().
+ */
+char *mk_t_gbox_block_ecm(void)
+{
+	int32_t i, pos = 0, needed = GBOX_MAX_BLOCKED_ECM * 5 + 8;
+
+	char *value;
+	if(!cs_malloc(&value, needed)) { return ""; }
+	char *dot = "";
+	for(i = 0; i < GBOX_MAX_BLOCKED_ECM; i++)
+	{
+		if(!cfg.gbox_block_ecm[i]) { break; }
+
+		pos += snprintf(value + pos, needed - pos, "%s%04hX", dot, cfg.gbox_block_ecm[i]);
+		dot = ",";
+	}
+	return value;
+}
+/*
+ * Creates a string ready to write as a token into config or WebIf for the gbox SMS dest peers. You must free the returned value through free_mk_t().
+ */
+char *mk_t_gbox_dest_peers(void)
+{
+	int32_t i, pos = 0, needed = GBOX_MAX_DEST_PEERS * 5 + 8;
+
+	char *value;
+	if(!cs_malloc(&value, needed)) { return ""; }
+	char *dot = "";
+	for(i = 0; i < GBOX_MAX_DEST_PEERS; i++)
+	{
+		if(!cfg.gbox_dest_peers[i]) { break; }
+		pos += snprintf(value + pos, needed - pos, "%s%04hX", dot, cfg.gbox_dest_peers[i]);
 		dot = ",";
 	}
 	return value;
@@ -809,6 +888,74 @@ char *mk_t_allowedprotocols(struct s_auth *account)
 		tmp = tmp << 1;
 	}
 	return value;
+}
+
+/*
+ * return allowed time frame string from internal array content
+ *
+ */
+
+char *mk_t_allowedtimeframe(struct s_auth *account)
+{
+	char *result;
+	if(!cs_malloc(&result, MAXALLOWEDTF))
+		{ return ""; }
+		
+	if(account->allowedtimeframe_set)
+	{
+		char 	mytime[6];
+		uint8_t day;
+		uint8_t value_in_day = 0;
+		uint8_t intime = 0;
+		uint16_t minutes =0;
+		uint16_t hours;
+		char	septime[2] = {'\0'};
+		char	sepday[2] = {'\0'};
+		
+		for(day=0;day<SIZE_SHORTDAY;day++) {
+			for(hours=0;hours<24;hours++) {
+				for(minutes=0;minutes<60;minutes++) {
+					if(CHECK_BIT(account->allowedtimeframe[day][hours][minutes/30],(minutes % 30))) {
+							if(value_in_day == 0) {
+							strcat(result,&sepday[0]);
+							strcat(result,shortDay[day]);
+							strcat(result,"@");
+							value_in_day = 1;
+							intime=0;
+							sepday[0]=';';
+							septime[0]='\0';
+						}
+						if(!intime) {
+							strcat(result,&septime[0]);
+							snprintf(mytime,6,"%02d:%02d", hours, minutes);
+							strcat(result,mytime);
+							strcat(result,"-");
+							septime[0]=',';
+							intime=1;
+						}
+						// Special case 23H59 is enabled we close the day at 24H00
+						if(((hours*60)+minutes)==1439) {
+							strcat(result,"24:00");
+							intime=0;
+							septime[0]='\0';
+							value_in_day = 0;
+						}
+					}
+					else if(intime) {
+							snprintf(mytime,6,"%02d:%02d", hours, minutes);
+							strcat(result,mytime);
+							septime[0]=',';
+							intime=0;
+						}
+				}	
+			}
+			value_in_day = 0;
+		}
+	}
+	else {
+		result="";
+	}
+	return result; 
 }
 
 /*

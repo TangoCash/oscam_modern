@@ -323,6 +323,8 @@ int32_t cs_auth_client(struct s_client *client, struct s_auth *account, const ch
 {
 	int32_t rc = 0;
 	unsigned char md5tmp[MD5_DIGEST_LENGTH];
+	uint8_t i;
+	uint8_t j;
 	char buf[32];
 	char *t_crypt = "encrypted";
 	char *t_plain = "plain";
@@ -404,8 +406,15 @@ int32_t cs_auth_client(struct s_client *client, struct s_auth *account, const ch
 				client->last_srvid = NO_SRVID_VALUE;
 				client->expirationdate = account->expirationdate;
 				client->disabled = account->disabled;
-				client->allowedtimeframe[0] = account->allowedtimeframe[0];
-				client->allowedtimeframe[1] = account->allowedtimeframe[1];
+				client->allowedtimeframe_set=account->allowedtimeframe_set;
+				for(i=0;i<SIZE_SHORTDAY;i++)
+				{
+					for(j=0;j<24;j++)
+					{
+						client->allowedtimeframe[i][j][0]=account->allowedtimeframe[i][j][0];
+						client->allowedtimeframe[i][j][1]=account->allowedtimeframe[i][j][1];
+					}
+				}
 				if(account->firstlogin == 0) { account->firstlogin = time((time_t *)0); }
 				client->failban = account->failban;
 				client->c35_suppresscmd08 = account->c35_suppresscmd08;
@@ -487,7 +496,7 @@ void kill_all_clients(void)
 	{
 		if(cl->typ == 'c' || cl->typ == 'm')
 		{
-			if(cl->account && cl->account->usr)
+			if(cl->account)
 				{ cs_log("killing client %s", cl->account->usr); }
 			kill_thread(cl);
 		}
@@ -499,6 +508,8 @@ void cs_reinit_clients(struct s_auth *new_accounts)
 {
 	struct s_auth *account;
 	unsigned char md5tmp[MD5_DIGEST_LENGTH];
+	uint8_t i;
+	uint8_t j;
 
 	struct s_client *cl;
 	for(cl = first_client->next; cl; cl = cl->next)
@@ -519,8 +530,15 @@ void cs_reinit_clients(struct s_auth *new_accounts)
 					cl->aureader_list   = account->aureader_list;
 					cl->autoau = account->autoau;
 					cl->expirationdate = account->expirationdate;
-					cl->allowedtimeframe[0] = account->allowedtimeframe[0];
-					cl->allowedtimeframe[1] = account->allowedtimeframe[1];
+					cl->allowedtimeframe_set=account->allowedtimeframe_set;
+					for(i=0;i<SIZE_SHORTDAY;i++)
+					{
+						for(j=0;j<24;j++)
+						{
+							cl->allowedtimeframe[i][j][0]=account->allowedtimeframe[i][j][0];
+							cl->allowedtimeframe[i][j][1]=account->allowedtimeframe[i][j][1];
+						}
+					}
 					cl->ncd_keepalive = account->ncd_keepalive;
 					cl->c35_suppresscmd08 = account->c35_suppresscmd08;
 					cl->tosleep = (60 * account->tosleep);
@@ -585,23 +603,28 @@ void client_check_status(struct s_client *cl)
 
 		//Check umaxidle to avoid client is killed for inactivity, it has priority than cmaxidle
 		if(!cl->account->umaxidle)
-			break;
+		break;
 
-		// Check user for exceeding umaxidle by checking cl->last
-		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) && cl->account->umaxidle>0 &&
+		// Check user for exceeding umaxidle by checking cl->last, except Newcamd & Gbox
+		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) && !(get_module(cl)->listenertype & LIS_GBOX) && cl->account->umaxidle>0 &&
 				cl->last && (time(NULL) - cl->last) > (time_t)cl->account->umaxidle)
 		{
 			add_job(cl, ACTION_CLIENT_IDLE, NULL, 0);
 		}
 
-		// Check clients for exceeding cmaxidle by checking cl->last
-		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) &&
+		// Check clients for exceeding cmaxidle by checking cl->last, except Newcamd & Gbox
+		if(!(cl->ncd_keepalive && (get_module(cl)->listenertype & LIS_NEWCAMD)) && !(get_module(cl)->listenertype & LIS_GBOX) &&
 				cl->last && cl->account->umaxidle==-1 && cfg.cmaxidle && (time(NULL) - cl->last) > (time_t)cfg.cmaxidle)
 		{
 			add_job(cl, ACTION_CLIENT_IDLE, NULL, 0);
 		}
-
+#ifdef MODULE_GBOX
+		if((get_module(cl)->listenertype & LIS_GBOX) &&	cl->last && (time(NULL) - cl->last) > (time_t)cfg.gbox_reconnect)
+		{
+			add_job(cl, ACTION_PEER_IDLE, NULL, 0);
+		}
 		break;
+#endif
 	case 'r':
 		cardreader_checkhealth(cl, cl->reader);
 		break;

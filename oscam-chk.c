@@ -365,6 +365,7 @@ static int32_t chk_chid(ECM_REQUEST *er, FTAB *fchid, char *type, char *name)
 {
 	int32_t rc = 1, i, j, found_caid = 0;
 	if(!fchid->nfilts) { return 1; }
+	if(er->chid == 0 && er->ecm[0] == 0) { return 1; } // skip empty ecm, chid 00 to avoid no matching readers in dvbapi
 
 	for(i = rc = 0; (!rc) && i < fchid->nfilts; i++)
 		if(er->caid == fchid->filts[i].caid)
@@ -516,7 +517,7 @@ int32_t chk_rsfilter(struct s_reader *reader, ECM_REQUEST *er)
 							  (reader->prid[i][3]));
 			cs_log_dbg(D_CLIENT, "trying server '%s' filter %04X@%06X",
 						  reader->device, caid, prid);
-			if(prid == er->prid)
+			if(prid == er->prid || !er->prid)
 			{
 				rc = 1;
 				cs_log_dbg(D_CLIENT, "%04X@%06X allowed by server '%s' filter %04X@%06X",
@@ -697,6 +698,33 @@ uint8_t chk_has_fixed_fallback(ECM_REQUEST *er)
 			{ n_falb++; }
 	}
 	return n_falb;
+}
+
+uint8_t chk_if_ignore_checksum(ECM_REQUEST *er, int8_t disablecrc, FTAB *disablecrc_only_for)
+{
+	if(!disablecrc && !disablecrc_only_for->nfilts) { return 0; }
+
+		int32_t i, k;
+		for(i = 0; i < disablecrc_only_for->nfilts; i++)
+		{
+			uint16_t tcaid = disablecrc_only_for->filts[i].caid;
+			if(tcaid && (tcaid == er->caid || (tcaid < 0x0100 && (er->caid >> 8) == tcaid)))    //caid match
+			{
+
+				int32_t nprids = disablecrc_only_for->filts[i].nprids;
+				if(!nprids)  // No Provider ->Ok
+					{ return 1; }
+
+				for(k = 0; k < nprids; k++)
+				{
+					uint32_t prid =disablecrc_only_for->filts[i].prids[k];
+					if(prid == er->prid)    //Provider matches
+					{ return 1; }
+				}
+			}
+		}
+
+		return 0;
 }
 
 int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr)
@@ -956,9 +984,7 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr)
 		{
 			if(skip == 0 || (foundcaid == 1 && foundprovid == 1 && entryok == 0 && skip == 1))
 			{
-				cs_log_dump_dbg(D_TRACE, er->ecm, er->ecmlen,
-							  "following ECM %04X@%06X:%04X was filtered by ECMHeaderwhitelist of Reader %s from User %s because of not matching Header:",
-							  er->caid, er->prid, er->srvid, rdr->label, username(er->client));
+				cs_log_dump_dbg(D_TRACE, er->ecm, er->ecmlen, "following ECM %04X@%06X:%04X was filtered by ECMHeaderwhitelist of Reader %s from User %s because of not matching Header:", er->caid, er->prid, er->srvid, rdr->label, username(er->client));
 				rdr->ecmsfilteredhead += 1;
 				rdr->webif_ecmsfilteredhead += 1;
 				return (0);
@@ -969,19 +995,15 @@ int32_t matching_reader(ECM_REQUEST *er, struct s_reader *rdr)
 	//Simple ring connection check:
 
 	//Check ip source+dest:
-	if(cfg.block_same_ip && IP_EQUAL(cur_cl->ip, rdr->client->ip) &&
-			get_module(cur_cl)->listenertype != LIS_DVBAPI &&
-			is_network_reader(rdr))
+	if(cfg.block_same_ip && IP_EQUAL(cur_cl->ip, rdr->client->ip) && get_module(cur_cl)->listenertype != LIS_DVBAPI && is_network_reader(rdr))
 	{
-		rdr_log_dbg(rdr, D_TRACE, "User (%s) has the same ip (%s) as the reader, blocked because block_same_ip=1!",
-					   username(cur_cl), cs_inet_ntoa(rdr->client->ip));
+		rdr_log_dbg(rdr, D_TRACE, "User (%s) has the same ip (%s) as the reader, blocked because block_same_ip=1!", username(cur_cl), cs_inet_ntoa(rdr->client->ip));
 		return 0;
 	}
 
 	if(cfg.block_same_name && strcmp(username(cur_cl), rdr->label) == 0)
 	{
-		rdr_log_dbg(rdr, D_TRACE, "User (%s) has the same name as the reader, blocked because block_same_name=1!",
-					   username(cur_cl));
+		rdr_log_dbg(rdr, D_TRACE, "User (%s) has the same name as the reader, blocked because block_same_name=1!", username(cur_cl));
 		return 0;
 	}
 
@@ -1001,8 +1023,7 @@ int32_t chk_caid(uint16_t caid, CAIDTAB *ctab)
 	for(i = 0; i < ctab->ctnum; i++)
 	{
 		CAIDTAB_DATA *d = &ctab->ctdata[i];
-		if((caid & d->mask) == d->caid)
-			return d->cmap ? d->cmap : caid;
+		if((caid & d->mask) == d->caid) { return d->cmap ? d->cmap : caid; }
 	}
 	return -1;
 }
@@ -1024,8 +1045,7 @@ int32_t chk_bcaid(ECM_REQUEST *er, CAIDTAB *ctab)
 {
 	int32_t caid;
 	caid = chk_caid(er->caid, ctab);
-	if(caid < 0)
-		{ return 0; }
+	if(caid < 0) { return 0; }
 	er->caid = caid;
 	return 1;
 }
@@ -1044,50 +1064,42 @@ int32_t chk_is_null_CW(uchar cw[])
 	return 1;
 }
 
-
-
 /**
  * Check for ecm request that expects half cw format
  **/
 int8_t is_halfCW_er(ECM_REQUEST *er)
 {
-	if(caid_is_videoguard(er->caid) &&
-	 (er->caid == 0x09C4 || er->caid ==  0x098C || er->caid == 0x0963 || er->caid == 0x09CD || er->caid == 0x0919 || er->caid == 0x093B || er->caid == 0x098E)
-	)
-		return 1;
-
-  return 0;
+	if( caid_is_videoguard(er->caid) && (er->caid == 0x09C4 || er->caid == 0x098C || er->caid == 0x0963 || er->caid == 0x09CD || er->caid == 0x0919 || er->caid == 0x093B || er->caid == 0x098E))
+		{ return 1; }
+	return 0;
 }
-
 
 /**
  * Check for wrong half CWs
  **/
 int8_t chk_halfCW(ECM_REQUEST *er, uchar *cw)
 {
-  if(is_halfCW_er(er) && cw){
+	if(is_halfCW_er(er) && cw)
+	{
+		uchar cw15 = cw[15];
+		if(get_odd_even(er) == 0x80 && cw[15] == 0xF0) { cw[15] = 0; }
 
-	 int8_t part1 = checkCWpart(cw, 0);
-	 int8_t part2 = checkCWpart(cw, 1);
+		int8_t part1 = checkCWpart(cw, 0);
+		int8_t part2 = checkCWpart(cw, 1);
 
-	 //check for correct half cw format
-	 if(part1 && part2){
-		 return 0;
-	 }
+		//check for correct half cw format
+		if(part1 && part2){ cw[15] = cw15; return 0; }
 
-	 //check for correct cw position
-	 if(
-	    (get_odd_even(er) == 0x80 && part1 && !part2)   //xxxxxxxx00000000
+		//check for correct cw position
+		if(
+		(get_odd_even(er) == 0x80 && part1 && !part2)   //xxxxxxxx00000000
 		||
 		(get_odd_even(er) == 0x81 && !part1 && part2)   //00000000xxxxxxxx
-	 )
-	 {
-		return 1;
-	 }
-
-	 return 0;  //not correct swapped cw
-
-  }else
+		)
+		{ return 1; }
+		cw[15] = cw15;
+		return 0;  //not correct swapped cw
+	}else
 	return 1;
 }
 
@@ -1100,8 +1112,7 @@ int32_t chk_is_null_nodeid(uint8_t node_id[], uint8_t len)
 	int8_t i;
 	for(i = 0; i < len; i++)
 	{
-		if(node_id[i])
-			{ return 0; }
+		if(node_id[i]) { return 0; }
 	}
 	return 1;
 }
@@ -1109,8 +1120,7 @@ int32_t chk_is_null_nodeid(uint8_t node_id[], uint8_t len)
 //check if client structure is accessible
 bool check_client(struct s_client *cl)
 {
-	if(cl && !cl->kill)
-		{ return true; }
+	if(cl && !cl->kill) { return true; }
 	return false;
 }
 
@@ -1120,8 +1130,7 @@ uint16_t caidvaluetab_get_value(CAIDVALUETAB *cv, uint16_t caid, uint16_t defaul
 	for(i = 0; i < cv->cvnum; i++)
 	{
 		CAIDVALUETAB_DATA *cvdata = &cv->cvdata[i];
-		if(cvdata->caid == caid || cvdata->caid == caid >> 8)
-			return cvdata->value;
+		if(cvdata->caid == caid || cvdata->caid == caid >> 8) { return cvdata->value; }
 	}
 	return default_value;
 }
@@ -1130,7 +1139,7 @@ int32_t chk_is_fakecw(uint8_t *cw)
 {
 	uint32_t i, is_fakecw = 0;
 	uint32_t idx = ((cw[0]&0xF)<<4) | (cw[8]&0xF); 
-	
+
 	cs_readlock(__func__, &config_lock);
 	for(i=0; i<cfg.fakecws[idx].count; i++)
 	{

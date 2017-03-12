@@ -12,6 +12,10 @@ extern char *mk_t_ftab(FTAB *ftab);
 extern char *mk_t_camd35tcp_port(void);
 extern char *mk_t_cccam_port(void);
 extern char *mk_t_gbox_port(void);
+extern char *mk_t_gbox_proxy_card(void);
+extern char *mk_t_gbox_ignored_peer(void);
+extern char *mk_t_gbox_block_ecm(void);
+extern char *mk_t_gbox_dest_peers(void);
 extern char *mk_t_aeskeys(struct s_reader *rdr);
 extern char *mk_t_newcamd_port(void);
 extern char *mk_t_aureader(struct s_auth *account);
@@ -24,6 +28,7 @@ extern char *mk_t_ecm_hdr_whitelist(struct s_ecm_hdr_whitelist *ecm_hdr_whitelis
 extern char *mk_t_cltab(CLASSTAB *clstab);
 extern char *mk_t_emmbylen(struct s_reader *rdr);
 extern char *mk_t_allowedprotocols(struct s_auth *account);
+extern char *mk_t_allowedtimeframe(struct s_auth *account);
 extern void free_mk_t(char *value);
 
 #endif
