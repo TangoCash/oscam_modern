@@ -684,6 +684,7 @@ static void ratelimittime_fn(const char *token, char *value, void *setting, FILE
 	if(rdr->ratelimitecm || cfg.http_full_cfg)
 		{ fprintf_conf(f, token, "%d\n", rdr->ratelimittime); }
 }
+
 static void srvidholdtime_fn(const char *token, char *value, void *setting, FILE *f)
 {
 	struct s_reader *rdr = setting;

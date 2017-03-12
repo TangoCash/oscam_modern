@@ -27,7 +27,6 @@ uint32_t get_fallbacktimeout(uint16_t   caid)
 	return ftimeout;
 }
 
-
 static int32_t find_nano(uchar *ecm, int32_t l, uchar nano, int32_t s)
 {
 	uchar *snano;
@@ -189,7 +188,6 @@ int32_t has_srvid(struct s_client *cl, ECM_REQUEST *er)
 	return 0;
 }
 
-
 int32_t has_lb_srvid(struct s_client *cl, ECM_REQUEST *er)
 {
 	if(!cl->lb_sidtabs.ok)
@@ -204,7 +202,6 @@ int32_t has_lb_srvid(struct s_client *cl, ECM_REQUEST *er)
 			{ return 1; }
 	return 0;
 }
-
 
 int32_t chk_srvid_match_by_caid_prov(uint16_t caid, uint32_t provid, SIDTAB *sidtab)
 {
@@ -400,7 +397,6 @@ static int32_t chk_chid(ECM_REQUEST *er, FTAB *fchid, char *type, char *name)
 	return (rc);
 }
 
-
 int32_t chk_ident_filter(uint16_t rcaid, uint32_t rprid, FTAB *ftab)
 {
 	int32_t i, j, rc=1;
@@ -430,7 +426,6 @@ int32_t chk_ident_filter(uint16_t rcaid, uint32_t rprid, FTAB *ftab)
 
 	return(rc);
 }
-
 
 int32_t chk_ufilters(ECM_REQUEST *er)
 {
@@ -573,7 +568,6 @@ int32_t chk_rfilter2(uint16_t rcaid, uint32_t rprid, struct s_reader *rdr)
 
 	return (rc);
 }
-
 
 static int32_t chk_rfilter(ECM_REQUEST *er, struct s_reader *rdr)
 {
@@ -1102,7 +1096,6 @@ int8_t chk_halfCW(ECM_REQUEST *er, uchar *cw)
 	}else
 	return 1;
 }
-
 
 /**
  * Check for NULL nodeid

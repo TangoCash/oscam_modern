@@ -981,17 +981,12 @@ static void gbox_proxy_card_fn(const char *token, char *value, void *UNUSED(sett
 		cfg.gbox_proxy_cards_num = n;
 		return;
 	 }
+
 	if (cfg.gbox_proxy_cards_num > 0)
-	{ 
-		int i;
-		char *dot = "";
-		fprintf_conf(f, token, " ");
-		for (i = 0; i < cfg.gbox_proxy_cards_num; i++)
-		{
-			fprintf(f, "%s%08lX", dot, cfg.gbox_proxy_card[i]);
-			dot = ",";
-		}
-		fprintf(f, "\n");
+	{
+		value = mk_t_gbox_proxy_card();
+		fprintf_conf(f, token, "%s\n", value);
+		free_mk_t(value);
 	}
 }
 

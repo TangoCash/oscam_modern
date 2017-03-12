@@ -324,54 +324,58 @@ void gbox_init_send_gsms(void)
 	{
 		if(cl->gbox && cl->typ == 'p')
 		{
-
 			struct gbox_peer *peer = cl->gbox;
+			
 			if (peer->online && boxid == 0xFFFF) //send gsms to all peers online
 			{
-			gbox_send_gsms2peer(cl, text, msg_type, gsms_prot, gsms_len); 
+			gbox_send_gsms2peer(cl, text, msg_type, gsms_len);
+			id_valid = 1; 
 			}
 			if (!peer->online && boxid == 0xFFFF)
 			{
 			cs_log("Info: peer %04X is OFFLINE",peer->gbox.id); 
-			write_gsms_nack( cl, gsms_prot, 1); 
+			write_gsms_nack( cl, 1);
+			id_valid = 1;  
 			}
 			if (peer->online && boxid == peer->gbox.id)
 			{
-			gbox_send_gsms2peer(cl, text, msg_type, gsms_prot, gsms_len); 
+			gbox_send_gsms2peer(cl, text, msg_type, gsms_len); 
+			id_valid = 1; 
 			}
 			if (!peer->online && boxid == peer->gbox.id)
 			{
 			cs_log("WARNING: send GSMS failed - peer %04X is OFFLINE",peer->gbox.id);
-			write_gsms_nack( cl, gsms_prot, 0);  
+			write_gsms_nack( cl, 0);
+			id_valid = 1; 
 			}
 		}
 	}
+	cs_readunlock(__func__, &clientlist_lock);
+	if (!id_valid)
+			{
+			cs_log("WARNING: send GSMS failed - peer_id unknown");
+			}
 	return;
 }
 
-void gbox_send_gsms_ack(struct s_client *cli, uint8_t gsms_prot)
+void gbox_send_gsms_ack(struct s_client *cli)
 {
 	uchar outbuf[20];
 	struct gbox_peer *peer = cli->gbox;
 	uint16_t local_gbox_id = gbox_get_local_gbox_id();
 	uint32_t local_gbox_pw = gbox_get_local_gbox_password();
 	struct s_reader *rdr = cli->reader;
-		if (peer->online && gsms_prot == 1)
+
+		if (peer->online)
 		{
-		gbox_message_header(outbuf, MSG_GSMS_ACK_1, 0x90989098, 0x90989098);
-		gbox_send(cli, outbuf, 10);
-		cs_log_dbg(D_READER,"<-[gbx] send GSMS_ACK_1 to %s:%d id: %04X",rdr->device, rdr->r_port, peer->gbox.id);
-		}
-		if (peer->online && gsms_prot == 2)
-		{
-		gbox_message_header(outbuf, MSG_GSMS_ACK_2, peer->gbox.password, local_gbox_pw);
+		gbox_message_header(outbuf, MSG_GSMS_ACK, peer->gbox.password, local_gbox_pw);
 		outbuf[10] = 0;
 		outbuf[11] = 0;
 		outbuf[12] = (local_gbox_id >> 8) & 0xff;
-		outbuf[13] = local_gbox_id & 0xff;									
+		outbuf[13] = local_gbox_id & 0xff;
 		outbuf[14] = 0x1;
 		outbuf[15] = 0;
-		cs_log_dbg(D_READER,"<-[gbx] send GSMS_ACK_2 to %s:%d id: %04X",rdr->device, rdr->r_port, peer->gbox.id);
+		cs_log_dbg(D_READER,"<-[gbx] send GSMS_ACK to %s:%d id: %04X",rdr->device, rdr->r_port, peer->gbox.id);
 		gbox_send(cli, outbuf, 16);
 		}
 }

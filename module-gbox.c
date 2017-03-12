@@ -626,7 +626,6 @@ int16_t read_cards_from_hello(uint8_t *ptr, uint8_t *len, CAIDTAB *ctab, uint8_t
 static int32_t gbox_checkcode_recv(struct s_client *cli, uchar *checkcode)
 {
 	struct gbox_peer *peer = cli->gbox;
-
 	if(memcmp(peer->checkcode, checkcode, 7))
 	{
 		memcpy(peer->checkcode, checkcode, 7);
