@@ -37,7 +37,7 @@ void findatr(struct s_reader *reader)
 			reader->saveemm=skyDEv14.saveemm;reader->blockemm=skyDEv14.blockemm;
 			current.found = 1;
 }
-	else if ( strncmp(current.atr, skyDEv13.atr, skyDEv14.atrsize) == 0 )
+	else if ( strncmp(current.atr, skyDEv13.atr, skyDEv13.atrsize) == 0 )
 		{
 			strncpy(current.providername, skyDEv13.providername, strlen(skyDEv13.providername));
 			reader->saveemm=skyDEv13.saveemm;reader->blockemm=skyDEv13.blockemm;
