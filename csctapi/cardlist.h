@@ -65,15 +65,8 @@ void findatr(struct s_reader *reader)
 		reader->saveemm = unity_02.saveemm;
 		reader->blockemm = unity_02.blockemm;
 		current.found = 1;
-	} else if ( strncmp(current.atr, kbw_v23.atr, kbw_v23.atrsize) == 0 ) {
-		strncpy(current.providername, kbw_v23.providername, strlen(kbw_v23.providername));
-		reader->boxid = kbw_v23.boxid;
-		reader->saveemm = kbw_v23.saveemm;
-		reader->blockemm = kbw_v23.blockemm;
-		current.found = 1;
 	}
-
-	/*	test ATR for ins7e11 11,12,13,14,15	*/
+	/* test ATR for ins7e11 11,12,13,14,15 */
 	if ( current.found == 0 ) {
 		int i;
 		char buf[66];
@@ -93,6 +86,15 @@ void findatr(struct s_reader *reader)
 				reader->saveemm = skyDEv14.saveemm;
 				reader->blockemm = skyDEv14.blockemm;
 				reader->boxid = skyDEv14.boxid;
+				current.found = 1;
+				break;
+			}
+			snprintf(buf, kbw_v23.atrsize+1, "3F FF %i 25 03 10 80 54 B0 01 69 FF 4A 50 70 00 00 4B 57 01 00 00", i);
+			if ( strncmp(current.atr, buf, kbw_v23.atrsize) == 0 ) {
+				strncpy(current.providername, kbw_v23.providername, strlen(kbw_v23.providername));
+				reader->saveemm = kbw_v23.saveemm;
+				reader->blockemm = kbw_v23.blockemm;
+				reader->boxid = kbw_v23.boxid;
 				current.found = 1;
 				break;
 			}
