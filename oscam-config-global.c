@@ -324,7 +324,7 @@ static const struct config_list global_opts[] =
 #endif
 	DEF_OPT_FUNC("serverip"                 , OFS(srvip),               serverip_fn),
 	DEF_OPT_FUNC("logfile"                  , OFS(logfile),             logfile_fn),
-	DEF_OPT_INT32("initial_debuglevel"      , OFS(initial_debuglevel),  0), 
+	DEF_OPT_INT32("initial_debuglevel"      , OFS(initial_debuglevel),  0),
 	DEF_OPT_STR("sysloghost"                , OFS(sysloghost),          NULL),
 	DEF_OPT_INT32("syslogport"              , OFS(syslogport),          514),
 	DEF_OPT_INT8("logduplicatelines"        , OFS(logduplicatelines),   0),
@@ -342,7 +342,7 @@ static const struct config_list global_opts[] =
 	DEF_OPT_INT32("unlockparental"          , OFS(ulparent),            1),
 	DEF_OPT_INT32("nice"                    , OFS(nice),                99),
 	DEF_OPT_INT32("maxlogsize"              , OFS(max_log_size),        10),
-	DEF_OPT_INT8("waitforcards"             , OFS(waitforcards),        0),
+	DEF_OPT_INT8("waitforcards"             , OFS(waitforcards),        1),
 	DEF_OPT_INT32("waitforcards_extra_delay", OFS(waitforcards_extra_delay), 500),
 	DEF_OPT_INT8("preferlocalcards"         , OFS(preferlocalcards),    0),
 	DEF_OPT_INT32("readerrestartseconds"    , OFS(reader_restart_seconds), 5),
@@ -951,7 +951,7 @@ static void gbox_ignored_peer_fn(const char *token, char *value, void *UNUSED(se
 		{
 			s=ptr1;
 			if ((n < GBOX_MAX_IGNORED_PEERS) && (s[strspn(s, "0123456789abcdefABCDEF")] == 0))
-			{ cfg.gbox_ignored_peer[n++] = a2i(ptr1, 4); }	
+			{ cfg.gbox_ignored_peer[n++] = a2i(ptr1, 4); }
 		}
 		cfg.gbox_ignored_peer_num = n;
 		return;
@@ -1055,7 +1055,7 @@ static void gbox_my_cpu_api_fn(const char *token, char *value, void *UNUSED(sett
 			return;
 		}
 	}
-	
+
 	if(cfg.gbox_my_cpu_api != GBOX_MY_CPU_API_DEF)
 	{
 		fprintf_conf(f, token, "%02X\n", cfg.gbox_my_cpu_api);
