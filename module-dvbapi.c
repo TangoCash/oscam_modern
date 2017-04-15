@@ -1761,7 +1761,7 @@ void dvbapi_parse_cat(int32_t demux_id, uchar *buf, int32_t len)
 	return;
 }
 
-static pthread_mutex_t lockindex;
+static pthread_mutex_t lockindex = PTHREAD_MUTEX_INITIALIZER;
 
 ca_index_t dvbapi_get_descindex(int32_t demux_index, int32_t pid, int32_t stream_id)
 {
@@ -4071,7 +4071,7 @@ int32_t dvbapi_net_init_listenfd(void)
 	return listenfd;
 }
 
-static pthread_mutex_t event_handler_lock;
+static pthread_mutex_t event_handler_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void event_handler(int32_t UNUSED(signal))
 {
