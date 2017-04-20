@@ -19,16 +19,16 @@ struct known_cards {
 	char rsakey[129];
 }
 
-orfice	 =	{ "ORF ICE CW-Mode\0", 0, 12, "3B 78 12 00 00 54 C4 03 00 8F F1 90 00",        38, 0, "\0", "\0" },
-cdnl	 =	{ "CANAL DIGITAAL (NL)\0", 3, 12, "3B F7 11 00 01 40 96 70 70 0A 0E 6C B6 D6", 42, 0, "\0", "\0" },
-kbw_v23  =	{ "Kabel-BW V23\0",        0, 12, "3F FF 14 25 03 10 80 54 B0 01 69 FF 4A 50 70 00 00 4B 57 01 00 00", 65, 12345678, "\0", "\0"},
-kdg9	 =	{ "Kabel Deutschland G9\0", 0, 12, "3F FD 11 25 02 50 00 03 33 B0 15 69 FF 4A 50 F0 80 03 4B 4C 03",   62, 12345678, "\0", "\0"},
-skyDEv14 =	{ "Sky Deutschland V14\0", 1, 15, "3F FD 13 25 02 50 80 0F 41 B0 0A 69 FF 4A 50 F0 00 00 50 31 03",    62, 12345678, "\0", "\0" },
-skyDEv13 =	{ "Sky Deutschland V13\0", 1, 15, "3F FF 11 25 03 10 80 41 B0 07 69 FF 4A 50 70 00 00 50 31 01 00 11", 65, 12345678, "\0", "\0" },
-unity_01 =	{ "Unity Media 01\0", 0, 12, "3F FF 95 00 FF 91 81 71 FE 47 00 44 4E 41 53 50 31 31 30 20 52 65 76 41 32 32 15", 80, 0, "\x00", "\x00" },
-unity_02 =	{ "Unity Media 02\0", 0, 12, "3F FF 95 00 FF 91 81 71 FE 47 00 44 4E 41 53 50 31 34 32 20 52 65 76 47 30 36 12", 80, 0, "\x00", "\x00" },
-hdplus01 =	{ "HD-Plus 01\0", 0, 12, "3F FF 95 00 FF 91 81 71 FE 47 00 44 4E 41 53 50 31 34 32 20 52 65 76 47 43 36 61",     80, 0, "\x00", "\x00" },
-hdplus02 =	{ "HD-Plus 02\0", 0, 12, "3F FF 95 00 FF 91 81 71 A0 47 00 44 4E 41 53 50 31 38 30 20 4D 65 72 30 30 30 28",     80, 0, "\x00", "\x00" };
+orfice	 =	{ "ORF ICE CW-Mode", 0, 12, "3B 78 12 00 00 54 C4 03 00 8F F1 90 00",        38, 0, "\0", "\0" },
+cdnl	 =	{ "CANAL DIGITAAL (NL)", 3, 12, "3B F7 11 00 01 40 96 70 70 0A 0E 6C B6 D6", 42, 0, "\0", "\0" },
+kbw_v23  =	{ "Kabel-BW V23",        0, 12, "3F FF 14 25 03 10 80 54 B0 01 69 FF 4A 50 70 00 00 4B 57 01 00 00", 65, 12345678, "\0", "\0"},
+kdg9	 =	{ "Kabel Deutschland G9", 0, 12, "3F FD 11 25 02 50 00 03 33 B0 15 69 FF 4A 50 F0 80 03 4B 4C 03",   62, 12345678, "\0", "\0"},
+skyDEv14 =	{ "Sky Deutschland V14", 1, 15, "3F FD 13 25 02 50 80 0F 41 B0 0A 69 FF 4A 50 F0 00 00 50 31 03",    62, 12345678, "\0", "\0" },
+skyDEv13 =	{ "Sky Deutschland V13", 1, 15, "3F FF 11 25 03 10 80 41 B0 07 69 FF 4A 50 70 00 00 50 31 01 00 11", 65, 12345678, "\0", "\0" },
+unity_01 =	{ "Unity Media 01", 0, 12, "3F FF 95 00 FF 91 81 71 FE 47 00 44 4E 41 53 50 31 31 30 20 52 65 76 41 32 32 15", 80, 0, "\x00", "\x00" },
+unity_02 =	{ "Unity Media 02", 0, 12, "3F FF 95 00 FF 91 81 71 FE 47 00 44 4E 41 53 50 31 34 32 20 52 65 76 47 30 36 12", 80, 0, "\x00", "\x00" },
+hdplus01 =	{ "HD-Plus 01", 0, 12, "3F FF 95 00 FF 91 81 71 FE 47 00 44 4E 41 53 50 31 34 32 20 52 65 76 47 43 36 61",     80, 0, "\x00", "\x00" },
+hdplus02 =	{ "HD-Plus 02", 0, 12, "3F FF 95 00 FF 91 81 71 A0 47 00 44 4E 41 53 50 31 38 30 20 4D 65 72 30 30 30 28",     80, 0, "\x00", "\x00" };
 struct atrlist {
 	int found;
 	char providername[32];
@@ -38,6 +38,7 @@ struct atrlist {
 void findatr(struct s_reader *reader)
 {
 	current.found = 0;
+	memset(current.providername, 0, 32);
 	if ( strncmp(current.atr, hdplus01.atr, hdplus01.atrsize) == 0 ) {
 		memcpy(current.providername, hdplus01.providername, strlen(hdplus01.providername));
 		memcpy(reader->boxkey, hdplus01.boxkey, 9);
