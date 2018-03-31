@@ -247,7 +247,7 @@ static void rsakey_fn(const char *token, char *value, void *setting, FILE *f)
 			}
 			else
 			{
-				rdr->rsa_mod_length = len/2;
+				rdr->rsa_mod_length = len/2;	
 			}
 		}
 		return;
@@ -319,7 +319,7 @@ static void boxkey_fn(const char *token, char *value, void *setting, FILE *f)
 			}
 			else
 			{
-				rdr->boxkey_length = len/2;
+				rdr->boxkey_length = len/2;	
 			}
 		}
 		return;
@@ -1112,7 +1112,7 @@ int32_t init_readerdb(void)
 	if ( tmp_conf == 1 ){
 		fclose(fp);
 	} else {
-		fclose(fp);
+	fclose(fp);
 	}
 	return (0);
 }
@@ -1129,11 +1129,11 @@ void free_reader(struct s_reader *rdr)
 	ftab_clear(&rdr->fchid);
 	ftab_clear(&rdr->ftab);
 
-	NULLFREE(rdr->cltab.aclass);
-	NULLFREE(rdr->cltab.bclass);
+    NULLFREE(rdr->cltab.aclass);
+ 	NULLFREE(rdr->cltab.bclass);
 
 	caidtab_clear(&rdr->ctab);
-#ifdef CS_CACHEEX
+#ifdef CS_CACHEEX	
 	cecspvaluetab_clear(&rdr->cacheex.filter_caidtab);
 #endif
 	lb_destroy_stats(rdr);

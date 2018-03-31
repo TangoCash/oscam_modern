@@ -272,15 +272,12 @@ static void parse_cmdline_params(int argc, char **argv)
 		case 'B': // --pidfile
 			oscam_pidfile = optarg;
 			break;
-#if defined(WITH_STAPI) || defined(WITH_STAPI5)
 		case 'f': // --foreground
 			bg = 0;
 			break;
-#else
 		case 'b': // --daemon
 			bg = 1;
 			break;
-#endif
 		case 'c': // --config-dir
 			cs_strncpy(cs_confdir, optarg, sizeof(cs_confdir));
 			break;
@@ -497,7 +494,7 @@ static void remove_versionfile(void)
 #define report_emm_support(CONFIG_VAR, text) \
     do { \
         if (!config_enabled(CONFIG_VAR)) \
-            cs_log("Binary without %s module - no EMM processing for %s possible!", text, text); \
+            cs_log_dbg(D_TRACE, "Binary without %s module - no EMM processing for %s possible!", text, text); \
     } while(0)
 
 static void do_report_emm_support(void)
@@ -1894,7 +1891,8 @@ int32_t main(int32_t argc, char *argv[])
 
 	// Cleanup
 #ifdef MODULE_GBOX
-	stop_sms_sender();
+ if(!cfg.gsms_dis)
+	{ stop_sms_sender(); }
 #endif
 	webif_close();
 	azbox_close();
@@ -1908,7 +1906,7 @@ int32_t main(int32_t argc, char *argv[])
 	remove_versionfile();
 
 	stat_finish();
-	dvbapi_stop_all_descrambling();
+	dvbapi_stop_all_descrambling(0);
 	dvbapi_save_channel_cache();
 	emm_save_cache();
 	save_emmstat_to_file();

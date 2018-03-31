@@ -330,6 +330,13 @@ bool cardreader_init(struct s_reader *reader)
 			if((!strncmp(boxtype_get(), "vu", 2 ))||(boxtype_is("ini-8000am")))
 				{reader->cardmhz = 2700; reader->mhz = 450;} // only one speed for vu+ and Atemio Nemesis due to usage of TDA8024
 		}
+
+		if( reader->typ == R_INTERNAL && ((strncmp(boxtype_get(), "dm900", 5) == 0) || (strncmp(boxtype_get(), "dm920", 5) == 0)) ){
+			rdr_log(reader, "Dreambox %s found! set Internal cardmhz = 2700", boxtype_get() );
+			reader->cardmhz = 2700;
+			return true;
+		}
+
 		if((reader->cardmhz > 2000) && (reader->typ != R_SMART))
 		{
 			rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, pll max=%.2f MHz, wanted mhz=%.2f MHz)",
@@ -375,7 +382,7 @@ bool cardreader_init(struct s_reader *reader)
 				if (reader->mhz == 357)  reader->mhz =  369; else // 357 not a default smartreader setting
 				if (reader->mhz >= 343)  reader->mhz =  343; else 
 				reader->mhz =  320;
-	    	}
+		}
 			if ((reader->typ == R_SMART || is_smargo_reader(reader)) && reader->autospeed == 1)
 			{
 				rdr_log(reader, "Reader initialized (device=%s, detect=%s%s, mhz= AUTO, cardmhz=%d)",

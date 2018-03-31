@@ -797,7 +797,7 @@ void cs_disable_log(int8_t disabled)
 				if(syslog_socket != -1)
 				{
 					close(syslog_socket);
-					syslog_socket = -1;					
+					syslog_socket = -1;
 				}
 				
 				cs_sleepms(20);

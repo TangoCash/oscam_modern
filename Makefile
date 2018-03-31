@@ -55,7 +55,7 @@ override STD_DEFS := -D'CS_SVN_VERSION="$(SVN_REV)"'
 override STD_DEFS += -D'CS_CONFDIR="$(CONF_DIR)"'
 
 # Compiler warnings
-CC_WARN = -W -Wall -Wshadow -Wredundant-decls -Wstrict-prototypes -Wold-style-definition
+CC_WARN = -W -Wall -Wshadow -Wredundant-decls -Wstrict-prototypes -Wold-style-definition -Wno-unused-result
 
 # Compiler optimizations
 CC_OPTS = -O2 -ggdb -pipe -ffunction-sections -fdata-sections
@@ -283,6 +283,7 @@ SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi-chancache.c
 SRC-$(CONFIG_HAVE_DVBAPI) += module-dvbapi.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox-helper.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox-sms.c
+SRC-$(CONFIG_MODULE_GBOX) += module-gbox-remm.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox-cards.c
 SRC-$(CONFIG_MODULE_GBOX) += module-gbox.c
 SRC-$(CONFIG_IRDETO_GUESSING) += module-ird-guess.c

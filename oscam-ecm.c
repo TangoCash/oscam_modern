@@ -1028,38 +1028,35 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 	}
 #endif
 
-	if(cfg.double_check && er->rc == E_FOUND && er->selected_reader && is_double_check_caid(er))
-	{
-		if(er->checked == 0)   //First CW, save it and wait for next one
-		{
-			er->checked = 1;
-			er->origin_reader = er->selected_reader;
-			memcpy(er->cw_checked, er->cw, sizeof(er->cw));
-			cs_log("DOUBLE CHECK FIRST CW by %s idx %d cpti %d", er->origin_reader->label, er->idx, er->msgid);
-		}
-		else if(er->origin_reader != er->selected_reader)      //Second (or third and so on) cw. We have to compare
-		{
-			if(memcmp(er->cw_checked, er->cw, sizeof(er->cw)) == 0)
-			{
-				er->checked++;
-				cs_log("DOUBLE CHECKED! %d. CW by %s idx %d cpti %d", er->checked, er->selected_reader->label, er->idx, er->msgid);
-			}
-			else
-			{
-				cs_log("DOUBLE CHECKED NONMATCHING! %d. CW by %s idx %d cpti %d", er->checked, er->selected_reader->label, er->idx, er->msgid);
-			}
-		}
-		if(er->checked < 2)    //less as two same cw? mark as pending!
-		{
-			er->rc = E_UNHANDLED;
-			goto ESC;
+if(
+(cfg.double_check && er->rc == E_FOUND && er->selected_reader && is_double_check_caid(er))  ||
+(cfg.double_check && er->rc == E_CACHE1 && er->selected_reader && is_double_check_caid(er)) ||
+(cfg.double_check && er->rc == E_CACHE2 && er->selected_reader && is_double_check_caid(er)) ){
+	if(er->checked == 0){
+		er->checked = 1;
+		er->origin_reader = er->selected_reader;
+		memcpy(er->cw_checked, er->cw, sizeof(er->cw));
+		cs_log("DOUBLE CHECK FIRST CW by %s idx %d cpti %d", er->origin_reader->label, er->idx, er->msgid);
+	}
+
+	else if(er->origin_reader != er->selected_reader){
+		if(memcmp(er->cw_checked, er->cw, sizeof(er->cw)) == 0){
+			er->checked++;
+			cs_log("DOUBLE CHECKED! %d. CW by %s idx %d cpti %d", er->checked, er->selected_reader->label, er->idx, er->msgid);
+		}else{
+			cs_log("DOUBLE CHECKED NONMATCHING! %d. CW by %s idx %d cpti %d", er->checked, er->selected_reader->label, er->idx, er->msgid);
 		}
 	}
 
+	if(er->checked < 2){
+		er->rc = E_UNHANDLED;
+		goto ESC;
+	}
+}
+
 	ac_chk(client, er, 1);
 	int32_t is_fake = 0;
-	if(er->rc == E_FAKE)
-	{
+	if(er->rc == E_FAKE){
 		is_fake = 1;
 		er->rc = E_FOUND;
 	}
@@ -1068,8 +1065,9 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 
 	add_cascade_data(client, er);
 
-	if(is_fake)
-		{ er->rc = E_FAKE; }
+	if(is_fake){
+		er->rc = E_FAKE;
+	}
 
 	if(!(er->rc == E_SLEEPING && client->cwlastresptime == 0))
 	{
@@ -1280,7 +1278,7 @@ void chk_dcw(struct s_ecm_answer *ea)
 			ECM_REQUEST *er = ert;
 			debug_ecm(D_TRACE, "WARNING2: Different CWs %s from %s(%s)<>%s(%s): %s<>%s", buf,
 					  username(ea->reader ? ea->reader->client : ert->client), ip1,
-					  er->cacheex_src ? username(er->cacheex_src) : (ea->reader ? ea->reader->label : "unknown/csp"), ip2,
+					  er->cacheex_src ? username(er->cacheex_src) : (ert->selected_reader ? ert->selected_reader->label : "unknown/csp"), ip2,
 					  cw1, cw2);
 		}
 #endif

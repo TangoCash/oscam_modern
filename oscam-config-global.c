@@ -320,7 +320,7 @@ static const struct config_list global_opts[] =
 #endif
 	DEF_OPT_FUNC("disablelog"               , OFS(disablelog),          disablelog_fn),
 #if defined(WEBIF) || defined(MODULE_MONITOR)
-	DEF_OPT_FUNC("loghistorylines"          , OFS(loghistorylines),    loghistorylines_fn),
+	DEF_OPT_FUNC("loghistorylines"          , OFS(loghistorylines),     loghistorylines_fn),
 #endif
 	DEF_OPT_FUNC("serverip"                 , OFS(srvip),               serverip_fn),
 	DEF_OPT_FUNC("logfile"                  , OFS(logfile),             logfile_fn),
@@ -739,7 +739,7 @@ static const struct config_list cs378x_opts[] =
 {
 	DEF_OPT_SAVE_FUNC(cs378x_should_save_fn),
 	DEF_OPT_FUNC("port"		, OFS(c35_tcp_ptab)		, porttab_camd35_fn, .free_value = porttab_free_fn),
-	DEF_OPT_FUNC("serverip"		, OFS(c35_tcp_srvip)		, serverip_fn),
+	DEF_OPT_FUNC("serverip"			, OFS(c35_tcp_srvip)		, serverip_fn),
 	DEF_OPT_INT8("suppresscmd08"	, OFS(c35_tcp_suppresscmd08)	, 0),
 	DEF_LAST_OPT
 };
@@ -756,10 +756,10 @@ static bool newcamd_should_save_fn(void *UNUSED(var))
 static const struct config_list newcamd_opts[] =
 {
 	DEF_OPT_SAVE_FUNC(newcamd_should_save_fn),
-	DEF_OPT_FUNC("port"		, OFS(ncd_ptab)		, porttab_fn, .free_value = porttab_free_fn),
+	DEF_OPT_FUNC("port"			, OFS(ncd_ptab)		, porttab_fn, .free_value = porttab_free_fn),
 	DEF_OPT_FUNC("serverip"		, OFS(ncd_srvip)	, serverip_fn),
 	DEF_OPT_FUNC("allowed"		, OFS(ncd_allowed)	, iprange_fn, .free_value = iprange_free_fn),
-	DEF_OPT_HEX("key"		, OFS(ncd_key)		, SIZEOF(ncd_key)),
+	DEF_OPT_HEX("key"			, OFS(ncd_key)		, SIZEOF(ncd_key)),
 	DEF_OPT_INT8("keepalive"	, OFS(ncd_keepalive)	, DEFAULT_NCD_KEEPALIVE),
 	DEF_OPT_INT8("mgclient"		, OFS(ncd_mgclient)	, 0),
 	DEF_LAST_OPT
@@ -939,6 +939,31 @@ static void gbox_block_ecm_fn(const char *token, char *value, void *UNUSED(setti
 	}
 }
 
+static void accept_remm_peer_fn(const char *token, char *value, void *UNUSED(setting), FILE *f)
+{
+	if (value)
+	{
+		char *ptr1, *saveptr1 = NULL;
+		const char *s;
+		memset(cfg.accept_remm_peer, 0, sizeof(cfg.accept_remm_peer));
+		int n = 0, i;
+		for (i = 0, ptr1 = strtok_r(value, ",", &saveptr1); (i < 4) && (ptr1); ptr1 = strtok_r(NULL, ",", &saveptr1))
+		{
+			s=ptr1;
+			if ((n < GBOX_MAX_REMM_PEERS) && (s[strspn(s, "0123456789abcdefABCDEF")] == 0))
+			{ cfg.accept_remm_peer[n++] = a2i(ptr1, 4); }
+		}
+		cfg.accept_remm_peer_num = n;
+		return;
+	}
+	if (cfg.accept_remm_peer_num > 0)
+	{
+		value = mk_t_accept_remm_peer();
+		fprintf_conf(f, token, "%s\n", value);
+		free_mk_t(value);
+	}
+}
+
 static void gbox_ignored_peer_fn(const char *token, char *value, void *UNUSED(setting), FILE *f)
 {
 	if (value)
@@ -951,7 +976,7 @@ static void gbox_ignored_peer_fn(const char *token, char *value, void *UNUSED(se
 		{
 			s=ptr1;
 			if ((n < GBOX_MAX_IGNORED_PEERS) && (s[strspn(s, "0123456789abcdefABCDEF")] == 0))
-			{ cfg.gbox_ignored_peer[n++] = a2i(ptr1, 4); }
+			{ cfg.gbox_ignored_peer[n++] = a2i(ptr1, 4); }	
 		}
 		cfg.gbox_ignored_peer_num = n;
 		return;
@@ -1055,7 +1080,7 @@ static void gbox_my_cpu_api_fn(const char *token, char *value, void *UNUSED(sett
 			return;
 		}
 	}
-
+	
 	if(cfg.gbox_my_cpu_api != GBOX_MY_CPU_API_DEF)
 	{
 		fprintf_conf(f, token, "%02X\n", cfg.gbox_my_cpu_api);
@@ -1125,12 +1150,13 @@ static const struct config_list gbox_opts[] =
 	DEF_OPT_UINT8("log_hello"	, OFS(log_hello)	, 1),
 	DEF_OPT_STR("tmp_dir"		, OFS(gbox_tmp_dir)	, NULL ),
 	DEF_OPT_FUNC("ignore_peer"	, OFS(gbox_ignored_peer), gbox_ignored_peer_fn ),
+	DEF_OPT_FUNC("accept_remm_peer"	, OFS(accept_remm_peer), accept_remm_peer_fn ),
 	DEF_OPT_FUNC("block_ecm"	, OFS(gbox_block_ecm)	, gbox_block_ecm_fn ),
 	DEF_OPT_FUNC("proxy_card"	, OFS(gbox_proxy_card)	, gbox_proxy_card_fn ),
-	DEF_OPT_UINT8("gbox_save_gsms"	, OFS(gbox_save_gsms)	, 0),
- 	DEF_OPT_UINT8("gbox_msg_type"	, OFS(gbox_msg_type)	, 0),
- 	DEF_OPT_FUNC("gbox_dest_peers"	, OFS(gbox_dest_peers)	, gbox_dest_peers_fn ),
- 	DEF_OPT_FUNC("gbox_msg_txt"	, OFS(gbox_msg_txt)	, gbox_msg_txt_fn ),
+	DEF_OPT_UINT8("gbox_save_gsms"	, OFS(gbox_save_gsms)		, 0),
+ 	DEF_OPT_UINT8("gbox_msg_type"	, OFS(gbox_msg_type)		, 0),
+ 	DEF_OPT_FUNC("gbox_dest_peers"	, OFS(gbox_dest_peers)		, gbox_dest_peers_fn ),
+ 	DEF_OPT_FUNC("gbox_msg_txt"		, OFS(gbox_msg_txt)			, gbox_msg_txt_fn ),
 	DEF_LAST_OPT
 };
 #else
@@ -1231,9 +1257,9 @@ static const struct config_list dvbapi_opts[] =
 	DEF_OPT_INT8("request_mode"	, OFS(dvbapi_requestmode),	0),
 	DEF_OPT_INT32("listen_port"	, OFS(dvbapi_listenport),	0),
 	DEF_OPT_INT32("delayer"		, OFS(dvbapi_delayer),		0),
-	DEF_OPT_INT8("ecminfo_type"	, OFS(dvbapi_ecminfo_type),	0),
+	DEF_OPT_INT8("ecminfo_type"		, OFS(dvbapi_ecminfo_type),	0),
 	DEF_OPT_STR("user"		, OFS(dvbapi_usr),		"dvbapi_local"),
-	DEF_OPT_INT8("read_sdt"		, OFS(dvbapi_read_sdt),		0),
+	DEF_OPT_INT8("read_sdt"		, OFS(dvbapi_read_sdt),	0),
 	DEF_OPT_INT8("write_sdt_prov"	, OFS(dvbapi_write_sdt_prov),	0),
 	DEF_OPT_INT8("extended_cw_api"	, OFS(dvbapi_extended_cw_api),	0),
 	DEF_OPT_FUNC("boxtype"		, OFS(dvbapi_boxtype),		dvbapi_boxtype_fn),
@@ -1335,6 +1361,7 @@ int32_t init_config(void)
 
 	const struct config_sections *cur_section = oscam_conf; // Global
 	char *token;
+	
 	config_sections_set_defaults(oscam_conf, &cfg);
 
 	if(!fp)
@@ -1359,7 +1386,6 @@ int32_t init_config(void)
 
 	int line = 0;
 	int valid_section = 1;
-
 	while(fgets(token, MAXLINESIZE, fp))
 	{
 		++line;
