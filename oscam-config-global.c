@@ -1257,7 +1257,7 @@ static const struct config_list dvbapi_opts[] =
 	DEF_OPT_INT8("request_mode"	, OFS(dvbapi_requestmode),	0),
 	DEF_OPT_INT32("listen_port"	, OFS(dvbapi_listenport),	0),
 	DEF_OPT_INT32("delayer"		, OFS(dvbapi_delayer),		0),
-	DEF_OPT_INT8("ecminfo_type"		, OFS(dvbapi_ecminfo_type),	0),
+	DEF_OPT_INT8("ecminfo_type"	, OFS(dvbapi_ecminfo_type),	0),
 	DEF_OPT_STR("user"		, OFS(dvbapi_usr),		"dvbapi_local"),
 	DEF_OPT_INT8("read_sdt"		, OFS(dvbapi_read_sdt),	0),
 	DEF_OPT_INT8("write_sdt_prov"	, OFS(dvbapi_write_sdt_prov),	0),
@@ -1377,7 +1377,7 @@ int32_t init_config(void)
 		}
 #endif
 		NULLFREE(cfg.logfile);
-		cfg.logtostdout = 0;
+		cfg.logtostdout = 1;
 		return 0;
 	}
 

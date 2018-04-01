@@ -22,10 +22,10 @@ mtv = { "MTV UNLIMITED",0,8,"3B 24 00 30 42 30 30",20,0,"\x00","\x00" },
 srg = { "SRG v5",0,8,"3F 77 18 00 00 C2 7A 44 02 68 90 00",20,0,"\x00","\x00" },
 orfice = { "ORF ICE CW-Mode",0,12,"3B 78 12 00 00 54 C4 03 00 8F F1 90 00",38,0,"\x00","\x00" },
 cdnl = { "CANAL DIGITAAL (NL)",3,12,"3B F7 11 00 01 40 96 70 70 0A 0E 6C B6 D6",42,0,"\x00","\x00" },
-kbw_v23 = { "Kabel-BW V23",0,12,"3F FF 14 25 03 10 80 54 B0 01 69 FF 4A 50 70 00 00 4B 57 01 00 00",65,12345678,"\x00","\x00" },
-kdg9 = { "Kabel Deutschland G0x",0,12,"3F FD 11 25 02 50 00 03 33 B0 15 69 FF 4A 50 F0 80 03 4B 4C 03",62,12345678,"\x00","\x00" },
-skyDEv14 = { "Sky Deutschland V14",1,15,"3F FD 13 25 02 50 80 0F 41 B0 0A 69 FF 4A 50 F0 00 00 50 31 03",62,12345678,"\x00","\x00" },
-skyDEv13 = { "Sky Deutschland V13",1,15,"3F FF 11 25 03 10 80 41 B0 07 69 FF 4A 50 70 00 00 50 31 01 00 11",65,12345678,"\x00","\x00" },
+kbw_v23 = { "Kabel-BW V23",0,12,"3F FF 14 25 03 10 80 54 B0 01 69 FF 4A 50 70 00 00 4B 57 01 00 00",65,305419896,"\x00","\x00" },
+kdg9 = { "Kabel Deutschland G0x",0,12,"3F FD 11 25 02 50 00 03 33 B0 15 69 FF 4A 50 F0 80 03 4B 4C 03",62,305419896,"\x00","\x00" },
+skyDEv14 = { "Sky Deutschland V14",1,15,"3F FD 13 25 02 50 80 0F 41 B0 0A 69 FF 4A 50 F0 00 00 50 31 03",62,305419896,"\x00","\x00" },
+skyDEv13 = { "Sky Deutschland V13",1,15,"3F FF 11 25 03 10 80 41 B0 07 69 FF 4A 50 70 00 00 50 31 01 00 11",65,305419896,"\x00","\x00" },
 tivusatd = { "Tivusat 183D",0,8,"3F FF 95 00 FF 91 81 71 FF 47 00 54 49 47 45 52 30 30 33 20 52 65 76 32 35 30 64",80,0,"\x00",
 "\x00"
 },
@@ -73,8 +73,8 @@ void findatr(struct s_reader *reader)
 		return;
 	} else if ( strncmp(current.atr, hdplus02.atr, hdplus02.atrsize) == 0 ) {
 		memcpy(current.providername, hdplus02.providername, strlen(hdplus02.providername));
-		memcpy(reader->boxkey, hdplus01.boxkey, 9);
-		memcpy(reader->rsa_mod, hdplus01.rsakey, 65);
+		memcpy(reader->boxkey, hdplus02.boxkey, 9);
+		memcpy(reader->rsa_mod, hdplus02.rsakey, 65);
 		reader->rsa_mod_length = 64;
 		reader->saveemm = hdplus02.saveemm;
 		reader->blockemm = hdplus02.blockemm;
@@ -160,11 +160,11 @@ void findatr(struct s_reader *reader)
 		return;
 	}
 
-/* test ATR for ins7e11 11,12,13,14,15 */
+/* test ATR for ins7e11 12,13,14,15 */
 	if ( current.found == 0 ) {
 		int i;
 		char buf[66];
-		for( i = 10; i < 16; i++ ) {
+		for( i = 12; i < 16; i++ ) {
 		snprintf(buf, skyDEv13.atrsize+1, "3F FF %i 25 03 10 80 41 B0 07 69 FF 4A 50 70 00 00 50 31 01 00 %i", i, i);
 		if ( strncmp(current.atr, buf, skyDEv13.atrsize) == 0 ) {
 			memcpy(current.providername, skyDEv13.providername, strlen(skyDEv13.providername));

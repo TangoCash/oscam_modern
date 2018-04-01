@@ -331,7 +331,14 @@ bool cardreader_init(struct s_reader *reader)
 				{reader->cardmhz = 2700; reader->mhz = 450;} // only one speed for vu+ and Atemio Nemesis due to usage of TDA8024
 		}
 
-		if( reader->typ == R_INTERNAL && ((strncmp(boxtype_get(), "dm900", 5) == 0) || (strncmp(boxtype_get(), "dm920", 5) == 0)) ){
+		if(
+			reader->typ == R_INTERNAL && (
+			(strncmp(boxtype_get(), "dm7080", 6) == 0) ||
+			(strncmp(boxtype_get(), "dm525",  5) == 0) ||
+			(strncmp(boxtype_get(), "dm520",  5) == 0) ||
+			(strncmp(boxtype_get(), "dm820",  5) == 0) ||
+			(strncmp(boxtype_get(), "dm900",  5) == 0) ||
+			(strncmp(boxtype_get(), "dm920",  5) == 0)) ){
 			rdr_log(reader, "Dreambox %s found! set Internal cardmhz = 2700", boxtype_get() );
 			reader->cardmhz = 2700;
 			return true;
