@@ -795,10 +795,10 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 		{ snprintf(schaninfo, sizeof(schaninfo) - 1, " - %s", channame); }
 
 	if(er->msglog[0])
-		{ snprintf(sreason, sizeof(sreason) - 1, " (%s)", er->msglog); }
+		{ snprintf(sreason, sizeof(sreason) - 1, " (%.26s)", er->msglog); }
 #ifdef CW_CYCLE_CHECK
 	if(er->cwc_msg_log[0])
-		{ snprintf(scwcinfo, sizeof(scwcinfo) - 1, " (%s)", er->cwc_msg_log); }
+		{ snprintf(scwcinfo, sizeof(scwcinfo) - 1, " (%.26s)", er->cwc_msg_log); }
 #endif
 
 	cs_ftime(&tpe);
@@ -1028,35 +1028,39 @@ int32_t send_dcw(struct s_client *client, ECM_REQUEST *er)
 	}
 #endif
 
-if(
-(cfg.double_check && er->rc == E_FOUND && er->selected_reader && is_double_check_caid(er))  ||
-(cfg.double_check && er->rc == E_CACHE1 && er->selected_reader && is_double_check_caid(er)) ||
-(cfg.double_check && er->rc == E_CACHE2 && er->selected_reader && is_double_check_caid(er)) ){
-	if(er->checked == 0){
-		er->checked = 1;
-		er->origin_reader = er->selected_reader;
-		memcpy(er->cw_checked, er->cw, sizeof(er->cw));
-		cs_log("DOUBLE CHECK FIRST CW by %s idx %d cpti %d", er->origin_reader->label, er->idx, er->msgid);
-	}
-
-	else if(er->origin_reader != er->selected_reader){
-		if(memcmp(er->cw_checked, er->cw, sizeof(er->cw)) == 0){
-			er->checked++;
-			cs_log("DOUBLE CHECKED! %d. CW by %s idx %d cpti %d", er->checked, er->selected_reader->label, er->idx, er->msgid);
-		}else{
-			cs_log("DOUBLE CHECKED NONMATCHING! %d. CW by %s idx %d cpti %d", er->checked, er->selected_reader->label, er->idx, er->msgid);
+	if(cfg.double_check && er->rc < E_NOTFOUND && er->selected_reader && is_double_check_caid(er))
+	{
+		if(er->checked == 0)   //First CW, save it and wait for next one
+		{
+			er->checked = 1;
+			er->origin_reader = er->selected_reader;
+			memcpy(er->cw_checked, er->cw, sizeof(er->cw));
+			cs_log("DOUBLE CHECK FIRST CW by %s idx %d cpti %d", er->origin_reader->label, er->idx, er->msgid);
+		}
+		else if(er->origin_reader != er->selected_reader)      //Second (or third and so on) cw. We have to compare
+		{
+			if(memcmp(er->cw_checked, er->cw, sizeof(er->cw)) == 0)
+			{
+				er->checked++;
+				cs_log("CW matched by %s total matches %d idx %d cpti %d", er->selected_reader->label, er->checked, er->idx, er->msgid);
+			}
+			else
+			{
+				er->checked--;
+				cs_log("CW mismatch by %s total matches %d idx %d cpti %d", er->selected_reader->label, er->checked, er->idx, er->msgid);
+			}
+		}
+		if(er->checked < 2)    //less as two same cw? mark as pending!
+		{
+			er->rc = E_UNHANDLED;
+			goto ESC;
 		}
 	}
 
-	if(er->checked < 2){
-		er->rc = E_UNHANDLED;
-		goto ESC;
-	}
-}
-
 	ac_chk(client, er, 1);
 	int32_t is_fake = 0;
-	if(er->rc == E_FAKE){
+	if(er->rc == E_FAKE)
+	{
 		is_fake = 1;
 		er->rc = E_FOUND;
 	}
@@ -1065,9 +1069,8 @@ if(
 
 	add_cascade_data(client, er);
 
-	if(is_fake){
-		er->rc = E_FAKE;
-	}
+	if(is_fake)
+		{ er->rc = E_FAKE; }
 
 	if(!(er->rc == E_SLEEPING && client->cwlastresptime == 0))
 	{
