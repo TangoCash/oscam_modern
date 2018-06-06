@@ -53,7 +53,7 @@
 /*
  * Not exported functions declaration
  */
-static uint16_t tempfi; // used to capture FI and use it for rounding or not 
+static uint16_t tempfi; // used to capture FI and use it for rounding or not
 static void ICC_Async_InvertBuffer(struct s_reader *reader, uint32_t size, unsigned char *buffer);
 static int32_t Parse_ATR(struct s_reader *reader, ATR *atr, uint16_t deprecated);
 static int32_t PPS_Exchange(struct s_reader *reader, unsigned char *params, uint32_t *length);
@@ -216,10 +216,11 @@ int32_t ICC_Async_CardWrite(struct s_reader *reader, unsigned char *command, uin
 	uint16_t type = 0;
 	do
 	{
+		if(try > 1){
+			rdr_log(reader, "Warning: needed try nr %i, next ECM has some delay", try);
+		}
 		switch(reader->protocol_type)
 		{
-			if(try > 1)
-					rdr_log(reader, "Warning: needed try nr %i, next ECM has some delay", try);
 		case ATR_PROTOCOL_TYPE_T0:
 			ret = Protocol_T0_Command(reader, command, command_len, rsp, lr);
 			type = 0;
@@ -331,11 +332,10 @@ int32_t ICC_Async_Close(struct s_reader *reader)
 
 	rdr_log_dbg(reader, D_IFD, "Closing device %s", reader->device);
 	call(crdr_ops->close(reader));
-	if(reader->typ != R_SC8in1)
-        { 
-           NULLFREE(reader->crdr_data);
-           NULLFREE(reader->csystem_data);
-        }
+	if(reader->typ != R_SC8in1){
+		NULLFREE(reader->crdr_data);
+		NULLFREE(reader->csystem_data);
+	}
 	rdr_log_dbg(reader, D_IFD, "Device %s succesfully closed", reader->device);
 	return OK;
 }
@@ -369,7 +369,7 @@ static uint32_t ICC_Async_GetClockRate(int32_t cardmhz)
 	case 357:
 	case 358:
 		return (372L * 9600L);
-	case 368: 
+	case 368:
 		return (384L * 9600L);
 	default:
 		return (cardmhz * 10000L);
@@ -652,7 +652,7 @@ static uint32_t PPS_GetLength(unsigned char *block)
 
 static uint32_t ETU_to_us(struct s_reader *reader, uint32_t ETU)
 {
-	
+
 	return (uint32_t)((double) ETU * reader->worketu);  // in us
 }
 
@@ -742,7 +742,7 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		}
 	}
 	if(reader->cardmhz > 2000 && reader->typ == R_INTERNAL) { F = reader->mhz; }  // for PLL based internal readers
-	else { 
+	else {
 	if (reader->typ == R_SMART || is_smargo_reader(reader))
 	{
 		if (reader->autospeed == 1) {
@@ -764,7 +764,7 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		else
 		{ reader->mhz =  320; }
 		}
-	}	
+	}
 	F = reader->mhz; } // all other readers
         reader->worketu = (double)((double)(1 / (double)D) * ((double)Fi / (double)((double)F / 100)));
 	rdr_log(reader, "Calculated work ETU is %.2f us reader mhz = %u", reader->worketu, reader->mhz);
@@ -795,7 +795,7 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		tmpatr[4] = 0x42;
 		tmpatr[5] = 0x30;
 		tmpatr[6] = 0x30;
-		
+
 
 	//	WWT = (uint32_t) 960 * D * wi; //in work ETU
 		if (!memcmp(reader->card_atr, tmpatr, sizeof(tmpatr))){ // check for conax pairingecmrotation card atr.
@@ -811,7 +811,7 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		reader->CWT = 0; // T0 protocol doesnt have char waiting time (used to detect errors within 1 single block of data)
 		reader->BWT = 0; // T0 protocol doesnt have block waiting time (used to detect unresponsive card, this is max time for starting a block answer)
 
-		
+
 		rdr_log_dbg(reader, D_ATR, "Protocol: T=%i, WWT=%u, Clockrate=%u", reader->protocol_type, WWT, F * 10000);
 
 		reader->read_timeout = WWT; // Work waiting time used in T0 (max time to signal unresponsive card!)
@@ -948,9 +948,9 @@ static int32_t InitCard(struct s_reader *reader, ATR *atr, unsigned char FI, uin
 		if ((reader->typ == R_SMART) && (reader->autospeed == 1))
 			rdr_log(reader, "ATR Fsmax is %i MHz, clocking card to ATR Fsmax for smartreader cardspeed of %.2f MHz (specified in reader->mhz)",
 				atr_fs_table[FI] / 1000000, (float) reader->mhz / 100);
-		else 
+		else
 			rdr_log(reader, "ATR Fsmax is %i MHz, clocking card to wanted user cardclock of %.2f MHz (specified in reader->mhz)",
-				atr_fs_table[FI] / 1000000, (float) reader->mhz / 100); 
+				atr_fs_table[FI] / 1000000, (float) reader->mhz / 100);
 	}
 
 	//Communicate to T1 card IFSD -> we use same as IFSC
